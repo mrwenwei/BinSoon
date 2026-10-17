@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# BinSoon local configuration and future frontend
+.DS_Store
+.env.*
+!.env.example
+node_modules/
+.next/
+dist/

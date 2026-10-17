@@ -1,0 +1,19 @@
+﻿hotspot_id,district,name,longitude,latitude,reported_count,nearest_listed_bin_m,listed_bins_within_300m,review_priority,proposal_status,caveat
+b3ec4691-1e3e-50aa-ba55-064c2796fdbe,大安區,忠孝新生捷運站,121.5331,25.0417,10,1218.9,0,high,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+f783e72c-670e-5dd3-bae2-6676ef054d90,大安區,麟光捷運站,121.5588,25.0185,8,933.0,0,high,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+92ce6f02-3ee6-5118-90b5-ce3c6684ef6d,大安區,大安捷運站,121.5435,25.0331,12,831.9,0,high,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+58b2e1ad-36ad-56fb-8a37-1c65c7fbccf5,大安區,國父紀念館捷運站,121.5597,25.0456,8,822.7,0,high,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+d0864b46-37c3-51d4-864b-4794039dd222,大安區,公館捷運站,121.5344,25.0148,4,628.3,0,high,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+6d6c2783-b8f6-545d-b6dd-c149732e08a1,大安區,台電大樓捷運站,121.5283,25.0205,4,533.2,0,high,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+e3bdeee5-3b82-5b57-aff9-29aff78caad8,大安區,信義安和捷運站,121.5524,25.0329,4,530.1,0,high,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+45ecfbcb-8d34-58ad-a8f2-d9816d2dc36f,大安區,新光三越鑽石塔,121.5422,25.0417,3,354.9,0,high,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+35eb6b42-5b26-5a28-a05a-0a7ec56ff59c,大安區,永康公園,121.5296,25.0315,4,352.1,0,high,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+602931d7-8104-5014-8fc4-2855391b96e6,大安區,大安森林公園捷運站,121.5332,25.0329,7,241.7,2,low,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+2329a6c1-99cd-5a32-8d2e-43f29d816381,大安區,大安森林公園,121.5354,25.031,46,191.7,2,low,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+103952c3-5272-55b2-b2c4-12659d7c6100,大安區,忠孝復興捷運站,121.5439,25.0417,6,183.7,3,low,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+8b518f5c-0284-5fa6-80b1-90336ebd763d,大安區,遠東SOGO台北復興館,121.5439,25.0417,31,183.7,3,low,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+a8899bc5-5558-5911-8154-d97b945edf0f,大安區,明曜百貨,121.5522,25.0413,11,174.3,2,low,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+a9bd201f-a3c4-5c56-9a20-610a66c171df,大安區,六張犁捷運站,121.553,25.0238,7,171.1,2,low,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+d3d807c4-a156-5265-b88d-8b9b964b1b2a,大安區,科技大樓捷運站,121.5435,25.0261,8,167.2,4,low,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+138f015a-7f50-55cc-bf1e-bcd875b92c33,大安區,遠東SOGO台北忠孝館,121.5445,25.0417,14,123.2,4,low,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
+e337f0d3-107d-54d7-97c5-d7a3a0bc138b,大安區,忠孝敦化捷運站,121.5506,25.0417,9,47.5,4,low,needs_field_validation,representative hotspot coordinate; 130-hotspot counts not point-level bin positions
