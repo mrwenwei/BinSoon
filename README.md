@@ -48,3 +48,5 @@ BinSoon/
 目前範圍為資料初始化、清潔箱／景點／候選點查詢、候選點建立與最近清潔箱距離。未實作 IoT、模擬感測器、推薦演算法或前端。
 
 Cloud Run 部署架構、建立 GCP 專案與詳細操作見 [部署指南](docs/CLOUD_RUN.md)。
+
+已部署的公開 API 與資源版本見 [部署紀錄](docs/DEPLOYMENT_STATUS.md)。

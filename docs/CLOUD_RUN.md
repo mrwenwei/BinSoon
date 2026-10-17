@@ -196,3 +196,13 @@ Cloud Run min=0 可在沒有流量時縮到零，但 Cloud SQL 仍計費。可�
 - [Cloud SQL PostgreSQL extensions / PostGIS](https://docs.cloud.google.com/sql/docs/postgres/extensions)
 - [Cloud SQL 建立 PostgreSQL instance](https://docs.cloud.google.com/sql/docs/postgres/create-instance)
 - [Cloud SQL 費用](https://cloud.google.com/sql/pricing)
+
+## 已部署環境
+
+目前 BinSoon 的實際資源、服務 URL、驗收結果與可重用設定見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。
+
+唯讀 HTTP 驗收也可直接從儲存庫根目錄執行，不需額外 Python 套件：
+
+```sh
+python3 backend/scripts/check_deployment.py https://binsoon-api-887203439341.asia-east1.run.app
+```
