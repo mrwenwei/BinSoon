@@ -50,3 +50,5 @@ BinSoon/
 Cloud Run 部署架構、建立 GCP 專案與詳細操作見 [部署指南](docs/CLOUD_RUN.md)。
 
 已部署的公開 API 與資源版本見 [部署紀錄](docs/DEPLOYMENT_STATUS.md)。
+
+下次自行更新部署，請依 [手動部署操作手冊](docs/MANUAL_DEPLOYMENT.md) 逐步執行，包含腳本與完全手動兩種方式。

@@ -206,3 +206,5 @@ Cloud Run min=0 可在沒有流量時縮到零，但 Cloud SQL 仍計費。可�
 ```sh
 python3 backend/scripts/check_deployment.py https://binsoon-api-887203439341.asia-east1.run.app
 ```
+
+日常更新部署與完全手動指令見 [MANUAL_DEPLOYMENT.md](MANUAL_DEPLOYMENT.md)。

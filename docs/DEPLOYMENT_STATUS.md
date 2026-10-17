@@ -89,3 +89,5 @@ python3 backend/scripts/check_deployment.py \
 - 測試點名稱：`部署驗收候選點（非實際提案）`，不應用於真實選址決策。
 
 本機容器直接對外的驗收連線曾未完成；已停止該程序，改由主機 Python 執行完成。Cloud Run 服務本身的健康與公開 HTTP 存取均正常。
+
+下次更新的完整逐步指令、驗收與回滾見 [MANUAL_DEPLOYMENT.md](MANUAL_DEPLOYMENT.md)。
