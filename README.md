@@ -46,3 +46,5 @@ BinSoon/
 開發前請閱讀 [AGENTS.md](AGENTS.md) 與 [專案詳細背景](docs/PROJECT_CONTEXT.md)。後端操作詳見 [backend/README.md](backend/README.md)。
 
 目前範圍為資料初始化、清潔箱／景點／候選點查詢、候選點建立與最近清潔箱距離。未實作 IoT、模擬感測器、推薦演算法或前端。
+
+Cloud Run 部署架構、建立 GCP 專案與詳細操作見 [部署指南](docs/CLOUD_RUN.md)。

@@ -79,3 +79,5 @@ GET 三個端點皆接受 `district`（台北市十二行政區之一，預設�
 
 
 Agent 開發規範見 [AGENTS.md](../AGENTS.md)，完整領域與架構背景見 [PROJECT_CONTEXT.md](../docs/PROJECT_CONTEXT.md)。
+
+Cloud Run 使用獨立初始化 Job，API 映像依 `PORT` 啟動；完整操作見 [Cloud Run 部署指南](../docs/CLOUD_RUN.md)。

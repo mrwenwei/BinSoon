@@ -148,7 +148,7 @@ Migration 必須是可追溯 revision。未來 schema 修改新增 migration；�
 
 PostGIS 映像使用 PostgreSQL 16 / PostGIS 3.4、linux/amd64；Apple Silicon 需要 Docker 模擬支援。Python runtime 為 3.12，依賴由 requirements.lock 固定。Compose 掛載 app、scripts、alembic、tests，以及唯讀 data；API 程式改動後需重啟服務，容器啟動未使用 uvicorn --reload。
 
-本階段尚無登入／權限、分頁、更新／刪除端點或正式部署流程。若未來開放對外存取，需先依實際部署需求補足這些能力，不要將本機 Docker 設定直接當成正式環境設計。
+本階段尚無登入／權限、分頁、更新／刪除端點。Cloud Run 部署流程見第 11 節。若未來開放對外存取，需先依實際部署需求補足這些能力，不要將本機 Docker 設定直接當成正式環境設計。
 
 ## 10. 驗證與已知警告
 
@@ -168,3 +168,7 @@ docker compose exec api pytest -q
 目前預期看見 CSV 檔名對調警告；測試套件另可能顯示 Starlette 對 httpx TestClient 的棄用提醒。兩者目前不影響測試通過。不可為了清除警告而隱藏資料異常或不經驗證升級套件。
 
 驗收條件：Docker 啟動成功、migration 可執行且模型一致、匯入 681／130、預設大安區 47／18、重跑不重複、POST 後 GET 找得到候選點、座標與最近距離正確、pytest 全部通過。
+
+## 11. Cloud Run 部署
+
+部署架構與操作見 [CLOUD_RUN.md](CLOUD_RUN.md)。API 映像只啟動 HTTP；Compose 在啟動前執行 `scripts.initialize_db`，Cloud Run 使用獨立初始化 Job。初始化入口以 advisory lock 序列化 migration 與匯入。DB pool 上限每 instance 2 條連線，連線與 pool 等待均有 timeout。

@@ -21,6 +21,7 @@ services:
       retries: 30
   api:
     build: .
+    command: ["sh", "-c", "python -m scripts.initialize_db && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}

@@ -52,3 +52,7 @@ docker compose exec api pytest -q
 Compose 專案名稱固定為 `trashbin_soon`，以沿用初版開發環境的資料卷。未來若更名，須規劃資料卷遷移，避免誤以為資料消失。
 
 完成工作時回報改動、已執行的測試、尚未驗證的部分與資料限制。推送時保留遠端歷史，不 force push。
+
+## Cloud Run
+
+部署操作先讀 `docs/CLOUD_RUN.md`。Cloud Run API 容器依 PORT 啟動，不在冷啟動時執行 migration／匯入；使用獨立初始化 Job。Secret Manager 保存 DB 密碼，.gcloudignore 與 .dockerignore 排除本機 .env。付費資源建立需先確定專案、Billing 與規格，不能把文件中的預設名稱當成已建立的資源。

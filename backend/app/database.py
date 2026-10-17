@@ -10,7 +10,8 @@ class Base(DeclarativeBase):
 
 @lru_cache
 def get_engine():
-    return create_engine(get_settings().database_url, pool_pre_ping=True, connect_args={"options": "-c timezone=UTC"})
+    return create_engine(get_settings().database_url, pool_pre_ping=True, pool_size=2, max_overflow=0, pool_timeout=15,
+                         connect_args={"options": "-c timezone=UTC", "connect_timeout": 10})
 
 
 def get_session():
