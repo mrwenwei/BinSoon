@@ -55,12 +55,26 @@ Cloud Run 部署架構、建立 GCP 專案與詳細操作見 [部署指南](docs
 
 ## 地圖 V0
 
+先安裝 Git、Node.js 24 LTS（含 npm）。目前前端在功能分支，首次 clone：
+
 ```sh
-cd frontend
+git clone --branch feat/frontend-v0 https://github.com/mrwenwei/BinSoon.git
+cd BinSoon/frontend
 npm ci
 npm run dev
 ```
 
-開啟 http://localhost:5173。前端以靜態快照展示 681 筆公布桶位置＋130 筆場所代表點，合稱 811 筆位置紀錄。可篩選台北十二區、查看來源精度及 150m 直線參考圈，無需啟動後端。
+開啟 http://127.0.0.1:5173/（以終端機輸出的 Local URL 為準），保持終端機執行，按 `Ctrl+C` 停止。已 clone 的組員可切換至 `feat/frontend-v0`，在 `frontend/` 執行安裝與啟動指令；合併 main 後，新 clone 可省略分支參數。
+
+若要查看 build 後的正式產物，先停止開發服務，再於 `frontend/` 執行：
+
+```sh
+npm run build
+npm run preview
+```
+
+預設預覽網址為 http://127.0.0.1:4173/；不要直接雙擊 `dist/index.html`。
+
+前端以靜態快照展示 681 筆公布桶位置＋130 筆場所代表點，合稱 811 筆位置紀錄。可篩選台北十二區、查看來源精度及 150m 直線參考圈，無需後端、Docker、資料庫、Vercel 帳號或 `.env`；底圖需要網路與 WebGL。
 
 詳細開發、驗證與 Vercel Root Directory 設定見 [frontend/README.md](frontend/README.md)；需求及 PM 原型來源見 [前端 V0 規格](docs/FRONTEND_V0.md)。
