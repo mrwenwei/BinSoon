@@ -37,7 +37,7 @@ npm run preview
 
 前端以靜態快照展示 681 筆公布桶位置＋130 筆場所代表點，合稱 811 筆位置紀錄。可篩選台北十二區、查看地圖位置與來源精度，無需後端、Docker、資料庫、Vercel 帳號或 `.env`；底圖需要網路與 WebGL。
 
-已完成 A flow 展示：桶詳情、模擬登入、回報、掃碼集章與點數兌換，支援桌面及手機。新增資料明確標示為示意並儲存於本瀏覽器；不連接真實感測器、登入或派工。完整範圍見 [A flow 規格](docs/A_FLOW.md)。
+已完成 A flow 展示：桶詳情、模擬登入、站內示意導航、回報審核、會員等級與獎品兌換（1018 版本於 `feat/frontend-v0`），支援桌面及手機。新增資料明確標示為示意並儲存於本瀏覽器；不連接真實感測器、登入或派工。完整範圍見 [A flow 規格](docs/A_FLOW.md)。
 
 詳細開發、驗證與 Vercel Root Directory 設定見 [frontend/README.md](frontend/README.md)；目前需求見 [A flow 規格](docs/A_FLOW.md)，初版來源見 [前端 V0 規格（歷史）](docs/FRONTEND_V0.md)。
 

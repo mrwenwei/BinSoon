@@ -1,55 +1,84 @@
 export const reportTypes = [
-  { id: "full", label: "滿了", points: 10, icon: "▤", hint: "小夥伴吃太飽了" },
-  { id: "dirty", label: "很髒", points: 10, icon: "✳", hint: "需要清潔一下" },
+  { id: "full", label: "滿了", points: 1, icon: "▤", hint: "小夥伴吃太飽了" },
+  { id: "dirty", label: "很髒", points: 1, icon: "✳", hint: "需要清潔一下" },
   {
     id: "dumping",
     label: "桶旁有堆放",
-    points: 30,
+    points: 1,
     icon: "▧",
     hint: "優先派工",
   },
-  { id: "broken", label: "損壞", points: 10, icon: "⚒", hint: "小夥伴受傷了" },
-  {
-    id: "bags",
-    label: "狗便袋用完了",
-    points: 5,
-    icon: "♧",
-    hint: "補充遛狗好幫手",
-  },
+  { id: "broken", label: "損壞", points: 1, icon: "⚒", hint: "小夥伴受傷了" },
   {
     id: "other",
     label: "其他",
-    points: 0,
+    points: 1,
     icon: "＋",
     hint: "寫下你看到的狀況",
   },
 ] as const;
 export type ReportType = (typeof reportTypes)[number]["id"];
+export type ReportStatus = "pending" | "processing" | "approved" | "rejected";
+export const reportStatusLabels: Record<ReportStatus, string> = {
+  pending: "審核中",
+  processing: "清潔員處理中",
+  approved: "審核通過",
+  rejected: "判定不實",
+};
 export interface DemoReport {
   id: string;
   locationId: string;
   type: ReportType;
   description: string;
   createdAt: string;
+  status: ReportStatus;
+  adopter: boolean;
+  firstReporter: boolean;
+  acceptedAt?: string;
+  reviewedAt?: string;
+  eventId?: string;
+  quick?: boolean;
 }
 export interface ReportDraft {
   type: ReportType | null;
   description: string;
   photo: boolean;
   proximity: "unchecked" | "near" | "far" | "denied";
+  adopter: boolean;
+  firstReporter: boolean;
 }
 export const emptyDraft: ReportDraft = {
   type: null,
   description: "",
   photo: false,
   proximity: "unchecked",
+  adopter: false,
+  firstReporter: true,
 };
 export function reportInfo(type: ReportType) {
   return reportTypes.find((item) => item.id === type)!;
 }
+export function reportAward(
+  report: Pick<DemoReport, "adopter" | "firstReporter">,
+) {
+  return report.firstReporter ? (report.adopter ? 2 : 1) : 0;
+}
 export function pendingPoints(reports: DemoReport[]) {
-  return reports.reduce(
-    (sum, report) => sum + reportInfo(report.type).points,
-    0,
-  );
+  return reports
+    .filter(
+      (report) => report.status === "pending" || report.status === "processing",
+    )
+    .reduce((sum, report) => sum + reportAward(report), 0);
+}
+export function reportIsFinal(report: DemoReport) {
+  return report.status === "approved" || report.status === "rejected";
+}
+export function formatDemoTime(value: string) {
+  return new Date(value).toLocaleString("zh-TW", {
+    timeZone: "Asia/Taipei",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

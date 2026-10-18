@@ -6,16 +6,41 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { kindLabel, type LocationRecord } from "../data/locations";
-import { markerIcon } from "./marker";
-import { binDemo } from "../data/binDemo";
+import { locationMarkerIcon } from "./marker";
+import type { Point } from "../data/participation";
 setWorkerUrl(workerUrl);
 
 interface Props {
   locations: LocationRecord[];
   selected: LocationRecord | null;
   onSelect: (location: LocationRecord) => void;
+  demoRoute?: [number, number][];
+  removedIds?: string[];
+  point?: Point;
+  onPointChange?: (point: Point) => void;
+  proposalPoints?: (Point & { id: string; label: string; count: number })[];
+  onProposalSelect?: (id: string) => void;
+  selectedProposalId?: string;
+  selectionBounds?: {
+    south: number;
+    north: number;
+    west: number;
+    east: number;
+  };
 }
-export function LocationMap({ locations, selected, onSelect }: Props) {
+export function LocationMap({
+  locations,
+  selected,
+  onSelect,
+  demoRoute,
+  point,
+  onPointChange,
+  proposalPoints,
+  onProposalSelect,
+  selectedProposalId,
+  selectionBounds,
+  removedIds,
+}: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
@@ -70,33 +95,31 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
     markerRecords.current = [];
     for (const location of locations) {
       const marker = L.marker([location.latitude, location.longitude], {
-        icon: markerIcon(
-          location.kind,
-          false,
-          location.kind === "bin" ? binDemo(location).state : undefined,
-        ),
+        icon: locationMarkerIcon(location, false, removedIds),
         title: `${kindLabel[location.kind]}：${location.label}`,
         alt: `${kindLabel[location.kind]}：${location.label}`,
         riseOnHover: true,
       })
         .on("click", () => onSelect(location))
         .addTo(markers.current!);
+      marker
+        .getElement()
+        ?.setAttribute(
+          "aria-label",
+          `${kindLabel[location.kind]}：${location.label}`,
+        );
       markerRecords.current.push({ marker, location });
     }
-    if (locations.length)
+    if (locations.length && !selectionBounds)
       instance.fitBounds(
         L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
         { padding: [45, 50], maxZoom: 15, animate: false },
       );
-  }, [locations, onSelect]);
+  }, [locations, onSelect, removedIds, selectionBounds]);
   useEffect(() => {
     for (const { marker, location } of markerRecords.current) {
       marker.setIcon(
-        markerIcon(
-          location.kind,
-          location.id === selected?.id,
-          location.kind === "bin" ? binDemo(location).state : undefined,
-        ),
+        locationMarkerIcon(location, location.id === selected?.id, removedIds),
       );
       marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
     }
@@ -105,7 +128,126 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
     map.current!.setView(point, Math.max(map.current!.getZoom(), 16), {
       animate: false,
     });
-  }, [selected, locations]);
+  }, [selected, locations, removedIds]);
+  useEffect(() => {
+    if (!demoRoute?.length || !map.current) return;
+    const instance = map.current;
+    const line = L.polyline(demoRoute, {
+      color: "#305a48",
+      weight: 6,
+      dashArray: "10 9",
+    }).addTo(instance);
+    const origin = L.marker(demoRoute[0], {
+      icon: L.divIcon({
+        className: "demo-origin",
+        html: "<span>起</span>",
+        iconSize: [28, 28],
+      }),
+      title: "大安森林公園示意起點",
+    }).addTo(instance);
+    instance.fitBounds(line.getBounds(), {
+      padding: [55, 65],
+      maxZoom: 16,
+      animate: false,
+    });
+    return () => {
+      line.remove();
+      origin.remove();
+    };
+  }, [demoRoute]);
+  useEffect(() => {
+    if (!selectionBounds) return;
+    const instance = map.current!;
+    const bounds: L.LatLngBoundsExpression = [
+      [selectionBounds.south, selectionBounds.west],
+      [selectionBounds.north, selectionBounds.east],
+    ];
+    const outline = L.rectangle(bounds, {
+      color: "#9a6c3a",
+      weight: 2,
+      fillOpacity: 0.03,
+      interactive: false,
+    }).addTo(instance);
+    instance.fitBounds(bounds, { padding: [25, 25], animate: false });
+    return () => {
+      outline.remove();
+    };
+  }, [selectionBounds]);
+  useEffect(() => {
+    const instance = map.current!;
+    const layer = L.layerGroup().addTo(instance);
+    for (const proposal of proposalPoints || []) {
+      const marker = L.marker([proposal.latitude, proposal.longitude], {
+        icon: L.divIcon({
+          className: `proposal-marker ${proposal.id === selectedProposalId ? "active" : ""}`,
+          html: `<span>${proposal.count}</span>`,
+          iconSize: [34, 34],
+        }),
+        zIndexOffset: proposal.id === selectedProposalId ? 1600 : 1000,
+        title: `提案：${proposal.label}`,
+        alt: `提案：${proposal.label}`,
+      }).addTo(layer);
+      marker
+        .getElement()
+        ?.setAttribute(
+          "aria-pressed",
+          String(proposal.id === selectedProposalId),
+        );
+      marker.on("click", () => onProposalSelect?.(proposal.id));
+    }
+    if (
+      point &&
+      Number.isFinite(point.latitude) &&
+      Number.isFinite(point.longitude)
+    ) {
+      const marker = L.marker([point.latitude, point.longitude], {
+        icon: L.divIcon({
+          className: "point-marker",
+          html: "<span>＋</span>",
+          iconSize: [38, 38],
+        }),
+        draggable: Boolean(onPointChange),
+        zIndexOffset: 2000,
+        title: "選點位置（可拖曳）",
+        alt: "選點位置（可拖曳）",
+      }).addTo(layer);
+      marker.on("dragend", () => {
+        const p = marker.getLatLng();
+        onPointChange?.({ latitude: p.lat, longitude: p.lng });
+      });
+    }
+    const pick = (event: L.LeafletMouseEvent) =>
+      onPointChange?.({
+        latitude: event.latlng.lat,
+        longitude: event.latlng.lng,
+      });
+    if (onPointChange) instance.on("click", pick);
+    return () => {
+      instance.off("click", pick);
+      layer.remove();
+    };
+  }, [
+    point,
+    onPointChange,
+    proposalPoints,
+    onProposalSelect,
+    selectedProposalId,
+  ]);
+  const selectedProposal = proposalPoints?.find(
+    (p) => p.id === selectedProposalId,
+  );
+  useEffect(() => {
+    if (selectedProposal)
+      map.current!.setView(
+        [selectedProposal.latitude, selectedProposal.longitude],
+        Math.max(map.current!.getZoom(), 16),
+        { animate: false },
+      );
+  }, [
+    selectedProposalId,
+    selectedProposal?.latitude,
+    selectedProposal?.longitude,
+  ]);
   return (
     <div className="map-wrap">
       <div
@@ -120,9 +262,13 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
         </p>
       )}
       <span className="map-note">
-        {selected
-          ? "已選取位置 · 可縮放地圖查看周邊"
-          : "點選像素小夥伴，查看位置詳情"}
+        {onPointChange
+          ? "點擊地圖或拖曳＋選點 · 方塊為市民提案"
+          : selected
+            ? "已選取位置 · 可縮放地圖查看周邊"
+            : demoRoute
+              ? "虛線為示意路線 · 未依實際道路規劃"
+              : "點選像素小夥伴，查看位置詳情"}
       </span>
     </div>
   );

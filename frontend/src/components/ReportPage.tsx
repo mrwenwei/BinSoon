@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
+import { useQrCode } from "./useQrCode";
 import type { LocationRecord } from "../data/locations";
 import {
+  reportAward,
+  reportIsFinal,
   reportTypes,
   type DemoReport,
   type ReportDraft,
 } from "../data/reports";
 import { Icon } from "./Icon";
 import { Mascot } from "./Mascot";
+import { binDemo } from "../data/binDemo";
+import { ReportHistory } from "./ReportHistory";
 function useMobileLayout() {
   const [mobile, setMobile] = useState(
     () => window.matchMedia("(max-width: 760px)").matches,
@@ -29,6 +33,9 @@ export function ReportPage({
   onSubmit,
   reports,
   loginHref,
+  suspended,
+  quick = false,
+  removed = false,
 }: {
   location: LocationRecord;
   demoOnDesktop: boolean;
@@ -38,31 +45,23 @@ export function ReportPage({
   onSubmit: () => void;
   reports: DemoReport[];
   loginHref: string;
+  suspended: boolean;
+  quick?: boolean;
+  removed?: boolean;
 }) {
   const mobile = useMobileLayout();
-  const [qr, setQr] = useState("");
   const reportUrl = `${window.location.origin}${window.location.pathname}#report/${location.id}`;
-  useEffect(() => {
-    let active = true;
-    QRCode.toDataURL(reportUrl, {
-      width: 232,
-      margin: 2,
-      color: { dark: "#293e35", light: "#fffef8" },
-    })
-      .then((value) => {
-        if (active) setQr(value);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [reportUrl]);
+  const qr = useQrCode(reportUrl, 232);
   const info = reportTypes.find((item) => item.id === draft.type);
   const duplicate = reports.find(
-    (report) => report.locationId === location.id && report.type === draft.type,
+    (report) =>
+      report.locationId === location.id &&
+      report.type === draft.type &&
+      !reportIsFinal(report),
   );
   const ready = Boolean(
     loggedIn &&
+    !suspended &&
     info &&
     draft.photo &&
     draft.proximity === "near" &&
@@ -70,6 +69,29 @@ export function ReportPage({
     !duplicate,
   );
   const set = (patch: Partial<ReportDraft>) => onChange({ ...draft, ...patch });
+  if (removed || binDemo(location).removed)
+    return (
+      <main className="page">
+        <h1>這個桶已撤除（示意）</h1>
+        <p>請改用其他可用桶。</p>
+        <a className="button primary" href={`#nav/${location.id}`}>
+          尋找其他可用桶
+        </a>
+      </main>
+    );
+  if (quick && !draft.adopter)
+    return (
+      <main className="page">
+        <h1>快捷通報需要有效認養資格</h1>
+        <p>申請待審或已結束時，仍可使用一般回報。</p>
+        <a className="button primary" href={`#report/${location.id}?demo=1`}>
+          改用一般回報
+        </a>
+        <a className="back-link" href="#adopt">
+          查看認養狀態
+        </a>
+      </main>
+    );
   if (!mobile && !demoOnDesktop)
     return (
       <main className="page">
@@ -134,7 +156,7 @@ export function ReportPage({
               <li>
                 <span>03</span>
                 <div>
-                  <strong>送出並收集專屬印章</strong>
+                  <strong>送出並查看案件進度</strong>
                   <p>點數待確認後入帳；展示不會真的派工。</p>
                 </div>
               </li>
@@ -150,12 +172,13 @@ export function ReportPage({
                 </div>
               ))}
             </div>
-            <a className="back-link" href="#stamps">
+            <a className="back-link" href="#member">
               查看我的回報紀錄
               <Icon name="arrow" />
             </a>
           </section>
         </div>
+        <ReportHistory reports={reports} />
       </main>
     );
   return (
@@ -167,11 +190,16 @@ export function ReportPage({
       <div className="page-heading">
         <div>
           <span className="eyebrow">THANK YOU FOR LOOKING OUT</span>
-          <h1>回報這個桶</h1>
+          <h1>{quick ? "快捷通報：先完成現場驗證" : "回報這個桶"}</h1>
           <p>{location.label}</p>
         </div>
         <span className="demo-tag">示範回報 · 不會真的派工</span>
       </div>
+      {suspended && (
+        <p className="account-warning suspended" role="alert">
+          不實回報已累積三次，本機示範帳號已暫停回報資格。
+        </p>
+      )}
       <form
         className="report-grid"
         onSubmit={(event) => {
@@ -297,23 +325,48 @@ export function ReportPage({
               )}
             </div>
             <p className="tiny">所有定位均為示意，不會讀取你的真實位置。</p>
+            <div className="scenario-fields">
+              <p className="field-label">回報身分（依核准認養）</p>
+              <p>
+                {draft.adopter
+                  ? "這個桶的核准認養者 · 屬實首報 +2 點"
+                  : "一般民眾 · 屬實首報 +1 點"}
+              </p>
+              <a href={`#adopt/${location.id}`}>查看認養申請與資格</a>
+              <label className="field-label" htmlFor="reporter-order">
+                示範回報順序
+              </label>
+              <select
+                id="reporter-order"
+                value={draft.firstReporter ? "first" : "later"}
+                onChange={(event) =>
+                  set({ firstReporter: event.target.value === "first" })
+                }
+              >
+                <option value="first">同事件第一位回報者</option>
+                <option value="later">同事件後續回報者 · 不重複獎勵</option>
+              </select>
+              <p className="tiny">
+                回報順序為展示情境；認養資格由本機核准紀錄決定。
+              </p>
+            </div>
           </section>
           <section className="card report-summary">
             <span className="eyebrow">YOUR LITTLE ACT MATTERS</span>
             <h2>{info?.label || "先選擇問題類型"}</h2>
             <div className="points-preview">
-              +{info?.points ?? 0}
+              +{info ? reportAward(draft) : 0}
               <span>待確認點數</span>
             </div>
             <p>
               清潔員確認屬實後才入帳。
               <br />
-              本次為展示，回報會保留為待確認。
+              本次為展示，可在審核結果頁操作示意審核。
             </p>
             {duplicate && (
               <p className="form-error" role="status">
                 這個問題已有示範回報，請勿重複送出。
-                <a href={`#report-done/${duplicate.id}`}>查看回報</a>
+                <a href={`#review/${duplicate.id}`}>查看回報</a>
               </p>
             )}
             <button
@@ -328,6 +381,7 @@ export function ReportPage({
           </section>
         </aside>
       </form>
+      <ReportHistory reports={reports} />
     </main>
   );
 }

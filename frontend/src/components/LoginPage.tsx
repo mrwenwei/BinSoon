@@ -35,7 +35,7 @@ export function LoginPage({
           <p>
             一起讓台北的日常，再順一點。
             <br />
-            登入後，就能回報、集章，累積你的城市小善意。
+            登入後，就能回報、集點，累積你的城市小善意。
           </p>
           <div className="privacy-notes">
             <h2>這個展示會用到哪些資料？</h2>
@@ -58,7 +58,9 @@ export function LoginPage({
           <h2>{loggedIn ? "你好，示範市民！" : "登入或綁定"}</h2>
           {loggedIn ? (
             <>
-              <p className="muted">你的回報、印章和兌換券保留在這個瀏覽器。</p>
+              <p className="muted">
+                你的回報、會員點數和兌換紀錄保留在這個瀏覽器。
+              </p>
               <button className="button primary wide" onClick={onLogin}>
                 繼續體驗
               </button>
