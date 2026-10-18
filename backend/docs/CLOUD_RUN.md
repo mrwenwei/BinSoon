@@ -1,5 +1,7 @@
 # BinSoon：Google Cloud Run 部署與操作
 
+> 統一 Bin（0003）已於 2026-10-19 完成備份、維護與雲端切換，版本見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。0003 整併表結構，需備份、停止舊寫入並協調程式切換；不能直接以原流程宣稱無停機升級，也不能只回滾舊映像。新 API、權限、官方筆數篩選與歷史行為見 [BINS.md](BINS.md)。
+
 本文件的終端指令從儲存庫根目錄開始。專案 ID、Billing Account 與資料庫實際建立結果，以部署完成後的紀錄為準；以下名稱是可重現的預設方案，尚未表示雲端資源已建立。
 
 ## 架構與範圍
@@ -145,7 +147,7 @@ Cloud Build 上傳範圍受 backend/.gcloudignore 控制；Docker build 另受 .
 
 ## 5. 存取與驗收
 
-預設 PUBLIC_ACCESS=false，只有具 Cloud Run Invoker 的 IAM 身分可呼叫。開放展示需先明確設定 `PUBLIC_ACCESS=true`；目前 API 沒有應用層登入，公開後 POST 候選點也能被匿名呼叫。
+預設 PUBLIC_ACCESS=false，只有具 Cloud Run Invoker 的 IAM 身分可呼叫。開放展示需先明確設定 `PUBLIC_ACCESS=true`；統一 Bin 版的 GET 可公開，所有 POST 另需 ADMIN_TOKEN；目前尚無完整使用者角色管理。
 
 ```sh
 export SERVICE_URL="$(gcloud run services describe binsoon-api \
@@ -208,3 +210,11 @@ python3 backend/scripts/check_deployment.py https://binsoon-api-887203439341.asi
 ```
 
 日常更新部署與完全手動指令見 [MANUAL_DEPLOYMENT.md](MANUAL_DEPLOYMENT.md)。
+
+## 第一階段 Demo（選用）
+
+見 [DEMO.md](DEMO.md)。新版 migration 新增獨立 Demo 模擬資料，不影響官方清潔箱，初始化 Job 不自動 seed Demo。`deploy/cloudrun.sh` 可用 `ADMIN_SECRET` 與 `ADMIN_SECRET_VERSION` 指定 Admin token 的 Secret Manager reference；需事先建立 secret 並授權 runtime secretAccessor。未設定時 Demo POST 關閉，不能將 token 寫入一般 env 範例或前端 bundle。部署腳本用 --set-secrets 替換設定，重部署時需保留選用 secret 變數。2026-10-19 已發布至既有 Cloud Run 環境，最新版本與驗收結果見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。
+
+## 不相容 schema 的維護入口
+
+`app.maintenance:app` 為本次 0003 切換新增的部署入口，所有 HTTP 路徑均回 503 / Retry-After，且不載入 DB。先以 no-traffic 預備維護與正式 revision，再切維護、排空舊請求、完成 Cloud SQL 備份、執行初始化 Job、切正式並做 HTTP 驗收。不能直接在舊 API 仍處理寫入時整併表。完整實際流程見 [手動部署手冊](MANUAL_DEPLOYMENT.md) 最後一節；普通相容版本仍可沿用既有腳本。

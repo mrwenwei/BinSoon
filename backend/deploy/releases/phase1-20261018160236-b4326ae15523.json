@@ -1,0 +1,119 @@
+{
+  "release": "phase1-20261018160236-b4326ae15523",
+  "source_sha256": "b4326ae15523b3929e5388c8167c6a3f3b730dd96543719feb27e3e5ab9996ed",
+  "build_id": "7b995811-22ec-4a20-b71f-9bdeffeb5222",
+  "image_tag": "asia-east1-docker.pkg.dev/binsoon/binsoon/binsoon-api:phase1-20261018160236-b4326ae15523",
+  "image": "asia-east1-docker.pkg.dev/binsoon/binsoon/binsoon-api@sha256:d4e66235a6fe8d19d35e4889e67988f9fa291da561ce90a4703eb962698300c0",
+  "image_digest": "sha256:d4e66235a6fe8d19d35e4889e67988f9fa291da561ce90a4703eb962698300c0",
+  "previous_revision": "binsoon-api-00001-6df",
+  "previous_traffic": [
+    {
+      "latestRevision": true,
+      "percent": 100,
+      "revisionName": "binsoon-api-00001-6df"
+    }
+  ],
+  "initialization_execution": "binsoon-api-initialize-ts2zz",
+  "service_url": "https://binsoon-api-i52eqbm3ma-de.a.run.app",
+  "revision": "binsoon-api-00002-nzl",
+  "traffic": [
+    {
+      "latestRevision": true,
+      "percent": 100,
+      "revisionName": "binsoon-api-00002-nzl"
+    }
+  ],
+  "demo_smoke": {
+    "demo_points": 10,
+    "boundary_warning_ranks": [
+      4,
+      7
+    ],
+    "unauthorized_mutations": "401",
+    "seed_idempotent": true,
+    "source_types": [
+      "model_recommendation",
+      "simulated"
+    ],
+    "status": {
+      "scenario_id": "daan_phase1_10bins",
+      "simulated_at": "2026-01-05T00:00:00Z",
+      "simulation_status": "running",
+      "seed": 42,
+      "generation": 1,
+      "time_multiplier": 600.0,
+      "data_version": "phase1-v1",
+      "clock_mode": "manual",
+      "source_type": "simulated"
+    },
+    "advance_verified": true,
+    "retry_verified": true,
+    "collection_verified": true,
+    "reset_verified": true
+  },
+  "deployed_at": "2026-10-19T00:10:33.842621+08:00",
+  "base_commit": "12b7e07f90add4a9f5b5576420d9f0949f113d37",
+  "uncommitted_source": true,
+  "source_files": {
+    ".dockerignore": "7e3263807a2d6e6de3650ed35ffce06d9e2152cbdcb02af401f1bfc247c028df",
+    ".env.example": "2e6de3a212847f4ff295bcea019661212e5935f0465ea68e845fd3ae169d5ffd",
+    "Dockerfile": "f53fd63c8cafa980ffb59d39ce37b9c379247a95ac29d05bbe17ab083792f955",
+    "README.md": "d4beaf66a466493533e87da200c5895f43f898f2356b94a59e4dd305c4adf5f1",
+    "alembic.ini": "d94591c0b82a4f66e08e5417f2d6543c2f68eb5ce68e0eb913a02cd3d2e0777b",
+    "alembic/env.py": "7fa7be4195ce9a10c5b58dee03d00b893dcc7c5f67befedd1575eebacfc356ef",
+    "alembic/script.py.mako": "116d035db5d6b4abe2f7e00e60d547bf8396983c741d09af902b184ccc6e0a35",
+    "alembic/versions/0001_initial.py": "23065bff132adfa03c9a429b53eac19d7673e60cd11d9154493a112ef22284ae",
+    "alembic/versions/0002_demo.py": "5fcbf9fe3cf2f5873a8c05f8eef3cfc715b3d4df91e2ca98b66034d8ca34b498",
+    "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app/api.py": "a29dfbecf6ca832e3ade1c4ba65ce4269a73ebf4cce189b3a31e4d833c662ef1",
+    "app/config.py": "ee4fa8d1403433b44da976a86cbc448842dd7ea974184fb1eb6bd9ec69b1e358",
+    "app/database.py": "61992bada9fea94cb6f7db87931ac2a78c745c76b70ce6c5dc198752378d2ddb",
+    "app/demo_api.py": "44e199eb507713d71744d6b8ea09e35b6a8b93a6c1e800c367551c9d81868dbc",
+    "app/demo_schemas.py": "ddde0ca7ff30a8c4c99fe6dd886d050206f9944493b45cf57823b5a4370bdb2a",
+    "app/main.py": "0abd59b9b96614d1152d2162ff9193816d7889444cc0272e98330a3d2bd1cf3c",
+    "app/models.py": "9710d880fb5e1ebde959b33f9111a94ac072c1d2282c4c60a6f142ea34bc3158",
+    "app/schemas.py": "54b66b9e29ead8dd3275036653ed2fe4d245caf28a58a47829a4e5f512c8aa5d",
+    "app/services/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app/services/demo.py": "58aa0e2fc41d57c0fc2a04469d44024b4dd36d607ede51f5458d381c77bfbf2c",
+    "compose.yaml": "16c026f073b629ef186d16776f41c0683cbd40d18c4bc27dd35580715a47d6b7",
+    "data/BOUNDARIES.md": "538384a43bac03d1496dfb66bded9cc0d885fd3987e09d1ac716a3500a37476f",
+    "data/daan_hotspot_gap_screening.csv": "26aaa7f9800b4d68c3ed7d98f2d7576f47204c7abde109358921c1ee639a28ae",
+    "data/daan_phase1_10bins.json": "becbf98e33b183a61702d4e7244193c60deb28f0c4db166b4ed543532a7c4cae",
+    "data/existing_bins_all_taipei.csv": "e3f5ffba14d518bb9b71713ec05acb6d4e097ccbb83c24fda2ba30fb4e24c362",
+    "data/hotspots_all_taipei.csv": "13cc6ede85d07200523f006e1b3e1f4625ac87532fd95d17014e2f7dcb82e6cf",
+    "data/taipei_districts.geojson": "9a560789fd4b2f6bc5eb9fd6c7cfadb0e55f92121abcda9bc78b76e535ab73eb",
+    "deploy/binsoon.env.example": "e777e6572757383131a686128769460f08cab64b5fdb25d65fb6b3d48f04b962",
+    "deploy/cloudbuild.yaml": "785105fa9ce1d682d08aeaa4af687b7663548de47cd62a003380f40b4878b98f",
+    "deploy/cloudrun.sh": "714a51eaedb1452969ddbc413667ee49f064f443341e5b5ed7b7e47aa1b0d978",
+    "deploy/create_db_credentials.py": "6f783d140263308d5108027af96d7e202235c3d3b6f7011c973b6aaf3959b9db",
+    "docs/CLOUD_RUN.md": "e30b334cf6587097542c6471a9ef6fa05c99613ea7ae13f855d9a0959ed7e2fe",
+    "docs/DEMO.md": "dbd084e109e040a22eedd7b2c70cda9cd236d407009029467abf87a48c694cd9",
+    "docs/DEPLOYMENT_STATUS.md": "7920e2384cb1137b91f4870d0688e7f2917d8dc67abc0197ff4333563b59fea0",
+    "docs/MANUAL_DEPLOYMENT.md": "50dad8dcdc3fc87308844a8b0d949b6448e65a40d7c34d1dccb5da9c0b12a477",
+    "pyproject.toml": "83f9caac40cab034f9057ac4c27ae407af987aa522605aa12389618acaf73ed8",
+    "requirements.lock": "d74a34f0464c2a0cce2d727e2d10b4e58c8c848ccd8b7c3ac89cdee4d675c1d4",
+    "scripts/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scripts/check_deployment.py": "7a6408a81bc22411aaf7d967fb80231e00f946377df4de86dde4510c5844747a",
+    "scripts/convert_demo_boundaries.py": "4851d2806b2b82de78f3dbd3b38512d6d8d279c3fb4c5e2efaab1c607d610faa",
+    "scripts/demo_boundary_report.py": "fed2a8f50e996a35f47a5b9dbf9ca31a85383426f292fb0631ef26ac920982d6",
+    "scripts/import_data.py": "9c402e3b8502c2c3e0c86d24aab08607d8b930008d6f03fefe8cbdb0d7d173a2",
+    "scripts/initialize_db.py": "90ef203c191ae8ecb2d6726ea8b838a510172fafc7a7a17f8663366d26ec22d9",
+    "tests/conftest.py": "e298ede40d49e4fd58ec256c69589aa000a03642f56f9fd663f1cd637d0ef177",
+    "tests/test_api.py": "86235554180f354637ad087ec33c7beaca47a7ead948797056cbbe7f458b1136",
+    "tests/test_demo.py": "abdb9cb2b848c84e5c25097d5f17b562b97b1d5ed2f8a9cffbd835dacedd7c5e",
+    "tests/test_import.py": "50760734e4a9ca0c2aaa7cc1bc53f9fb43d0cc658320a7d9859722a446e29f7d"
+  },
+  "demo_secret_reference": "binsoon-demo-admin-token:1",
+  "checks": {
+    "local_pytest": "28 passed",
+    "alembic_check": "No new upgrade operations detected",
+    "all_taipei": {
+      "bins": 681,
+      "hotspots": 130
+    },
+    "daan": {
+      "bins": 47,
+      "hotspots": 18
+    }
+  }
+}

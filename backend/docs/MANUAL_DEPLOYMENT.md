@@ -1,5 +1,7 @@
 # BinSoon 手動部署操作手冊
 
+> 統一 Bin（0003）已於 2026-10-19 完成備份、維護與雲端切換，版本見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。0003 整併表結構，需備份、停止舊寫入並協調程式切換；不能直接以原流程宣稱無停機升級，也不能只回滾舊映像。新 API、權限、官方筆數篩選與歷史行為見 [BINS.md](BINS.md)。
+
 此手冊供下次自行部署使用。指令以 macOS 的 bash／zsh 為例，從 **BinSoon 儲存庫根目錄**執行；不用將資料庫密碼下載到本機。
 
 現有環境已在 2026-10-18（台北時間）完成首次部署。日常更新從第一節開始，不要重建 Cloud SQL、DB user 或 Secret。實際資源與首次映像版本見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。
@@ -65,7 +67,7 @@ docker compose exec api pytest -q
 cd ..
 ```
 
-目前基準是 13 項測試通過。CSV 檔名對調警告是已記錄的資料現況。測試使用本機 Compose 的 PostGIS，**不要將本機 .env 改成雲端資料庫設定來跑 pytest**。
+原有基準為 13 項；加入第一階段 Demo 後，本機統一 Bin 與維護入口測試基準為 36 項。CSV 檔名對調警告是已記錄的資料現況。測試使用本機 Compose 的 PostGIS，**不要將本機 .env 改成雲端資料庫設定來跑 pytest**。
 
 若有資料表變更，先新增並驗證 Alembic revision。不要修改已部署的 migration，也不要只改 SQLAlchemy model 後直接上線。
 
@@ -117,7 +119,7 @@ set +a
 | CLOUD_SQL_CONNECTION_NAME | binsoon:asia-east1:binsoon-db |
 | POSTGRES_DB / POSTGRES_USER | binsoon / binsoon |
 | DB_PASSWORD_SECRET / SECRET_VERSION | binsoon-db-password / 1 |
-| PUBLIC_ACCESS | true（包含 POST 候選點） |
+| PUBLIC_ACCESS | true（HTTP 公開；統一 Bin 版 POST 另需 Admin token） |
 
 不要 source `backend/.env` 代替這份檔案：那是本機 Compose 的資料庫設定。
 
@@ -159,6 +161,11 @@ RELEASE_TAG="$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
 IMAGE="${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${RELEASE_TAG}"
 JOB="${SERVICE}-initialize"
 ENV_VARS="POSTGRES_HOST=/cloudsql/${CLOUD_SQL_CONNECTION_NAME},POSTGRES_PORT=5432,POSTGRES_USER=${POSTGRES_USER},POSTGRES_DB=${POSTGRES_DB}"
+SECRET_BINDINGS="POSTGRES_PASSWORD=${DB_PASSWORD_SECRET}:${SECRET_VERSION}"
+# 選用：先建立 token secret 並授權 runtime secretAccessor；此處只指定 secret 名稱。
+if [ -n "${ADMIN_SECRET:-}" ]; then
+  SECRET_BINDINGS="$SECRET_BINDINGS,ADMIN_TOKEN=${ADMIN_SECRET}:${ADMIN_SECRET_VERSION:-latest}"
+fi
 ```
 
 先記下目前 revision，供必要時回滾：
@@ -203,7 +210,7 @@ IMAGE="${IMAGE%:*}@${DIGEST}"
   --service-account="$RUNTIME_SERVICE_ACCOUNT" \
   --set-cloudsql-instances="$CLOUD_SQL_CONNECTION_NAME" \
   --set-env-vars="$ENV_VARS" \
-  --set-secrets="POSTGRES_PASSWORD=${DB_PASSWORD_SECRET}:${SECRET_VERSION}" \
+  --set-secrets="$SECRET_BINDINGS" \
   --command=python --args=-m,scripts.initialize_db \
   --tasks=1 --parallelism=1 --max-retries=0 --task-timeout=600s \
   --cpu=1 --memory=512Mi
@@ -230,13 +237,13 @@ Migration 與匯入不是同一個 transaction。若匯入失敗，schema 可能
   --service-account="$RUNTIME_SERVICE_ACCOUNT" --execution-environment=gen2 \
   --add-cloudsql-instances="$CLOUD_SQL_CONNECTION_NAME" \
   --set-env-vars="$ENV_VARS" \
-  --set-secrets="POSTGRES_PASSWORD=${DB_PASSWORD_SECRET}:${SECRET_VERSION}" \
+  --set-secrets="$SECRET_BINDINGS" \
   --port=8080 --cpu=1 --memory=512Mi --concurrency=8 \
   --min-instances=0 --max-instances=2 --timeout=60s \
   --allow-unauthenticated
 ```
 
-這與本次已核准的公開展示設定一致，POST 也公開。若未來改成 IAM 私有服務，改用 --no-allow-unauthenticated，並採 IAM identity token 或本機代理驗收；本手冊的匿名 HTTP 檢查不適用私有服務。
+這保留 HTTP 公開展示設定；統一 Bin 版的 POST 另需 Admin token。若未來改成 IAM 私有服務，改用 --no-allow-unauthenticated，並採 IAM identity token 或本機代理驗收；本手冊的匿名 HTTP 檢查不適用私有服務。
 
 --set-env-vars 與 --set-secrets 會替換相應設定集合。未來新增其他環境變數或 secrets 時，先同步更新部署腳本／ENV_VARS，避免部署時覆蓋遺漏。
 
@@ -340,3 +347,24 @@ python3 backend/scripts/check_deployment.py "$SERVICE_URL"
 完整首次建置指令已列於 [CLOUD_RUN.md](CLOUD_RUN.md) 第 1～4 節。若換 Project ID，必須同步修改 service account email、connection name、registry 路徑與部署環境設定；不可只改 GCP_PROJECT_ID 就沿用其餘 binsoon 名稱。
 
 Cloud SQL 會持續計費，Cloud Run min=0 不會停止資料庫費用。停止／刪除資源前先確認資料與備份；本手冊不會自動清理或刪除任何雲端資源。
+
+## 第一階段 Demo 的選用啟用
+
+Demo migration 隨標準初始化 Job 執行；不會自動 seed 十個點。Demo POST 預設關閉。若要啟用，先在 Secret Manager 安全保存私密 token、授權 runtime service account 對該 secret 有 secretAccessor，再設定 `ADMIN_SECRET`（secret 名稱）與 `ADMIN_SECRET_VERSION` 後部署。腳本與上方手動 SECRET_BINDINGS 都會以 secret reference 注入 ADMIN_TOKEN。詳細管理 seed、API 範例與資料警告見 [DEMO.md](DEMO.md)。
+
+注意 `--set-secrets` 會替換設定；更新既有 Demo 部署時需持續提供 Demo secret 設定，否則會停用 Demo 寫入。2026-10-19 已部署並完成 Demo HTTP 驗收，版本見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。目前 binsoon.env.example 已包含既有 Demo secret 的非機密 reference，後續更新需保留。
+
+## 0002 → 0003 的協調切換紀錄與做法
+
+本次已完成此切換；不要在已是 0003 的資料庫重做舊表轉換或還原舊映像。未來遇到同樣不相容的 schema 變更，可依以下順序安排維護：
+
+1. 先通過本機測試、建立排除 `.env` 的來源快照與 Cloud Build digest，記錄原流量分配。
+2. 用相同 digest，先預備維護與正式兩個 revision，皆加 `--no-traffic`，維持既有資源、環境變數與 Secret reference。維護入口使用 `--command=uvicorn --args=app.maintenance:app,--host,0.0.0.0,--port,8080`；正式入口使用 `--command='' --args=''` 清除維護覆寫，回復 Docker CMD。
+3. 以 `run revisions describe` 核對每個 revision 的 image、command/args 與 Ready 條件。no-traffic 回應中的 service.latestReadyRevisionName 可能仍是舊版，不能直接把它當新 revision ID。
+4. 記錄切換前點位與歷史 ID，明確 `run services update-traffic --to-revisions="$MAINTENANCE_REVISION=100"`，確認公開 GET/POST 都回 503。維護入口不存取 DB，回 Retry-After: 60。
+5. 從維護流量生效後至少等候舊服務最長 timeout（本次 60 秒，實際等 61 秒）排空，再建立 Cloud SQL 按需備份：`gcloud sql backups create --instance=binsoon-db --project=binsoon --description=before-YOUR_RELEASE --async`。必須確認 backup 狀態 SUCCESSFUL，才執行 schema migration。
+6. 更新既有初始化 Job 為同一 digest，執行並等候成功；本次 migration/import 使用既有安全環境設定與 Secret Manager，沒有對 Cloud SQL 執行 pytest。
+7. `run services update-traffic --to-revisions="$APP_REVISION=100"` 恢復正式服務。該指令的 JSON 輸出可能直接是 traffic list；另用 `run services describe` 核對實際 100% revision。
+8. 以 HTTP 核對官方數量、新舊 ID、舊歷史、目前滿度、模擬時鐘、GeoJSON 與 Admin 權限，再保存備份 ID、digest、Job execution、流量與來源 manifest。
+
+本次維護 revision 為 binsoon-api-00003-5zc、正式為 binsoon-api-00004-lql；按需備份 1792342693302。詳見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。舊資料歷史已保留，不需為了驗收而 reset；若 schema 已是 0003，不可僅切回 0002 映像，回復需先明確規劃備份還原或往前修復。

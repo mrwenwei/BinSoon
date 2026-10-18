@@ -1,174 +1,70 @@
 # BinSoon 專案背景與架構
 
-## 1. 產品目標與目前範圍
+## 產品與範圍
 
-BinSoon（台北丟垃圾變順）是台北市智慧垃圾桶黑客松 MVP。先以大安區作為主要分析與展示範圍，資料設計與 API 應能支援台北市十二行政區。
+台北市智慧垃圾桶 MVP，地圖預設大安區，資料支援十二行政區。已有資料初始化、點位查詢、新增 Bin、滿度／清運歷史及可重現模擬。尚無前端、IoT 硬體通訊、選址最佳化或正式派工。
 
-目前已完成資料初始化、基本讀取、候選點新增與空間距離查詢。後續可能建立前端，但目前沒有前端程式或已選定的前端技術。未實作 IoT、模擬感測器、推薦演算法、裝置管理、收運排程或自動選址。
+使用者最新要求：新增的 candidate 等同 Bin，統一模型與查詢。這不表示已實際設置；`bin_type=proposed`、`placement_status=proposed`、`feasibility_status=pending_review` 保留其待現勘意義。Hotspot 仍不是 bin。
 
-「候選點」表示需要人工現勘的提案，不表示已核准設置或已有真實清潔箱。距離較遠也不等於已證明有設置需求；本階段不提供此類推論。
+## 目錄與環境
 
-## 2. 儲存庫與執行位置
+後端程式、資料、測試、migration、部署腳本與部署文件都在 backend/。尚未建立 frontend/。後端命令於 backend/ 執行；根目錄 Compose 需 `docker compose -f backend/compose.yaml --env-file backend/.env ...`。
 
-儲存庫：`git@github.com:mrwenwei/BinSoon.git`。
+Compose 專案固定 trashbin_soon，沿用 postgres_data volume。Python 3.12、FastAPI、SQLAlchemy 2、Pydantic v2、psycopg 3、PostgreSQL 16/PostGIS、Alembic、pytest；requirements.lock 固定依賴。
 
-後端全部位於 `backend/`，未來前端位於 `frontend/`。後端 Docker build context、掛載路徑、pytest 工作目錄與 importer 預設資料目錄都以 `backend/` 為基準。
+## 原始 CSV 與來源
 
-從根目錄使用 Compose 時需同時指定檔案及環境檔：
-
-```sh
-docker compose -f backend/compose.yaml --env-file backend/.env up --build
-```
-
-建議直接 `cd backend` 後執行文件中的指令。Compose 專案名稱固定為 `trashbin_soon`，保留原開發環境的容器／volume 命名與資料相容性。
-
-## 3. 原始資料與檔名異常
-
-所有 CSV 使用 UTF-8-SIG。以下是目前磁碟上檔案的**實際內容**，不是最初需求對檔名的描述：
-
-| backend/data/ 下的檔名 | 實際內容 | 全市／大安區 | 用途 |
+| 檔案 | 實際內容 | 全市／大安區 | 處理 |
 | --- | --- | --- | --- |
-| existing_bins_all_taipei.csv | 個別清潔箱獨立點位，含 id、address、status、source_type、source_row、location_precision | 681／47 | trash_bins |
-| daan_hotspot_gap_screening.csv | 景點商圈聚合代表點，含 id、name、reported_count、source_type、source_row、location_precision | 130／18 | hotspots |
-| hotspots_all_taipei.csv | 大安區缺口分析，含 hotspot_id、nearest_listed_bin_m、listed_bins_within_300m、review_priority、proposal_status、caveat | 18／18 | 分析參考，不匯入 |
+| backend/data/existing_bins_all_taipei.csv | 獨立清潔箱點位 | 681／47 | bins，bin_type=existing |
+| backend/data/daan_hotspot_gap_screening.csv | 景點商圈聚合代表點 | 130／18 | hotspots |
+| backend/data/hotspots_all_taipei.csv | 缺口分析參考 | 18／18 | 不自動匯入 |
 
-後兩份 CSV 檔名與原需求預期對調。`scripts/import_data.py` 先檢查預期景點檔的 schema；發現 screening 欄位時才檢查替代來源，發出警告並載入真正聚合資料。原檔未修改，實際檔名記在 `source_file`。
+後兩檔名與內容對調。匯入器檢查 schema，發出警告後載入真正聚合資料，原始 CSV 不改寫。景點 reported_count 是周邊清潔箱數量，不能展開成獨立點。缺口分析不能被當作真實新增點位。
 
-若未來將檔名修正回正常狀態，importer 會直接讀 `hotspots_all_taipei.csv`。不可為了湊滿筆數將 18 筆 screening 或 reported_count 展開成垃圾桶。資料集改版須明確更新筆數驗證與測試，而非移除品質檢查。
+UTF-8-SIG 讀取，驗證 UUID、來源唯一性、行政區、座標有限值、非負 reported_count、全市與大安區筆數；新版資料需明確調整驗證，不移除檢查。以 (source_type,source_row) upsert，保留 ID、created_at，updated_at 更新；兩組資料同一 transaction。沒有自動刪除，來源列號重排需先規劃識別策略。
 
-## 4. 資料模型
+十個模型推薦點另保存在 daan_phase1_10bins.json，UUID 與 external_id 穩定，source_type=model_recommendation。分數不是實測人流或垃圾量。第 4、7 點依保存的官方圖資位於中正區，座標與排名保留並警告；十點均需現勘。圖資來源、SHA256、授權與轉換見 backend/data/BOUNDARIES.md。
 
-三張表共用欄位：
+## 資料模型
 
-| 欄位 | 型態與意義 |
-| --- | --- |
-| id | UUID primary key；匯入資料沿用 CSV ID，人工候選點產生新 UUID |
-| district | 行政區名稱，建立索引 |
-| location | geography(Point,4326)，GiST index |
-| source_type | 原始來源種類；候選點為 manual_candidate |
-| source_row | 原始資料列號，候選點可為 null |
-| source_file | 實際來源檔名，人工候選點為 null |
-| note | 來源備註或人工說明 |
-| created_at / updated_at | timezone-aware timestamp，UTC |
+- **Bin / bins**：所有既有及新增點，使用單一 UUID。bin_type 區分 existing/proposed；保留 name、address、status、placement_status、feasibility_status、推薦資訊及來源欄位。
+- **Hotspot / hotspots**：景點聚合代表點，name、reported_count、location_precision。
+- **BinState / bin_states**：每 Bin 一筆目前滿度、模擬容量、速度、觀測／清運時間與 reading source_type。
+- **BinReading / bin_readings**：所有 Bin 的 measurement／collection／reset 事件；bin_id、滿度、UTC 時間、source_type、generation。
+- **SimulationClock / simulation_clocks**：全體共用持久化時鐘、seed、倍率與 generation。
+- **SimulationAdvance / simulation_advances**：request UUID、generation、時長與完成時間，處理重試去重。
 
-### trash_bins
+沒有額外 registry、Candidate Model 或 Demo 專用讀值表。所有位置為 Geography(Point,4326)，GiST 索引；經度在前，API 經緯度為 numeric。所有時間為 timezone-aware UTC / timestamptz。
 
-表示真實既有清潔箱，額外保存 address、status、location_precision。資料來源必須是 `city_bin_inventory`，目前只接受 status=existing。`(source_type, source_row)` 有唯一約束。
+## API 與行為
 
-### hotspots
+主要使用 /api/v1/bins：列表、POST 新增、/{id} 詳情、/{id}/history、/{id}/collect、/collection-priorities。列表預設大安區，包含 existing/proposed；district=all 查全市，bin_type 篩選類型，format=geojson 取得 FeatureCollection。單一 ID 可查任一 Bin 的目前使用量及歷史。
 
-表示景點／商圈聚合資料，額外保存 name、reported_count、location_precision。資料來源必須是 `scenic_commercial_aggregate`。reported_count 為非負整數，表示周邊清潔箱的統計數量。代表點不是個別清潔箱位置。`(source_type, source_row)` 有唯一約束。
+原 /candidates GET/POST 暫保留原回應格式並 deprecated，但底層同一張 bins，POST 也需 Admin token。最近距離使用 ST_Distance 對全市 bin_type=existing 計算；無既有清潔箱回 null。Hotspot、proposed Bin 不參與既有清潔箱最近距離。
 
-### candidate_locations
+舊 /demo/* 在新版本移除，控制集中 /api/v1/simulation/{status,seed,advance,pause,resume,reset}。所有 POST 使用共享 Admin Bearer token；未設定時 503、未授權時 401。ADMIN_TOKEN 支援舊 DEMO_ADMIN_TOKEN fallback。帳密與 token 不提交 Git。
 
-表示人工建立的候選新增點，額外保存 name、status。預設 status 為 `needs_field_validation`。不由 CSV 自動建立，也不混入 trash_bins。
+請求驗證在 Pydantic：十二行政區、有限座標與全球範圍、非空白 name 等。一般新增點尚未用多邊形驗證行政區歸屬，推薦 seed 有區界檢查。
 
-`nearest_bin_distance_m` 是 API 動態查詢結果，未儲存在 candidate_locations，因此清潔箱資料更新後距離會反映最新狀態。
+## 狀態、歷史與模擬
 
-## 5. 匯入流程與冪等性
+CSV 匯入／POST Bin 同一 transaction 初始化缺少的狀態及歷史，不重設現有讀值。新增 Bin 從加入時的模擬時間開始，不補造過去資料。有效 ID 無讀值時 current_usage=null、history=[]；未知 ID 為 404。GET 沒有寫入或時間推進副作用。
 
-執行方式（backend 工作目錄）：
+目前所有滿度都是 simulated，包括既有清潔箱。預設容量 120 公升、基礎速率、時段／週末倍率與 noise 都是假設，estimated_used_liters 為估算。未來 iot_sensor 讀值可沿用查詢格式，硬體 ingestion 尚未實作；模擬只更新 source_type=simulated 的狀態。
 
-```sh
-python -m scripts.import_data
-# 可指定另一份同格式資料目錄
-python -m scripts.import_data --data-dir /path/to/data
-```
+固定 seed=42，統一手動 advance，不靠前端 timer，也沒有每個 Bin 無限背景迴圈。分鐘級 BLAKE2 noise 可重現，拆分推進結果相同，滿度限制 0～100。資料庫 advisory transaction lock 序列化 seed、建立、推進、清運與 reset；request ID 防重試重算，generation 拒絕 reset 前未完成的舊請求。
 
-1. 以 UTF-8-SIG 讀取並辨識兩組正式來源。
-2. 驗證總數 681／130、大安區 47／18、行政區、座標有限值與範圍、UUID、來源種類、來源列唯一性、status、reported_count。
-3. 兩組來源都驗證後，於同一個資料庫 transaction 中 upsert。
-4. 以 `(source_type, source_row)` 作衝突鍵，更新來源資料與 updated_at，保留既有 ID 與 created_at。
-5. 發生錯誤整批 rollback；不自動刪除來源不再出現的資料；不建立候選點。
+Reset 歸零並回復初始時鐘，generation +1；保留歷史，新增 reset 事件。歷史可篩選 UTC 時間、generation、source_type，使用 limit/offset 分頁。優先程度 >=90 critical、>=80 high、>=50 medium、其餘 low，非市府標準；到 90% 的估計以基礎速率外推，零速率 null。
 
-冪等性指重跑不增加重複紀錄，並非每次執行所有欄位都完全不變：updated_at 會更新。來源列號若因新版 CSV 重排而改變，需先規劃穩定識別策略或資料遷移，不可直接當成一般更新。
+## 遷移、部署與測試
 
-## 6. API 契約
+0001、0002 已部署，不能改寫。0003 複製並合併 trash_bins/candidate_locations 到 bins，轉換狀態／歷史 FK 與欄位名，保留 UUID、來源、原始資訊、讀值與歷史 ID。UUID 衝突或多時鐘停止，不默默重新識別。舊表複製後移除，這是需協調切換的 schema 變更，downgrade 不會嘗試丟棄新歷史。
 
-| Method | Path | 用途 |
-| --- | --- | --- |
-| GET | /health | 查詢資料庫可用性，正常回傳 status=ok，連線錯誤為 503 |
-| GET | /api/v1/bins | 列出指定行政區既有清潔箱 |
-| GET | /api/v1/hotspots | 列出指定行政區景點聚合資料 |
-| GET | /api/v1/candidates | 列出指定行政區候選點與最近清潔箱距離 |
-| POST | /api/v1/candidates | 建立人工候選點，成功為 201 |
-| GET | /docs | Swagger UI |
-| GET | /openapi.json | OpenAPI schema |
+0003 已於 2026-10-19 完成雲端備份、維護與切換，正式 revision binsoon-api-00004-lql。第一次跨越破壞 schema 相容性的 revision 仍需備份、維護及停止舊寫入，不能直接當作無停機滾動升級。API 依 PORT 啟動且冷啟動不 migration/import；雲端使用獨立初始化 Job，Compose 啟動前初始化。migration/import 各自提交，不宣稱整體原子。
 
-三個 GET 列表都接受 district query，預設大安區，限定台北市十二區。回傳 JSON 陣列，依 UUID 排序；目前無分頁。
+測試使用本機真實 PostGIS。一般測試外層 transaction rollback；獨立 schema 驗證完整 migration、UUID 衝突與真正並行。不得對正式 DB 跑 pytest。基本數量以 existing 篩選仍為全市 681／大安區 47，hotspots 130／18，總 Bin 數包含新點而增加。
 
-POST 範例：
+操作與範例見 [統一 Bin 手冊](../backend/docs/BINS.md)、[後端 README](../backend/README.md)；已部署的歷史版本見 [DEPLOYMENT_STATUS.md](../backend/docs/DEPLOYMENT_STATUS.md)。
 
-```json
-{
-  "name": "待現勘候選點",
-  "district": "大安區",
-  "longitude": 121.543,
-  "latitude": 25.026,
-  "note": "需現場確認"
-}
-```
-
-name 不可空白，最長 200 字；note 最長 5000 字；額外欄位拒絕；district 可省略，預設大安區。longitude 範圍 -180～180，latitude 範圍 -90～90，不接受 NaN／Infinity。無效請求回傳 422。
-
-目前只驗證全球座標範圍與合法行政區文字，未驗證座標是否落在台北市或所填行政區邊界內，因為目前沒有行政區界多邊形資料。
-
-API 的 longitude／latitude 是 numeric，不回傳 WKB、WKT 或字串座標。source_*、精度描述、備註、UTC 時間也隨對應 schema 回傳。
-
-## 7. 空間查詢語意
-
-候選點建立與列表會執行 `MIN(ST_Distance(candidate_locations.location, trash_bins.location))`，以 geography 計算公尺距離。候選點雖依行政區篩選，距離搜尋涵蓋全市所有既有清潔箱，避免行政區邊界造成失真。
-
-不使用 screening CSV 的 nearest_listed_bin_m 作為 API 距離，不以角度或未投影 geometry 距離充當公尺。無清潔箱時回傳 null。
-
-目前資料量約 681 個清潔箱，採全體最小距離計算；GiST index 已建立，但不應宣稱目前 MIN/ST_Distance 查詢一定利用 GiST 做 nearest-neighbor acceleration。若未來資料量變大，需以實際 query plan 與精度要求評估優化。
-
-## 8. 程式責任分工
-
-| 檔案 | 責任 |
-| --- | --- |
-| backend/app/config.py | Pydantic Settings、環境變數、SQLAlchemy URL，密碼使用 SecretStr |
-| backend/app/database.py | Engine、Session dependency、Declarative Base，連線設定 UTC |
-| backend/app/models.py | 三張資料表與共用欄位 |
-| backend/app/schemas.py | 請求驗證、回應契約、十二行政區定義 |
-| backend/app/api.py | 列表與建立候選點、ST_X/ST_Y、ST_Distance |
-| backend/app/main.py | FastAPI app、路由掛載、health |
-| backend/alembic/env.py | Migration connection 與 application metadata，排除 extension-owned tables |
-| backend/alembic/versions/0001_initial.py | PostGIS extension、三張表、索引與約束 |
-| backend/scripts/import_data.py | CSV 品質驗證、檔案辨識與 transaction upsert |
-| backend/tests/ | 真實 PostGIS 整合測試與驗證測試 |
-
-Migration 必須是可追溯 revision。未來 schema 修改新增 migration；不在 API 啟動時用 SQLAlchemy create_all 偷改 schema。Docker 開發啟動流程會先跑 Alembic 再匯入。
-
-## 9. 環境與開發限制
-
-必要環境變數：POSTGRES_USER、POSTGRES_PASSWORD、POSTGRES_DB。可設定 POSTGRES_HOST、POSTGRES_PORT。主機執行時 host 預設 localhost；Compose API 內部固定連到 db:5432。
-
-`.env.example` 只有本機範例，`.env` 不提交。資料庫與 API 僅綁定 127.0.0.1 的主機連接埠。Docker 時區與 DB 連線時區為 UTC。
-
-PostGIS 映像使用 PostgreSQL 16 / PostGIS 3.4、linux/amd64；Apple Silicon 需要 Docker 模擬支援。Python runtime 為 3.12，依賴由 requirements.lock 固定。Compose 掛載 app、scripts、alembic、tests，以及唯讀 data；API 程式改動後需重啟服務，容器啟動未使用 uvicorn --reload。
-
-本階段尚無登入／權限、分頁、更新／刪除端點。Cloud Run 部署流程見第 11 節。若未來開放對外存取，需先依實際部署需求補足這些能力，不要將本機 Docker 設定直接當成正式環境設計。
-
-## 10. 驗證與已知警告
-
-在 backend/ 執行：
-
-```sh
-docker compose up --build -d --wait
-docker compose exec api alembic check
-docker compose exec api python -m scripts.import_data
-docker compose exec api pytest -q
-```
-
-目前測試 13 項，涵蓋資料筆數、重複匯入、來源追溯、地理 SRID、健康檢查、Swagger／OpenAPI、行政區查詢、數值座標、UTC 時間、候選點建立與列表、零距離與一般距離、無清潔箱情境及無效輸入。
-
-各測試透過同一連線的外層 transaction 與 Session savepoint 隔離，API commit 不會永久保存測試新增點，測試結束 rollback。仍需使用開發／測試資料庫。
-
-目前預期看見 CSV 檔名對調警告；測試套件另可能顯示 Starlette 對 httpx TestClient 的棄用提醒。兩者目前不影響測試通過。不可為了清除警告而隱藏資料異常或不經驗證升級套件。
-
-驗收條件：Docker 啟動成功、migration 可執行且模型一致、匯入 681／130、預設大安區 47／18、重跑不重複、POST 後 GET 找得到候選點、座標與最近距離正確、pytest 全部通過。
-
-## 11. Cloud Run 部署
-
-部署架構與操作見 [CLOUD_RUN.md](CLOUD_RUN.md)。API 映像只啟動 HTTP；Compose 在啟動前執行 `scripts.initialize_db`，Cloud Run 使用獨立初始化 Job。初始化入口以 advisory lock 序列化 migration 與匯入。DB pool 上限每 instance 2 條連線，連線與 pool 等待均有 timeout。
+目前完成項目、驗證與待辦整理見 [PROGRESS.md](PROGRESS.md)。

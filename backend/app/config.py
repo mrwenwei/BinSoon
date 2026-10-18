@@ -1,5 +1,5 @@
 from functools import lru_cache
-from pydantic import SecretStr
+from pydantic import AliasChoices, SecretStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     postgres_db: str
     postgres_host: str = "localhost"
     postgres_port: int = 5432
+    admin_token: SecretStr | None = Field(default=None, validation_alias=AliasChoices("ADMIN_TOKEN", "DEMO_ADMIN_TOKEN"))
+    simulation_capacity_liters: float = Field(default=120, gt=0, allow_inf_nan=False, validation_alias=AliasChoices("SIMULATION_CAPACITY_LITERS", "DEMO_CAPACITY_LITERS"))
+    simulation_time_multiplier: float = Field(default=600, gt=0, allow_inf_nan=False, validation_alias=AliasChoices("SIMULATION_TIME_MULTIPLIER", "DEMO_TIME_MULTIPLIER"))
 
     @property
     def database_url(self) -> URL:

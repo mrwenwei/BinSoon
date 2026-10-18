@@ -1,54 +1,42 @@
 # BinSoon
 
-台北丟垃圾變順。台北市智慧垃圾桶黑客松 MVP，目前以大安區為主要分析範圍，資料庫支援全台北市。
+台北市智慧垃圾桶 MVP。後端統一使用 **Bin** 管理既有清潔箱與新增點，以同一個 ID 查詢目前滿度及歷史；proposed 標記保留待現勘意義。所有滿度目前是模擬資料，沒有實測感測器。
 
-此儲存庫採 monorepo 結構：後端位於 `backend/`，未來前端將放在 `frontend/`（目前尚未建立）。
+```text
+backend/
+├── app/
+│   ├── api.py                 # Bin、歷史、清運與景點 API
+│   ├── simulation_api.py      # 共用模擬控制
+│   ├── models.py / schemas.py # 統一 Bin、目前狀態與歷史
+│   ├── security.py            # Admin Bearer token
+│   └── services/              # bins.py、simulation.py
+├── alembic/                   # 含 0003 統一資料遷移
+├── scripts/                   # 初始化、CSV、圖資與 HTTP 驗收
+├── data/                      # 原始 CSV、十點分析與區界
+├── tests/                     # 真實 PostGIS、遷移與並行測試
+├── deploy/                    # Cloud Run／Build 設定與版本紀錄
+└── docs/                      # 操作及部署手冊
+```
 
-## 快速啟動
-
-需先安裝 Docker Desktop 與 Docker Compose。
+本機啟動：
 
 ```sh
 cd backend
-cp .env.example .env
-# 編輯 .env 設定本機資料庫帳密
-docker compose up --build
+if [ ! -f .env ]; then cp .env.example .env; fi
+# 設定本機帳密與 ADMIN_TOKEN；舊 DEMO_ADMIN_TOKEN 仍相容。
+docker compose up --build -d --wait
 ```
 
-啟動時依序等待 PostgreSQL / PostGIS 就緒、執行 Alembic migration、匯入 CSV，再啟動 API。
+開啟 http://localhost:8000/docs 。主要 API：
 
-- Swagger：<http://localhost:8000/docs>
-- 健康檢查：<http://localhost:8000/health>
-- 測試：在 `backend/` 執行 `docker compose exec api pytest -q`
+- GET/POST `/api/v1/bins`
+- GET `/api/v1/bins/{id}`、`/api/v1/bins/{id}/history`
+- POST `/api/v1/bins/{id}/collect`
+- GET `/api/v1/bins/collection-priorities`
+- GET `/api/v1/simulation/status` 與管理用模擬控制
 
-## 專案導覽
+`GET /bins` 預設包含大安區既有與新增點；`bin_type=existing` 才是官方既有筆數（全市 681／大安區 47）。`district=all` 查全市，`format=geojson` 提供地圖資料。hotspots 全市 130／大安區 18，與 Bin 分開。
 
-```text
-BinSoon/
-├── AGENTS.md                 # Agent 開發規範與閱讀入口
-├── README.md                 # 專案入口
-├── docs/
-│   └── PROJECT_CONTEXT.md    # 詳細領域、資料語意、架構與驗收條件
-└── backend/
-    ├── README.md            # 後端啟動、API 與資料操作
-    ├── app/                 # FastAPI、設定、模型、schemas、API
-    ├── alembic/             # Migration
-    ├── scripts/             # CSV 匯入 CLI
-    ├── tests/               # PostGIS 整合測試
-    ├── data/                # 原始 CSV
-    ├── compose.yaml
-    ├── Dockerfile
-    ├── pyproject.toml
-    ├── requirements.lock
-    └── .env.example
-```
+[目前進度](docs/PROGRESS.md)・[後端 README](backend/README.md)・[統一 Bin 操作與遷移手冊](backend/docs/BINS.md)・[專案背景](docs/PROJECT_CONTEXT.md)・[Agent 指引](AGENTS.md)
 
-開發前請閱讀 [AGENTS.md](AGENTS.md) 與 [專案詳細背景](docs/PROJECT_CONTEXT.md)。後端操作詳見 [backend/README.md](backend/README.md)。
-
-目前範圍為資料初始化、清潔箱／景點／候選點查詢、候選點建立與最近清潔箱距離。未實作 IoT、模擬感測器、推薦演算法或前端。
-
-Cloud Run 部署架構、建立 GCP 專案與詳細操作見 [部署指南](docs/CLOUD_RUN.md)。
-
-已部署的公開 API 與資源版本見 [部署紀錄](docs/DEPLOYMENT_STATUS.md)。
-
-下次自行更新部署，請依 [手動部署操作手冊](docs/MANUAL_DEPLOYMENT.md) 逐步執行，包含腳本與完全手動兩種方式。
+統一 Bin（0003）已於 2026-10-19 完成備份與協調切換，部署至 Cloud Run；部署驗收時 692 個 Bin 均可查目前滿度與歷史。線上：[Swagger](https://binsoon-api-887203439341.asia-east1.run.app/docs)、[部署紀錄](backend/docs/DEPLOYMENT_STATUS.md)。

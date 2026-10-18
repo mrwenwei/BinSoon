@@ -1,83 +1,75 @@
-# 台北市智慧垃圾桶 MVP
+# BinSoon Backend
 
-Python 3.12、FastAPI、PostgreSQL 16 / PostGIS、SQLAlchemy 2、Alembic、Pydantic v2、psycopg 3。支援台北市十二行政區，查詢預設大安區。此階段提供資料初始化、列表查詢、候選點建立與最近清潔箱距離。
+Python 3.12、FastAPI、SQLAlchemy 2、PostgreSQL 16 / PostGIS、Alembic。
 
-## 本機 Docker 開發環境
+所有清潔箱和新增點統一為 **Bin**。資料來源及現勘狀態仍保留：`bin_type=existing` 為既有清潔箱，`proposed` 為新增待現勘點。所有 Bin 使用相同 ID、狀態及歷史 API。景點／商圈 `hotspots` 不是 bin。
 
-安裝 Docker Desktop（含 Compose），在 `backend/` 目錄執行（從儲存庫根目錄先執行 `cd backend`）：
+## 本機啟動
+
+在 backend/ 執行：
 
 ```sh
-cp .env.example .env
-# 編輯 .env，設定本機資料庫帳密
-docker compose up --build
+if [ ! -f .env ]; then cp .env.example .env; fi
+# 設定資料庫帳密與私密 ADMIN_TOKEN；既有 DEMO_ADMIN_TOKEN 仍可沿用。
+docker compose up --build -d --wait
 ```
 
-服務會等待資料庫就緒，自動執行 `alembic upgrade head` 與 CSV importer，再啟動 API。首次啟動需下載映像；Apple Silicon 使用 amd64 PostGIS 映像的模擬支援。API 綁定本機 8000，資料庫綁定本機 5432；可透過 `.env` 的 POSTGRES_PORT 調整主機資料庫連接埠。
+啟動會等資料庫就緒、執行 migration 與冪等 CSV 匯入，為所有 Bin 建立尚缺的模擬狀態及初始歷史，再啟動 API。既有狀態不會被重設，資料保存在 named volume；不要執行 down -v。
 
-- Swagger：<http://localhost:8000/docs>
-- OpenAPI：<http://localhost:8000/openapi.json>
-- 健康檢查：<http://localhost:8000/health>（資料庫無法連線回傳 503）
+- Swagger：http://localhost:8000/docs
+- 健康檢查：http://localhost:8000/health
+- 所有 POST 需 Admin Bearer token，未設定時寫入關閉。
 
-`requirements.lock` 固定已測試的 Python 依賴版本，Docker 建置直接使用此檔。
+## API
 
-資料庫帳密僅從環境變數／本機 `.env` 讀取；`.env` 不進版控或映像。請替換範例密碼。資料保存在 named volume，`docker compose down` 保留資料。
+| Method | 路徑 | 用途 |
+| --- | --- | --- |
+| GET | /api/v1/bins | 既有與新增 Bin，含目前滿度 |
+| POST | /api/v1/bins | 新增 proposed Bin，立即具有初始狀態與歷史 |
+| GET | /api/v1/bins/{id} | 依 ID 查點位與目前使用量 |
+| GET | /api/v1/bins/{id}/history | 查滿度及清運歷史，支援時間、來源、generation、分頁 |
+| POST | /api/v1/bins/{id}/collect | 模擬清運，滿度歸零並留下事件 |
+| GET | /api/v1/bins/collection-priorities | 依滿度排序的優先清單 |
+| GET | /api/v1/hotspots | 景點／商圈列表 |
+| GET | /api/v1/simulation/status | 共用模擬時鐘 |
+| POST | /api/v1/simulation/seed | 冪等匯入十個既有分析推薦點，初始化尚缺狀態 |
+| POST | /api/v1/simulation/advance | 推進所有 Bin 的模擬時間 |
+| POST | /api/v1/simulation/pause、resume、reset | 暫停、恢復、開始新一輪模擬 |
+
+列表預設大安區；`district=all` 查全市，`bin_type=existing` 僅查既有清潔箱，`bin_type=proposed` 僅查新增點。`format=geojson` 取得 FeatureCollection，座標為 [longitude, latitude]。
+
+```sh
+curl 'http://localhost:8000/api/v1/bins'
+curl 'http://localhost:8000/api/v1/bins?district=all&format=geojson'
+curl 'http://localhost:8000/api/v1/bins?bin_type=existing'
+curl 'http://localhost:8000/api/v1/bins/replace-with-bin-id/history?limit=100'
+```
+
+`/candidates` GET/POST 暫時保留原回應格式並標示 deprecated，實際讀寫同一張 bins；POST 現在也需 Admin token。舊 `/demo/*` 已移除；讀取改用 `/bins/*`，控制改用 `/simulation/*`。
+
+完整操作與回應範例：[BINS.md](docs/BINS.md)。
+
+## 資料與限制
+
+- `existing_bins_all_taipei.csv`：681 筆既有清潔箱，大安區 47 筆；以 Bin.bin_type=existing 匯入。
+- `daan_hotspot_gap_screening.csv`：實際為 130 筆景點聚合，大安區 18 筆；匯入 hotspots。
+- `hotspots_all_taipei.csv`：實際為 18 筆缺口分析，不自動匯入。
+- 後兩檔名對調，匯入器檢查欄位、警告並保留實際來源檔名。UTF-8-SIG 讀取，兩組資料同一 transaction upsert，保留 UUID、source_type/source_row/source_file，不刪除來源消失的資料。
+- 所有 Bin 的滿度目前都是 simulated，包含真實既有清潔箱；沒有實測資料。預設容量 120 公升也是模擬設定，估計公升數不能當成實測垃圾量。
+- 十點原始座標與排名不變，第 4、7 點屬中正區並保留警告。新增點須現勘，不代表已實際設置。一般人工點位尚未檢查行政區邊界。
+- 座標為 Geography(Point,4326)，UTC timestamptz。舊 candidates 最近距離仍只對全市 existing Bin 計算 ST_Distance，無既有點時為 null。
+
+## 測試與遷移
 
 ```sh
 docker compose exec api alembic upgrade head
+docker compose exec api alembic check
 docker compose exec api python -m scripts.import_data
 docker compose exec api pytest -q
 ```
 
-測試使用真實 PostGIS，每個測試在外層 transaction 內執行，結束 rollback，候選點不會留下。建議使用獨立開發／測試資料庫，請勿對正式資料庫執行測試。
+測試使用本機真實 PostGIS，外層 transaction rollback；遷移／並行測試使用獨立 schema 並於結束清除該 schema。不得對雲端正式資料庫跑 pytest。requirements.lock 與依賴未變動。
 
-如需在主機執行 Python：
+**0003 已整併舊資料表，需新舊程式協調切換，不支援直接回滾到舊 schema。** 所有原始 UUID、追溯欄位、候選點與歷史讀值會保留；UUID 衝突或多個舊時鐘會停止遷移。備份後於維護窗口遷移，再啟動新 API。2026-10-19 已完成備份與維護切換並部署 0003；後續 schema 不相容變更仍不可當作無停機升級。
 
-```sh
-uv venv --python 3.12
-source .venv/bin/activate
-uv pip install -r requirements.lock
-uv pip install --no-deps -e '.[test]'
-docker compose up -d db
-alembic upgrade head
-python -m scripts.import_data
-uvicorn app.main:app --reload
-pytest -q
-```
-
-## 資料來源與品質
-
-CSV 一律以 UTF-8-SIG 讀取，使用原有 UUID、`source_type`、`source_row`，另存 `source_file` 追溯實際匯入檔名。以 `(source_type, source_row)` 唯一鍵 upsert，重複執行會更新來源內容與 `updated_at`，保留既有 ID 與 `created_at`，不重複新增，不刪除來源消失的紀錄。兩份資料先驗證後於同一 transaction 匯入，失敗時整批 rollback。
-
-**本次提供的兩個檔名與內容對調：**
-
-| 實際檔案 | 實際內容 | 處理方式 |
-| --- | --- | --- |
-| existing_bins_all_taipei.csv | 681 筆獨立清潔箱，大安區 47 筆 | 匯入 trash_bins |
-| daan_hotspot_gap_screening.csv | 130 筆全市景點聚合，大安區 18 筆 | 經欄位辨識，警告後匯入 hotspots |
-| hotspots_all_taipei.csv | 18 筆大安區缺口分析，包含 proposal_status | 不匯入、不建立候選點 |
-
-原檔保持不變。匯入器支援日後將檔名修正回預期名稱；正常情況直接從 `hotspots_all_taipei.csv` 匯入，僅在偵測到 screening schema 時使用上述替代來源。驗證全市 681/130 與大安區 47/18 筆數、來源唯一性、台北市行政區、有限值座標及非負 reported_count；資料集更新時需明確調整筆數驗證。
-
-景點的 `reported_count` 是周邊清潔箱總數，**不展開成清潔箱座標**。景點只保存代表點與原始精度描述，缺口分析不被視為真實新增點位。候選點只由 API 人工建立，狀態為 `needs_field_validation`。
-
-## API
-
-```sh
-curl 'http://localhost:8000/api/v1/bins'
-curl 'http://localhost:8000/api/v1/hotspots?district=信義區'
-curl 'http://localhost:8000/api/v1/candidates?district=大安區'
-curl -X POST 'http://localhost:8000/api/v1/candidates' \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"待現勘候選點","district":"大安區","longitude":121.543,"latitude":25.026,"note":"需現場確認"}'
-```
-
-GET 三個端點皆接受 `district`（台北市十二行政區之一，預設大安區），回傳 JSON 陣列，經緯度為 numeric。POST 成功回傳 201，無效參數回傳 422；座標必須為有限數值，經度 -180～180、緯度 -90～90。行政區為人工提供，尚未以行政區界多邊形驗證座標歸屬。
-
-三張表的座標都是 `geography(Point,4326)` 並建立 GiST 空間索引。候選點回傳 `nearest_bin_distance_m`，透過 PostGIS `ST_Distance(geography, geography)`，以公尺計算到**全市現有清潔箱**的最短距離；無清潔箱時為 null。距離於每次 GET/POST 即時計算，不使用 CSV 缺口分析中預先計算的距離，不將景點納入清潔箱距離計算。時間欄位使用 PostgreSQL timestamptz，Docker 資料庫設定 UTC。
-
-本階段按指定四個端點提供讀取與候選點建立，未加入更新、刪除、IoT、感測器模擬、推薦演算法或前端。
-
-
-Agent 開發規範見 [AGENTS.md](../AGENTS.md)，完整領域與架構背景見 [PROJECT_CONTEXT.md](../docs/PROJECT_CONTEXT.md)。
-
-Cloud Run 使用獨立初始化 Job，API 映像依 `PORT` 啟動；完整操作見 [Cloud Run 部署指南](../docs/CLOUD_RUN.md)。
+架構與領域定義：[PROJECT_CONTEXT.md](../docs/PROJECT_CONTEXT.md)。部署文件：[CLOUD_RUN.md](docs/CLOUD_RUN.md)、[MANUAL_DEPLOYMENT.md](docs/MANUAL_DEPLOYMENT.md)、[DEPLOYMENT_STATUS.md](docs/DEPLOYMENT_STATUS.md)。

@@ -28,6 +28,13 @@ JOB="${SERVICE}-initialize"
 # gcloud's default comma delimiter is safe for this project's validated names.
 ENV_VARS="POSTGRES_HOST=/cloudsql/${CLOUD_SQL_CONNECTION_NAME},POSTGRES_PORT=5432,POSTGRES_USER=${POSTGRES_USER},POSTGRES_DB=${POSTGRES_DB}"
 
+# Admin token; old secret setting names remain compatible.
+SECRETS="POSTGRES_PASSWORD=${DB_PASSWORD_SECRET}:${SECRET_VERSION}"
+ADMIN_SECRET="${ADMIN_SECRET:-${DEMO_ADMIN_SECRET:-}}"
+ADMIN_SECRET_VERSION="${ADMIN_SECRET_VERSION:-${DEMO_ADMIN_SECRET_VERSION:-latest}}"
+if [[ -n "$ADMIN_SECRET" ]]; then
+  SECRETS+=",ADMIN_TOKEN=${ADMIN_SECRET}:${ADMIN_SECRET_VERSION}"
+fi
 GCLOUD="${GCLOUD:-gcloud}"
 "$GCLOUD" builds submit "$BACKEND_DIR" --project="$GCP_PROJECT_ID" \
   --config="$BACKEND_DIR/deploy/cloudbuild.yaml" \
@@ -43,7 +50,7 @@ IMAGE="${IMAGE%:*}@${DIGEST}"
   --service-account="$RUNTIME_SERVICE_ACCOUNT" \
   --set-cloudsql-instances="$CLOUD_SQL_CONNECTION_NAME" \
   --set-env-vars="$ENV_VARS" \
-  --set-secrets="POSTGRES_PASSWORD=${DB_PASSWORD_SECRET}:${SECRET_VERSION}" \
+  --set-secrets="$SECRETS" \
   --command=python --args=-m,scripts.initialize_db \
   --tasks=1 --parallelism=1 --max-retries=0 --task-timeout=600s \
   --cpu=1 --memory=512Mi --quiet
@@ -55,7 +62,7 @@ IMAGE="${IMAGE%:*}@${DIGEST}"
   --service-account="$RUNTIME_SERVICE_ACCOUNT" --execution-environment=gen2 \
   --add-cloudsql-instances="$CLOUD_SQL_CONNECTION_NAME" \
   --set-env-vars="$ENV_VARS" \
-  --set-secrets="POSTGRES_PASSWORD=${DB_PASSWORD_SECRET}:${SECRET_VERSION}" \
+  --set-secrets="$SECRETS" \
   --port=8080 --cpu=1 --memory=512Mi --concurrency=8 \
   --min-instances=0 --max-instances=2 --timeout=60s \
   "$ACCESS_FLAG" --quiet

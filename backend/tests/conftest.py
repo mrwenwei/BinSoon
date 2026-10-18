@@ -30,3 +30,21 @@ def client(seeded):
     with TestClient(app) as client:
         yield client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def isolated_engine():
+    """Real independent transactions, confined to a uniquely named local schema."""
+    from uuid import uuid4
+    from sqlalchemy import create_engine, text
+    schema = 'test_bins_' + uuid4().hex
+    base = get_engine()
+    engine = create_engine(base.url, connect_args={'options': f'-csearch_path={schema},public -c timezone=UTC'}, pool_size=4)
+    with base.begin() as conn:
+        conn.execute(text(f'CREATE SCHEMA {schema}'))
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+        with base.begin() as conn:
+            conn.execute(text(f'DROP SCHEMA {schema} CASCADE'))

@@ -9,7 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from app.database import get_engine
-from app.models import TrashBin, Hotspot
+from app.models import Bin, Hotspot
 from app.schemas import District
 from typing import get_args
 
@@ -24,7 +24,7 @@ def prepare_rows(rows, path, model):
     prepared = []
     identities = set()
     ids = set()
-    expected_source = "city_bin_inventory" if model is TrashBin else "scenic_commercial_aggregate"
+    expected_source = "city_bin_inventory" if model is Bin else "scenic_commercial_aggregate"
     for row in rows:
         longitude, latitude = float(row["longitude"]), float(row["latitude"])
         if not (math.isfinite(longitude) and math.isfinite(latitude) and -180 <= longitude <= 180 and -90 <= latitude <= 90):
@@ -47,10 +47,11 @@ def prepare_rows(rows, path, model):
                     source_type=row["source_type"], source_row=source_row,
                     source_file=path.name, note=row.get("note", ""),
                     location_precision=row["location_precision"])
-        if model is TrashBin:
+        if model is Bin:
             if row["status"] != "existing":
                 raise ValueError("Inventory must contain existing bins only")
-            item.update(address=row["address"], status=row["status"])
+            item.update(address=row["address"], name=(row["address"] or f"清潔箱 {source_row}")[:200],
+                        status=row["status"], bin_type="existing", placement_status="existing")
         else:
             count = int(row["reported_count"])
             if count < 0:
@@ -79,7 +80,7 @@ def load_data(directory):
         raise ValueError("Expected 681 bins and 130 aggregate hotspots")
     if sum(r["district"] == "大安區" for r in bins) != 47 or sum(r["district"] == "大安區" for r in hotspots) != 18:
         raise ValueError("Unexpected Daan district counts")
-    return [(TrashBin, prepare_rows(bins, bin_path, TrashBin)), (Hotspot, prepare_rows(hotspots, hotspot_path, Hotspot))]
+    return [(Bin, prepare_rows(bins, bin_path, Bin)), (Hotspot, prepare_rows(hotspots, hotspot_path, Hotspot))]
 
 
 def import_data(directory: Path, session: Session):
@@ -89,6 +90,8 @@ def import_data(directory: Path, session: Session):
         updates = {key: getattr(statement.excluded, key) for key in rows[0] if key != "id"}
         updates["updated_at"] = func.now()
         session.execute(statement.on_conflict_do_update(index_elements=["source_type", "source_row"], set_=updates))
+    from app.services.simulation import initialize
+    initialize(session)
     return {model.__tablename__: len(rows) for model, rows in datasets}
 
 

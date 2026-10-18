@@ -1,6 +1,7 @@
 """HTTP smoke checks; --create-candidate explicitly leaves one labeled test proposal."""
 import argparse
 import json
+import os
 from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 
@@ -11,7 +12,13 @@ def check(base_url: str, create_candidate: bool = False):
 
     def request(path, payload=None):
         data = None if payload is None else json.dumps(payload).encode()
-        req = Request(base_url + path, data=data, headers={"Content-Type": "application/json"})
+        headers = {"Content-Type": "application/json"}
+        if data is not None:
+            token = os.environ.get("ADMIN_TOKEN") or os.environ.get("DEMO_ADMIN_TOKEN")
+            if not token:
+                raise ValueError("Set ADMIN_TOKEN for authenticated creation checks")
+            headers["Authorization"] = "Bearer " + token
+        req = Request(base_url + path, data=data, headers=headers)
         with urlopen(req, timeout=60) as response:
             status = response.status
             raw = response.read()
@@ -27,9 +34,11 @@ def check(base_url: str, create_candidate: bool = False):
     openapi = get("/openapi.json")
     assert "/api/v1/candidates" in openapi["paths"]
     district_parameter = next(param for param in openapi["paths"]["/api/v1/bins"]["get"]["parameters"] if param["name"] == "district")
-    districts = district_parameter["schema"]["enum"]
+    schema = district_parameter["schema"]
+    districts = schema.get("enum") or [v for part in schema["anyOf"] for v in part.get("enum", [part.get("const")]) if v is not None]
+    districts = [d for d in districts if d != "all"]
     assert len(districts) == 12 and "大安區" in districts
-    bins = get("/api/v1/bins")
+    bins = get("/api/v1/bins?bin_type=existing")
     hotspots = get("/api/v1/hotspots")
     assert len(bins) == 47 and len(hotspots) == 18
     for item in bins + hotspots:
@@ -40,7 +49,10 @@ def check(base_url: str, create_candidate: bool = False):
     counts = {"bins": 0, "hotspots": 0}
     for district in districts:
         for endpoint in counts:
-            counts[endpoint] += len(get(f"/api/v1/{endpoint}?{urlencode({'district': district})}"))
+            params = {"district": district}
+            if endpoint == "bins":
+                params["bin_type"] = "existing"
+            counts[endpoint] += len(get(f"/api/v1/{endpoint}?{urlencode(params)}"))
     assert counts == {"bins": 681, "hotspots": 130}, counts
     result = {"health": "ok", "all_taipei": counts, "daan": {"bins": len(bins), "hotspots": len(hotspots)}}
     if create_candidate:
@@ -54,7 +66,7 @@ def check(base_url: str, create_candidate: bool = False):
         candidate = json.loads(raw)
         assert candidate["nearest_bin_distance_m"] < 0.001
         assert candidate["id"] in {item["id"] for item in get("/api/v1/candidates")}
-        assert len(get("/api/v1/bins")) == 47
+        assert len(get("/api/v1/bins?bin_type=existing")) == 47
         result["created_test_candidate_id"] = candidate["id"]
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
