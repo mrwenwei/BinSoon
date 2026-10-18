@@ -50,14 +50,16 @@ export function matchesBinFilter(location: LocationRecord, filter: BinFilter) {
   return !demo.removed && demo.state === "hungry";
 }
 
+export const demoOrigin: [number, number] = [25.033, 121.5358];
+
 // A fixed, disclosed demo starting point at Daan Park; never the user's location.
 export function demoDistance(location: LocationRecord) {
   const rad = Math.PI / 180;
   const a =
-    Math.sin(((location.latitude - 25.033) * rad) / 2) ** 2 +
-    Math.cos(25.033 * rad) *
+    Math.sin(((location.latitude - demoOrigin[0]) * rad) / 2) ** 2 +
+    Math.cos(demoOrigin[0] * rad) *
       Math.cos(location.latitude * rad) *
-      Math.sin(((location.longitude - 121.5358) * rad) / 2) ** 2;
+      Math.sin(((location.longitude - demoOrigin[1]) * rad) / 2) ** 2;
   return Math.round(6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 export function distanceLabel(meters: number) {
@@ -66,7 +68,6 @@ export function distanceLabel(meters: number) {
     : `${meters} 公尺`;
 }
 
-export const demoOrigin: [number, number] = [25.033, 121.5358];
 export function isUsableBin(location: LocationRecord) {
   if (location.kind !== "bin") return false;
   const demo = binDemo(location);

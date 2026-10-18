@@ -106,16 +106,29 @@ export default function App() {
   function login() {
     setState((prev) => ({ ...prev, loggedIn: true }));
     const next = params.get("next") || "map";
-    const [nextPath] = next.split("?");
+    const [nextPath, ...queryParts] = next.split("?");
+    const nextQuery = new URLSearchParams(queryParts.join("?"));
     const [nextPage, nextId] = nextPath.split("/");
-    const valid =
-      next === "map" ||
-      ["member", "rewards", "stamps"].includes(next) ||
-      ((["report", "scan", "bin", "nav"].includes(nextPage)
-        ? locations.some((item) => item.id === nextId && item.kind === "bin")
-        : ["report-done", "review"].includes(nextPage) &&
-          state.reports.some((item) => item.id === nextId)) &&
-        /^[a-z-]+\/[\da-f-]+(?:\?demo=1)?$/.test(next));
+    const validBin = (value: string | null) =>
+      locations.some((item) => item.id === value && item.kind === "bin");
+    const validPath =
+      ["map", "member", "rewards", "stamps"].includes(nextPath) ||
+      (nextPath === `${nextPage}/${nextId}` &&
+        (["report", "scan", "bin", "nav"].includes(nextPage)
+          ? validBin(nextId)
+          : ["report-done", "review"].includes(nextPage) &&
+            state.reports.some((item) => item.id === nextId)));
+    const validQuery =
+      nextQuery.size === 0 ||
+      (nextQuery.size === 1 &&
+        ((["report", "scan"].includes(nextPage) &&
+          nextQuery.get("demo") === "1") ||
+          (nextPage === "nav" && validBin(nextQuery.get("from"))) ||
+          (nextPage === "rewards" &&
+            state.redemptions.some(
+              (item) => item.id === nextQuery.get("receipt"),
+            ))));
+    const valid = validPath && validQuery;
     window.location.hash = valid ? next : "map";
   }
   function submitReport() {

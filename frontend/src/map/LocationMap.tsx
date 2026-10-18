@@ -94,6 +94,12 @@ export function LocationMap({
       })
         .on("click", () => onSelect(location))
         .addTo(markers.current!);
+      marker
+        .getElement()
+        ?.setAttribute(
+          "aria-label",
+          `${kindLabel[location.kind]}：${location.label}`,
+        );
       markerRecords.current.push({ marker, location });
     }
     if (locations.length)
@@ -168,7 +174,9 @@ export function LocationMap({
       <span className="map-note">
         {selected
           ? "已選取位置 · 可縮放地圖查看周邊"
-          : "點選像素小夥伴，查看位置詳情"}
+          : demoRoute
+            ? "虛線為示意路線 · 未依實際道路規劃"
+            : "點選像素小夥伴，查看位置詳情"}
       </span>
     </div>
   );

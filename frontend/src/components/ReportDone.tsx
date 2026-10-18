@@ -3,6 +3,7 @@ import {
   reportAward,
   reportInfo,
   reportIsFinal,
+  reportStatusLabels,
   type DemoReport,
 } from "../data/reports";
 import {
@@ -21,7 +22,7 @@ export function ReportDone({
   location: LocationRecord;
   state: DemoState;
 }) {
-  const award = reportAward(report);
+  const award = report.status === "rejected" ? 0 : reportAward(report);
   const points = cumulativePoints(state);
   const level = memberLevel(points);
   const projected = reportIsFinal(report) ? points : points + award;
@@ -48,12 +49,18 @@ export function ReportDone({
           <span className="eyebrow">REVIEW BEFORE REWARD</span>
           <strong className="done-points">+{award}</strong>
           <span className="status-pill half">
-            {reportIsFinal(report) ? "已有審核結果" : "審核中"}
+            {reportStatusLabels[report.status]}
           </span>
           <p>
-            {report.firstReporter
-              ? `確認屬實後${report.adopter ? "認養者得 2 點" : "一般回報得 1 點"}。`
-              : "此為同事件後續回報，沒有點數獎勵。"}
+            {report.status === "rejected"
+              ? "判定不實，不發放點數。"
+              : report.status === "approved"
+                ? award
+                  ? "獎勵已入帳，同一案件只結算一次。"
+                  : "同事件後續回報，不重複發放點數。"
+                : report.firstReporter
+                  ? `確認屬實後${report.adopter ? "認養者得 2 點" : "一般回報得 1 點"}。`
+                  : "此為同事件後續回報，沒有點數獎勵。"}
             <br />
             審核前不入帳，也不能用於兌換。
           </p>

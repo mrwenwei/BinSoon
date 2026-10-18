@@ -28,12 +28,19 @@ export function NavigationPage({
         .sort((a, b) => demoDistance(a) - demoDistance(b)),
     [],
   );
+  const original =
+    locations.find((item) => item.id === fromId && item.kind === "bin") ||
+    location;
   const initial = isUsableBin(location)
     ? location
     : alternatives.find((item) => item.id !== location.id);
   const [destination, setDestination] = useState(initial);
   const [unavailable, setUnavailable] = useState<string[]>(
-    initial?.id !== location.id ? [location.id] : [],
+    initial?.id !== location.id
+      ? [location.id]
+      : original.id !== location.id
+        ? [original.id]
+        : [],
   );
   const [rerouted, setRerouted] = useState(
     Boolean(fromId) || initial?.id !== location.id,
@@ -80,9 +87,9 @@ export function NavigationPage({
       </div>
       {rerouted && (
         <p className="reroute-notice" role="status">
-          {binDemo(location).removed && unavailable.length < 2
+          {binDemo(original).removed && unavailable.length < 2
             ? "原目的桶已撤除，已改導另一個可用桶。"
-            : unavailable.length < 2 && binDemo(location).state === "unknown"
+            : unavailable.length < 2 && binDemo(original).state === "unknown"
               ? "原目的桶狀態未知，已改導另一個可用桶。"
               : "目的桶吃飽了，已改導另一個可用桶。"}
         </p>

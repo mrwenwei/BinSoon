@@ -120,6 +120,20 @@ test("P4 reroutes a full destination and reports the replacement bin", async ({
   await expect(page.locator(".navigation-destination")).not.toHaveText(
     original,
   );
+  const transferUrl = await page
+    .locator(".navigation-qr .qr-link")
+    .getAttribute("href");
+  expect(transferUrl).toContain("?from=");
+  await page.goto(transferUrl!);
+  const transferredDestination = await page
+    .locator(".navigation-destination")
+    .innerText();
+  await page.getByRole("link", { name: "登入", exact: true }).click();
+  await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
+  await expect(page).toHaveURL(transferUrl!);
+  await expect(page.locator(".navigation-destination")).toHaveText(
+    transferredDestination,
+  );
   const reportHref = await page
     .getByRole("link", { name: "抵達後回報", exact: true })
     .getAttribute("href");
@@ -159,11 +173,18 @@ test("adopters earn two points, later reporters earn none, and three false repor
       .getByLabel("示範回報順序")
       .selectOption(first ? "first" : "later");
     await page.getByRole("button", { name: "送出示範回報" }).click();
+    const doneUrl = page.url();
     await page
       .getByRole("link", { name: "看審核結果", exact: true })
       .first()
       .click();
     await page.getByLabel("示範案件狀態").selectOption(result);
+    if (result === "rejected") {
+      const reviewUrl = page.url();
+      await page.goto(doneUrl);
+      await expect(page.locator(".done-points")).toHaveText("+0");
+      await page.goto(reviewUrl);
+    }
   }
   await submit("桶旁有堆放", true, true, "approved");
   await expect(page.getByText("審核通過 +2 點", { exact: true })).toBeVisible();
