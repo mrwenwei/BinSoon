@@ -3559,3 +3559,9 @@ a {
   max-height: 85vh;
   overflow-y: auto;
 }
+
+.proposal-marker.active span {
+  border: 3px solid #7b5898;
+  background: #eee4f7;
+  color: #4e3863;
+}

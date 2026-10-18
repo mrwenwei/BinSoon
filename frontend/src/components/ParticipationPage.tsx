@@ -43,8 +43,21 @@ export function ParticipationPage({
   const [confirmed, setConfirmed] = useState(false);
   const [outcomeReason, setOutcomeReason] = useState("");
   const [binName, setBinName] = useState("");
+  const [demoVotes, setDemoVotes] = useState<{
+    id: string;
+    support: string;
+    oppose: string;
+  } | null>(null);
   const proposal = state.proposals.find((p) => p.id === (id || selectedId));
   const totals = proposal && voteTotals(proposal);
+  const displayedVotes =
+    proposal && demoVotes?.id === proposal.id
+      ? demoVotes
+      : {
+          id: proposal?.id || "",
+          support: String(proposal?.support ?? 0),
+          oppose: String(proposal?.oppose ?? 0),
+        };
   const nearest = nearestBin(point, state.removedBinIds);
   const nearby = state.proposals.filter((p) => distanceMeters(point, p) <= 50);
   const mapPoints = useMemo(
@@ -181,6 +194,7 @@ export function ParticipationPage({
             onPointChange={changePoint}
             proposalPoints={mapPoints}
             onProposalSelect={setSelectedId}
+            selectedProposalId={proposal?.id}
             selectionBounds={demoBounds}
             removedIds={state.removedBinIds}
           />
@@ -343,6 +357,7 @@ export function ParticipationPage({
                   else setSelectedId(p.id);
                 }}
                 aria-label={`查看提案：${p.name}`}
+                aria-pressed={proposal?.id === p.id}
               >
                 <strong>{p.name}</strong>
                 <span>{proposalStatusLabels[p.status]}</span>
@@ -472,6 +487,60 @@ export function ParticipationPage({
               <p className="tiny">
                 只改本機展示，不是管理後台，也未接通評分或清潔隊。
               </p>
+              {proposal.status === "collecting" && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    perform({
+                      type: "demo-votes",
+                      id: proposal.id,
+                      support: Number(displayedVotes.support),
+                      oppose: Number(displayedVotes.oppose),
+                    });
+                  }}
+                >
+                  <p>
+                    以下只調整其他市民的示意票數，不會建立帳號或真實投票。你的這一票另計；達門檻後結束該輪投票。
+                  </p>
+                  <label>
+                    示意其他市民支持票
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      max="10000"
+                      step="1"
+                      value={displayedVotes.support}
+                      onChange={(e) =>
+                        setDemoVotes({
+                          ...displayedVotes,
+                          support: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    示意其他市民反對票
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      max="10000"
+                      step="1"
+                      value={displayedVotes.oppose}
+                      onChange={(e) =>
+                        setDemoVotes({
+                          ...displayedVotes,
+                          oppose: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <button className="button secondary" disabled={!loggedIn}>
+                    套用示意票數
+                  </button>
+                </form>
+              )}
               <div className="action-row">
                 {proposal.status === "village" && (
                   <button

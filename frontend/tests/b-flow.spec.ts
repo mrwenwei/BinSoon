@@ -36,6 +36,30 @@ test("P11 votes count people, support changes and withdrawal survive reload", as
   );
 });
 
+test("a newly created proposal can demonstrate qualifying community votes through installation", async ({
+  page,
+}) => {
+  await page.goto("/#login?next=vote");
+  await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
+  await page.getByRole("button", { name: "標一個新的點", exact: true }).click();
+  await page.getByLabel("提案位置名稱").fill("新提案完整流程");
+  await page.getByLabel("需要桶的原因").fill("測試新提案也能走完展示流程。");
+  await page.getByLabel("提案緯度").fill("25.02");
+  await page.getByLabel("提案經度").fill("121.56");
+  await page.getByRole("button", { name: "確認新增提案", exact: true }).click();
+  await page.getByText("展示控制：提案評估與命名", { exact: true }).click();
+  await expect(page.getByLabel("示意其他市民支持票")).toBeVisible();
+  await page.getByLabel("示意其他市民支持票").fill("59");
+  await page.getByLabel("示意其他市民反對票").fill("0");
+  await page.getByRole("button", { name: "套用示意票數", exact: true }).click();
+  const detail = page.getByRole("region", { name: "選取的提案" });
+  await expect(detail).toContainText("總投票人數 60 / 60");
+  await expect(detail).toContainText("送評估");
+  await page.getByRole("button", { name: "評估通過，進入會勘" }).click();
+  await page.getByRole("button", { name: "會勘通過，完成示範設置" }).click();
+  await expect(page.getByLabel("為電子雞取名")).toBeVisible();
+});
+
 test("a final report allows a new event and retains both awards across reload", async ({
   page,
 }) => {
@@ -63,6 +87,39 @@ test("a final report allows a new event and retains both awards across reload", 
   }
   await page.goto("/#member");
   await expect(page.locator(".report-history li")).toHaveCount(2);
+});
+
+test("a new event requires a fresh photo and proximity check without reloading the app", async ({
+  page,
+  isMobile,
+}) => {
+  await page.goto("/#login");
+  await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
+  await page.locator(".location-row").first().click();
+  await page.getByRole("link", { name: "回報問題", exact: true }).click();
+  if (!isMobile)
+    await page.getByRole("link", { name: "在電腦體驗示範回報" }).click();
+  await page.getByRole("button", { name: "很髒", exact: false }).click();
+  await page.getByRole("button", { name: "拍一張示意照片" }).click();
+  await page.getByLabel("示意定位情境").selectOption("near");
+  await page.getByRole("button", { name: "送出示範回報" }).click();
+  await page
+    .getByRole("link", { name: "看審核結果", exact: true })
+    .first()
+    .click();
+  await page.getByLabel("示範案件狀態").selectOption("approved");
+  await page.getByRole("link", { name: "查看這個桶", exact: true }).click();
+  await page.getByRole("link", { name: "回報問題", exact: true }).click();
+  if (!isMobile)
+    await page.getByRole("link", { name: "在電腦體驗示範回報" }).click();
+  await page.getByRole("button", { name: "很髒", exact: false }).click();
+  await expect(
+    page.getByRole("button", { name: "送出示範回報" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "拍一張示意照片", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("示意定位情境")).toHaveValue("unchecked");
 });
 
 test("P14 approval grants A/B adopter rewards and ending adoption preserves submitted eligibility", async ({
@@ -182,7 +239,10 @@ test("P11 creates a proposal with its first vote, warns about nearby points and 
     await expect(
       page.getByRole("region", { name: "選取的提案" }),
     ).toContainText("總投票人數 1 / 60");
-    await page.getByRole("link", { name: "要桶投票", exact: true }).click();
+    await page
+      .getByRole("navigation", { name: "市民參與選單", exact: true })
+      .getByRole("link", { name: "要桶投票", exact: true })
+      .click();
   }
   await expect(
     page.getByText("本月還能標 0 個點", { exact: true }),
@@ -226,6 +286,26 @@ test("P10 uses existing bins and rejects invalid points while retaining a non-ma
   await expect(page.getByRole("alert")).toContainText(
     "請在大安區示範範圍內選點",
   );
+});
+
+test("proposal selection highlights its marker and choosing coordinates preserves zoom", async ({
+  page,
+}) => {
+  await page.goto("/#login?next=vote");
+  await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
+  await page
+    .getByRole("button", { name: "查看提案：和平東路示範提案" })
+    .click();
+  const selected = page.locator('.proposal-marker[aria-pressed="true"]');
+  await expect(selected).toHaveAttribute("title", "提案：和平東路示範提案");
+  await page.getByRole("button", { name: "標一個新的點", exact: true }).click();
+  const scale = page.locator(".leaflet-control-scale-line");
+  const initialScale = await scale.innerText();
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect(scale).not.toHaveText(initialScale);
+  const zoomedScale = await scale.innerText();
+  await page.getByLabel("提案緯度").fill("25.034");
+  await expect(scale).toHaveText(zoomedScale);
 });
 
 test("P13 low support requires village confirmation and declining requires a reason", async ({

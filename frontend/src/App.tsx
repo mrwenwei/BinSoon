@@ -200,6 +200,7 @@ export default function App() {
       ...prev,
       reports: [...prev.reports, record],
     }));
+    setDrafts((prev) => ({ ...prev, [location.id]: { ...emptyDraft } }));
     window.location.hash = `report-done/${record.id}`;
   }
   function redeem(reward: Reward) {

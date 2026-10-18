@@ -235,6 +235,7 @@ export function voteTotals(proposal: Proposal) {
 }
 export type ParticipationAction =
   | { type: "vote"; id: string; vote: Vote | null }
+  | { type: "demo-votes"; id: string; support: number; oppose: number }
   | {
       type: "create";
       id: string;
@@ -517,6 +518,22 @@ function applyAction(
     ...state,
     proposals: state.proposals.map((p) => {
       if (p.id !== action.id) return p;
+      if (action.type === "demo-votes") {
+        if (p.status !== "collecting")
+          throw new Error("這輪投票已結束，不能修改展示票數。");
+        if (
+          ![action.support, action.oppose].every(
+            (value) =>
+              Number.isSafeInteger(value) && value >= 0 && value <= 10000,
+          )
+        )
+          throw new Error("展示票數須為0至10000的整數。");
+        return closeQualifyingVote({
+          ...p,
+          support: action.support,
+          oppose: action.oppose,
+        });
+      }
       if (action.type === "name") {
         if (!p.mine || p.status !== "installed" || p.nameStatus === "pending")
           throw new Error("僅原提案者可在示範設置後送出命名。");
@@ -551,13 +568,15 @@ function applyAction(
       }
       if (p.status !== "collecting")
         throw new Error("這輪投票已結束，不能改票或撤票。");
-      const next = { ...p, vote: action.vote };
-      const totals = voteTotals(next);
-      if (totals.total >= 60)
-        next.status = totals.rate! >= 0.6 ? "evaluation" : "village";
-      return next;
+      return closeQualifyingVote({ ...p, vote: action.vote });
     }),
   };
+}
+function closeQualifyingVote(proposal: Proposal): Proposal {
+  const totals = voteTotals(proposal);
+  return totals.total >= 60
+    ? { ...proposal, status: totals.rate! >= 0.6 ? "evaluation" : "village" }
+    : proposal;
 }
 export function useParticipationStore() {
   const [state, setState] = useState(readState);

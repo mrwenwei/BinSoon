@@ -1,6 +1,6 @@
 import L from "leaflet";
-import type { LocationKind } from "../data/locations";
-import type { BinState } from "../data/binDemo";
+import type { LocationKind, LocationRecord } from "../data/locations";
+import { binDemo, type BinState } from "../data/binDemo";
 
 import { mascotSvg } from "../components/mascotSvg";
 
@@ -16,4 +16,19 @@ export function markerIcon(
     iconSize: [40, 44],
     iconAnchor: [20, 40],
   });
+}
+
+export function locationMarkerIcon(
+  location: LocationRecord,
+  selected: boolean,
+  removedIds?: string[],
+) {
+  if (location.kind !== "bin") return markerIcon(location.kind, selected);
+  const demo = binDemo(location, removedIds);
+  return markerIcon(
+    location.kind,
+    selected,
+    demo.state,
+    demo.removed ? "removed" : demo.isNew ? "new" : undefined,
+  );
 }

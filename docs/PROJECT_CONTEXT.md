@@ -2,7 +2,7 @@
 
 PM 提供的 PRD、Web flow、手機 App flow 與新增 User flow，統一由 [產品需求與使用者流程](PRODUCT_REQUIREMENTS.md) 提供入口。該頁記錄產品規劃來源；目前已確認的實作範圍仍以本文件與 [A flow 規格](A_FLOW.md) 為準。
 
-[B flow 規格](B_FLOW.md) 已於2026-10-18完成使用者確認，範圍為 P10–P16 前端本機展示，已加入投票、認養、快捷通報與展示控制。A flow 認養資格與回報事件週期已同步調整；驗證進度見 [B flow 驗證紀錄](B_FLOW_VALIDATION.md)。
+[B flow 規格](B_FLOW.md) 已於2026-10-18完成使用者確認，範圍為 P10–P16 前端本機展示，已加入投票、認養、快捷通報與展示控制。A flow 認養資格與回報事件週期已同步調整；驗證結果見 [B flow 驗證紀錄](B_FLOW_VALIDATION.md)。
 
 ## 1. 產品目標與目前範圍
 
