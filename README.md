@@ -2,7 +2,7 @@
 
 台北丟垃圾變順。台北市智慧垃圾桶黑客松 MVP，目前以大安區為主要分析範圍，資料庫支援全台北市。
 
-此儲存庫採 monorepo 結構：後端位於 `backend/`，前端位於 `frontend/`（React＋TypeScript＋Vite 地圖 V0）。
+此儲存庫採 monorepo 結構：後端位於 `backend/`，前端位於 `frontend/`（React＋TypeScript＋Vite 地圖與 A flow 展示）。
 
 ## 快速啟動
 

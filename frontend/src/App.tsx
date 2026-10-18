@@ -91,9 +91,11 @@ export default function App() {
     const valid =
       next === "map" ||
       next === "stamps" ||
-      (["report", "scan", "bin"].includes(nextPage) &&
-        locations.some((item) => item.id === nextId && item.kind === "bin") &&
-        /^\w+\/[\da-f-]+(?:\?demo=1)?$/.test(next));
+      ((["report", "scan", "bin"].includes(nextPage)
+        ? locations.some((item) => item.id === nextId && item.kind === "bin")
+        : nextPage === "report-done" &&
+          state.reports.some((item) => item.id === nextId)) &&
+        /^[a-z-]+\/[\da-f-]+(?:\?demo=1)?$/.test(next));
     window.location.hash = valid ? next : "map";
   }
   function submitReport() {
@@ -163,7 +165,10 @@ export default function App() {
           <span>{availablePoints(state)} 點</span>
           <strong>我的集章</strong>
         </a>
-        <a className="login-link" href="#login">
+        <a
+          className="login-link"
+          href={page === "login" ? `#${route}` : loginHref}
+        >
           {state.loggedIn ? "示範市民" : "登入"}
         </a>
       </header>

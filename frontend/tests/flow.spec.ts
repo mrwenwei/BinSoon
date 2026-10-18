@@ -26,6 +26,10 @@ test("find a bin, inspect its demo status and preserve source distinctions", asy
   await expect(
     page.getByRole("button", { name: "已按讚", exact: true }),
   ).toBeDisabled();
+  const detailUrl = page.url();
+  await page.getByRole("link", { name: "登入", exact: true }).click();
+  await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
+  await expect(page).toHaveURL(detailUrl);
   await page.getByRole("link", { name: "返回地圖", exact: true }).click();
   await page.getByRole("button", { name: "場所代表點", exact: true }).click();
   await page.locator(".location-row").first().click();
