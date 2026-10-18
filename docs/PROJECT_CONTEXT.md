@@ -1,5 +1,7 @@
 # BinSoon 專案背景與架構
 
+PM 提供的 PRD、Web flow、手機 App flow 與新增 User flow，統一由 [產品需求與使用者流程](PRODUCT_REQUIREMENTS.md) 提供入口。該頁記錄產品規劃來源；目前已確認的實作範圍仍以本文件與 [A flow 規格](A_FLOW.md) 為準。
+
 ## 1. 產品目標與目前範圍
 
 BinSoon（台北丟垃圾變順）是台北市智慧垃圾桶黑客松 MVP。先以大安區作為主要分析與展示範圍，資料設計與 API 應能支援台北市十二行政區。

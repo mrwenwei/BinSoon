@@ -4,6 +4,10 @@
 
 此儲存庫採 monorepo 結構：後端位於 `backend/`，前端位於 `frontend/`（React＋TypeScript＋Vite 地圖與 A flow 展示）。
 
+## 產品需求與流程文件
+
+PM 提供的 **PRD、Web flow、手機 App flow 與新增 User flow** 統一收錄於 [產品需求與使用者流程](docs/PRODUCT_REQUIREMENTS.md)，供所有可存取本儲存庫的讀者查閱。外部文件仍受 Claude 分享權限限制，目前尚未驗證匿名存取。
+
 ## 前端地圖與 A flow 展示
 
 組員請先安裝 Git、Node.js 24（含 npm），從 `main` 取得前端：
