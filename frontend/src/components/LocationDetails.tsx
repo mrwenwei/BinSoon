@@ -32,8 +32,6 @@ export function LocationDetails({
         <dd className="coordinates">
           {location.longitude} / {location.latitude}
         </dd>
-        <dt>距離參考</dt>
-        <dd>圈線半徑 150m，為直線參考距離，非步行距離或服務範圍。</dd>
       </dl>
       <details>
         <summary>來源與位置精度</summary>

@@ -17,3 +17,5 @@
 - 原始座標可能重複或相近，縮小時標記會重疊；可放大或使用清單選取，未改動座標。沒有現勘、即時桶況或步行距離。
 - 登入、回報、投票、感測器與其他 A＋B 頁面留待後續。
 - Vercel 已登入，但匯入 `mrwenwei/BinSoon` 功能分支時回報無法存取；可用 Git namespace 只有 PinYuanChen。尚未建立 Vercel 專案／預覽。需在 New Project 的 Adjust GitHub App Permissions／Add GitHub Scope 授權目標 repo；若需擁有者權限，請 mrwenwei 完成授權。完成後設定 Root Directory 為 `frontend`、Vite、Node 24.x，從 `feat/frontend-v0` 部署，無需合併 main。設定詳見 [前端 README](../frontend/README.md)。
+
+> 範圍變更：本檔保留初版 V0 的歷史驗證結果；使用者後續已要求移除 150m 圈線與相關說明，目前行為以 A flow 文件及測試為準。

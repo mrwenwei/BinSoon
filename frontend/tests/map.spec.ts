@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("811 original records, twelve districts, source precision and 150m reference survive A flow", async ({
+test("811 original records, twelve districts and source precision survive A flow without radius overlays", async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
@@ -25,8 +25,8 @@ test("811 original records, twelve districts, source precision and 150m referenc
   const details = page.getByRole("region", { name: "位置詳情" });
   await expect(details).toContainText("並非個別清潔箱位置");
   await expect(details).toContainText("經度 / 緯度");
-  await expect(details).toContainText("150m");
-  await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(1);
+  await expect(details).not.toContainText("150m");
+  await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(0);
   await page.getByText("來源與位置精度", { exact: true }).click();
   await expect(details).toContainText("daan_hotspot_gap_screening.csv");
   await expect(details).toContainText("representative_point_only");
@@ -61,8 +61,10 @@ test("811 original records, twelve districts, source precision and 150m referenc
   await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
     "依公布座標標示",
   );
-  await page.getByText("查看位置與 150m 直線參考圈", { exact: true }).click();
-  await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(1);
+  await page.getByText("查看地圖位置", { exact: true }).click();
+  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(1);
+  await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(0);
+  await expect(page.getByRole("main")).not.toContainText("150m");
   await page.getByRole("button", { name: "Zoom in", exact: true }).click();
   await expect(page.locator(".leaflet-control-attribution")).toContainText(
     "OpenStreetMap",

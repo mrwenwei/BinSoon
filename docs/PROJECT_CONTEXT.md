@@ -177,8 +177,8 @@ docker compose exec api pytest -q
 
 前端獨立啟動／建置，見 [frontend/README.md](../frontend/README.md)。初版地圖驗收見 [FRONTEND_V0.md](FRONTEND_V0.md)，使用者後續確認的 A flow 範圍及驗證見 [A_FLOW.md](A_FLOW.md)。10/20 初步展示、10/24 正式 Demo。
 
-地圖以 Leaflet 顯示自製擬人像素標記及選取位置的 150m 直線參考圈，MapLibre 透過官方 Leaflet adapter 顯示 OpenFreeMap Liberty 底圖；保留 OpenFreeMap、OpenMapTiles、OpenStreetMap 與 Leaflet 署名。需要網路及 WebGL，底圖失敗時顯示提示，靜態位置清單仍可使用。
+地圖以 Leaflet 顯示自製擬人像素標記與選取位置，MapLibre 透過官方 Leaflet adapter 顯示 OpenFreeMap Liberty 底圖；保留 OpenFreeMap、OpenMapTiles、OpenStreetMap 與 Leaflet 署名。需要網路及 WebGL，底圖失敗時顯示提示，靜態位置清單仍可使用。
 
-資料快照保留 source_type、source_row、source_file、location_precision，不載入 18 筆缺口分析，不展開 reported_count。前端圈線只為位置討論用途，不表示步行距離、服務範圍或缺桶判定。原始資料日期與實際設置狀態未經本次現勘確認。
+資料快照保留 source_type、source_row、source_file、location_precision，不載入 18 筆缺口分析，不展開 reported_count。前端已依使用者要求移除範圍圈線，地圖只標示位置。原始資料日期與實際設置狀態未經本次現勘確認。
 
 A flow 預設大安區公布桶位置（47 筆），仍可切換全市及場所資料。示意距離以固定大安森林公園起點計算直線距離，不是使用者定位。帳號、按讚、回報、印章、兌換券保留於本瀏覽器；無真實簡訊、相機、定位或派工。回報點數維持待確認，不參與兌換；桶況、收受類型與認養者皆屬展示設定。

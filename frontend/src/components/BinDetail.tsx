@@ -165,7 +165,7 @@ export function BinDetail({
           className="reference-map"
           onToggle={(event) => setShowMap(event.currentTarget.open)}
         >
-          <summary>查看位置與 150m 直線參考圈</summary>
+          <summary>查看地圖位置</summary>
           {showMap && (
             <div className="reference-map-canvas">
               <LocationMap

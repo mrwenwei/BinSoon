@@ -19,7 +19,6 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
-  const circle = useRef<L.Circle | null>(null);
   const markerRecords = useRef<
     { marker: L.Marker; location: LocationRecord }[]
   >([]);
@@ -91,10 +90,6 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
       );
   }, [locations, onSelect]);
   useEffect(() => {
-    if (circle.current) {
-      circle.current.remove();
-      circle.current = null;
-    }
     for (const { marker, location } of markerRecords.current) {
       marker.setIcon(
         markerIcon(
@@ -107,15 +102,6 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
     }
     if (!selected) return;
     const point: L.LatLngExpression = [selected.latitude, selected.longitude];
-    circle.current = L.circle(point, {
-      radius: 150,
-      color: "#5d7c45",
-      weight: 2,
-      dashArray: "5 5",
-      fillColor: "#b5d784",
-      fillOpacity: 0.15,
-      interactive: false,
-    }).addTo(map.current!);
     map.current!.setView(point, Math.max(map.current!.getZoom(), 16), {
       animate: false,
     });
@@ -135,7 +121,7 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
       )}
       <span className="map-note">
         {selected
-          ? "圈線半徑 150m · 直線參考距離"
+          ? "已選取位置 · 可縮放地圖查看周邊"
           : "點選像素小夥伴，查看位置詳情"}
       </span>
     </div>

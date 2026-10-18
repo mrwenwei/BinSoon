@@ -1,6 +1,6 @@
 # BinSoon 地圖與 A flow 展示
 
-React＋TypeScript＋Vite，Leaflet 管理操作、標記與 150m 圈，MapLibre 渲染 OpenFreeMap 底圖。前端使用已提交的靜態資料快照，可獨立部署，無需後端、資料庫或金鑰。
+React＋TypeScript＋Vite，Leaflet 管理操作與標記，MapLibre 渲染 OpenFreeMap 底圖。前端使用已提交的靜態資料快照，可獨立部署，無需後端、資料庫或金鑰。
 
 ## Clone 後在本機查看
 
@@ -70,9 +70,9 @@ npm run test:e2e
 
 - `src/data/locations.json`：811 筆快照，原始資料在 `../backend/data/`；更新 CSV 後於 repo 完整 checkout 執行 `npm run data:generate`，再執行 `data:check`。一般 Vercel build 不需存取 backend。
 - `scripts/generate-data.mjs`：以 BOM-aware CSV parser 辨識欄位，驗證筆數、座標、十二區及追溯欄位，保留原始精度。後兩個 CSV 檔名與內容對調，只有真正的 130 筆場所資料可進入快照。
-- `src/components/`：共用角色、位置詳情與 A flow 各頁；`src/data/binDemo.ts`、`demoStore.ts`、`reports.ts`：獨立的示意資料與本機帳本；`src/map/`：Leaflet／MapLibre、標記、150m 圈；`src/App.tsx`：篩選與頁面；`src/styles.css`：視覺及 RWD。
+- `src/components/`：共用角色、位置詳情與 A flow 各頁；`src/data/binDemo.ts`、`demoStore.ts`、`reports.ts`：獨立的示意資料與本機帳本；`src/map/`：Leaflet／MapLibre 與位置標記；`src/App.tsx`：篩選與頁面；`src/styles.css`：視覺及 RWD。
 
-681 筆公布桶位置＋130 筆場所代表點稱為 **811 筆位置紀錄**。代表點並非個別桶，reported_count 是周邊統計，不展開、不混入缺口分析。所有資料均為公開資料快照，沒有即時桶況與現勘保證；部分來源座標相同或相近，縮小時標記會重疊，可放大或從清單選取每一筆；150m 僅為直線參考距離。
+681 筆公布桶位置＋130 筆場所代表點稱為 **811 筆位置紀錄**。代表點並非個別桶，reported_count 是周邊統計，不展開、不混入缺口分析。所有資料均為公開資料快照，沒有即時桶況與現勘保證；部分來源座標相同或相近，縮小時標記會重疊，可放大或從清單選取每一筆。
 
 ## Vercel
 
