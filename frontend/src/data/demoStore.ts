@@ -45,6 +45,9 @@ function isReport(value: unknown): value is DemoReport {
     ) &&
     typeof item.adopter === "boolean" &&
     typeof item.firstReporter === "boolean" &&
+    (item.eventId === undefined ||
+      (typeof item.eventId === "string" && item.eventId.length > 0)) &&
+    (item.quick === undefined || typeof item.quick === "boolean") &&
     (item.acceptedAt === undefined || validDate(item.acceptedAt)) &&
     (item.reviewedAt === undefined || validDate(item.reviewedAt)) &&
     (!["approved", "rejected"].includes(String(item.status)) ||
@@ -82,13 +85,19 @@ function readState(): DemoState {
       const state: DemoState = {
         loggedIn: value.loggedIn,
         likes: [...new Set<string>(value.likes)],
-        reports: value.reports,
+        reports: value.reports.map((report: DemoReport) => ({
+          ...report,
+          eventId: report.eventId || report.id,
+        })),
         redemptions: value.redemptions,
       };
       if (
         new Set(
-          state.reports.map((report) => `${report.locationId}/${report.type}`),
-        ).size === state.reports.length &&
+          state.reports
+            .filter((report) => !reportIsFinal(report))
+            .map((report) => `${report.locationId}/${report.type}`),
+        ).size ===
+          state.reports.filter((report) => !reportIsFinal(report)).length &&
         new Set(state.reports.map((report) => report.id)).size ===
           state.reports.length &&
         new Set(state.redemptions.map((item) => item.id)).size ===

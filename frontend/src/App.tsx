@@ -27,7 +27,7 @@ import {
   reportingSuspended,
   useDemoStore,
 } from "./data/demoStore";
-import { emptyDraft, type ReportDraft } from "./data/reports";
+import { emptyDraft, reportIsFinal, type ReportDraft } from "./data/reports";
 import { LocationMap } from "./map/LocationMap";
 import { Mascot } from "./components/Mascot";
 import { Icon } from "./components/Icon";
@@ -40,6 +40,13 @@ import { ReportDone } from "./components/ReportDone";
 import { MemberPage } from "./components/MemberPage";
 import { ReviewPage } from "./components/ReviewPage";
 import { RewardsPage } from "./components/RewardsPage";
+import {
+  adopterName,
+  isAdopter,
+  useParticipationStore,
+} from "./data/participation";
+import { AdoptionPage } from "./components/AdoptionPage";
+import { ParticipationPage } from "./components/ParticipationPage";
 import type { Reward } from "./data/rewards";
 
 export default function App() {
@@ -53,6 +60,7 @@ export default function App() {
   const [selected, setSelected] = useState<LocationRecord | null>(null);
   const [notice, setNotice] = useState("");
   const { state, setState, storageFailed } = useDemoStore();
+  const participation = useParticipationStore();
   const [drafts, setDrafts] = useState<Record<string, ReportDraft>>({});
   const submitting = useRef(false);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -76,22 +84,29 @@ export default function App() {
       filterLocations(district, kind)
         .filter(
           (location) =>
-            matchesBinFilter(location, filter) &&
+            matchesBinFilter(
+              location,
+              filter,
+              participation.state.removedBinIds,
+            ) &&
             `${location.label} ${location.district} ${location.address || ""}`.includes(
               query.trim(),
             ),
         )
         .sort((a, b) => demoDistance(a) - demoDistance(b)),
-    [district, kind, filter, query],
+    [district, kind, filter, query, participation.state.removedBinIds],
   );
-  const nearest = visible.filter(isUsableBin).slice(0, 3);
+  const nearest = visible
+    .filter((item) => !participation.state.removedBinIds.includes(item.id))
+    .filter(isUsableBin)
+    .slice(0, 3);
   const [path, search] = route.split("?");
   const params = new URLSearchParams(search);
   const [requestedPage, id] = path.split("/");
   const page =
     requestedPage === "stamps"
       ? "member"
-      : requestedPage === "scan"
+      : ["scan", "quick-report"].includes(requestedPage)
         ? "report"
         : requestedPage;
   const location = locations.find(
@@ -101,7 +116,10 @@ export default function App() {
   const reportLocation = locations.find(
     (item) => item.id === report?.locationId,
   );
-  const draft = drafts[id] || emptyDraft;
+  const draft = {
+    ...(drafts[id] || emptyDraft),
+    adopter: Boolean(location && isAdopter(participation.state, location.id)),
+  };
   const loginHref = `#login?next=${encodeURIComponent(route)}`;
   function login() {
     setState((prev) => ({ ...prev, loggedIn: true }));
@@ -112,12 +130,25 @@ export default function App() {
     const validBin = (value: string | null) =>
       locations.some((item) => item.id === value && item.kind === "bin");
     const validPath =
-      ["map", "member", "rewards", "stamps"].includes(nextPath) ||
+      [
+        "map",
+        "member",
+        "rewards",
+        "stamps",
+        "vote",
+        "vote-progress",
+        "adopt",
+        "nearby",
+      ].includes(nextPath) ||
       (nextPath === `${nextPage}/${nextId}` &&
-        (["report", "scan", "bin", "nav"].includes(nextPage)
+        (["report", "scan", "quick-report", "adopt", "bin", "nav"].includes(
+          nextPage,
+        )
           ? validBin(nextId)
-          : ["report-done", "review"].includes(nextPage) &&
-            state.reports.some((item) => item.id === nextId)));
+          : ["vote-progress", "vote-done"].includes(nextPage)
+            ? participation.state.proposals.some((item) => item.id === nextId)
+            : ["report-done", "review"].includes(nextPage) &&
+              state.reports.some((item) => item.id === nextId)));
     const validQuery =
       nextQuery.size === 0 ||
       (nextQuery.size === 1 &&
@@ -135,15 +166,20 @@ export default function App() {
     if (
       submitting.current ||
       !location ||
-      binDemo(location).removed ||
+      binDemo(location, participation.state.removedBinIds).removed ||
       !state.loggedIn ||
       reportingSuspended(state) ||
+      (requestedPage === "quick-report" &&
+        !isAdopter(participation.state, location.id)) ||
       !draft.type ||
       !draft.photo ||
       draft.proximity !== "near" ||
       (draft.type === "other" && !draft.description.trim()) ||
       state.reports.some(
-        (item) => item.locationId === location.id && item.type === draft.type,
+        (item) =>
+          item.locationId === location.id &&
+          item.type === draft.type &&
+          !reportIsFinal(item),
       )
     )
       return;
@@ -155,7 +191,9 @@ export default function App() {
       description: draft.description.trim(),
       createdAt: new Date().toISOString(),
       status: "pending" as const,
-      adopter: draft.adopter,
+      adopter: isAdopter(participation.state, location.id),
+      eventId: crypto.randomUUID(),
+      quick: requestedPage === "quick-report",
       firstReporter: draft.firstReporter,
     };
     setState((prev) => ({
@@ -208,13 +246,13 @@ export default function App() {
           >
             找垃圾桶
           </a>
-          <button onClick={() => unavailable("這裡需要桶")}>這裡需要桶</button>
-          <button onClick={() => unavailable("認養電子雞")}>認養電子雞</button>
+          <a href="#vote">這裡需要桶</a>
+          <a href="#adopt">認養電子雞</a>
           <button onClick={() => unavailable("清潔隊榮譽榜")}>
             清潔隊榮譽榜
           </button>
         </nav>
-        <span className="prototype">A FLOW · 展示模式</span>
+        <span className="prototype">A + B FLOW · 展示模式</span>
         <a className="account-link" href="#member">
           <Icon name="star" />
           <span>{availablePoints(state)} 點</span>
@@ -227,7 +265,7 @@ export default function App() {
           {state.loggedIn ? "示範市民" : "登入"}
         </a>
       </header>
-      {storageFailed && (
+      {(storageFailed || participation.storageFailed) && (
         <p className="storage-warning" role="status">
           瀏覽器無法儲存資料，重新整理後可能無法保留本次紀錄。
         </p>
@@ -318,6 +356,9 @@ export default function App() {
                   ))}
                 </div>
               </div>
+              <a className="back-link" href="#nearby">
+                附近沒有桶？選點查看與提案
+              </a>
               {nearest.length > 0 && (
                 <section className="nearest-card">
                   <h2>最近的可用小夥伴</h2>
@@ -347,7 +388,9 @@ export default function App() {
                 新設{" "}
                 {
                   visible.filter(
-                    (item) => item.kind === "bin" && binDemo(item).isNew,
+                    (item) =>
+                      item.kind === "bin" &&
+                      binDemo(item, participation.state.removedBinIds).isNew,
                   ).length
                 }{" "}
                 桶（示意）
@@ -369,7 +412,10 @@ export default function App() {
                   </div>
                 )}
                 {visible.map((item) => {
-                  const demo = item.kind === "bin" ? binDemo(item) : null;
+                  const demo =
+                    item.kind === "bin"
+                      ? binDemo(item, participation.state.removedBinIds)
+                      : null;
                   return (
                     <button
                       className={`location-row ${selected?.id === item.id ? "active" : ""}`}
@@ -391,13 +437,21 @@ export default function App() {
                             ? `● ${demo.removed ? "已撤除（示意）" : stateLabels[demo.state]}`
                             : "✦ 場所代表點"}
                         </span>
-                        {demo && lifecycleLabel(item) && (
-                          <small
-                            className={`lifecycle-label ${demo.removed ? "removed" : ""}`}
-                          >
-                            {lifecycleLabel(item)}（示意）
-                          </small>
-                        )}
+                        {demo &&
+                          lifecycleLabel(
+                            item,
+                            participation.state.removedBinIds,
+                          ) && (
+                            <small
+                              className={`lifecycle-label ${demo.removed ? "removed" : ""}`}
+                            >
+                              {lifecycleLabel(
+                                item,
+                                participation.state.removedBinIds,
+                              )}
+                              （示意）
+                            </small>
+                          )}
                       </span>
                       <Icon name="arrow" />
                     </button>
@@ -415,6 +469,7 @@ export default function App() {
                 locations={visible}
                 selected={selected}
                 onSelect={select}
+                removedIds={participation.state.removedBinIds}
               />
               <div className="map-badge">
                 <span className="live-dot" />
@@ -451,6 +506,23 @@ export default function App() {
               )}
             </section>
           </main>
+        ) : ["vote", "vote-progress", "vote-done", "nearby"].includes(page) ? (
+          <ParticipationPage
+            key={route}
+            state={participation.state}
+            act={participation.act}
+            loggedIn={state.loggedIn}
+            page={page}
+            id={id}
+          />
+        ) : page === "adopt" ? (
+          <AdoptionPage
+            key={route}
+            state={participation.state}
+            act={participation.act}
+            loggedIn={state.loggedIn}
+            id={id}
+          />
         ) : page === "bin" && location ? (
           <BinDetail
             location={location}
@@ -461,18 +533,24 @@ export default function App() {
                 likes: [...new Set([...prev.likes, location.id])],
               }))
             }
-            onNotice={setNotice}
+            adopter={adopterName(participation.state, location.id)}
+            removedIds={participation.state.removedBinIds}
           />
         ) : page === "nav" && location ? (
           <NavigationPage
             key={`${id}/${params.get("from") || ""}`}
             location={location}
             fromId={params.get("from")}
+            removedIds={participation.state.removedBinIds}
           />
         ) : page === "report" && location ? (
           <ReportPage
             location={location}
-            demoOnDesktop={params.get("demo") === "1"}
+            demoOnDesktop={
+              params.get("demo") === "1" || requestedPage === "quick-report"
+            }
+            quick={requestedPage === "quick-report"}
+            removed={participation.state.removedBinIds.includes(id)}
             loggedIn={state.loggedIn}
             draft={draft}
             onChange={(value) =>
@@ -511,7 +589,7 @@ export default function App() {
             onRedeem={redeem}
           />
         ) : page === "member" ? (
-          <MemberPage state={state} onNotice={setNotice} />
+          <MemberPage state={state} />
         ) : (
           <main className="page not-found">
             <Mascot />
@@ -531,10 +609,10 @@ export default function App() {
           <Icon name="map" />
           地圖
         </a>
-        <button onClick={() => unavailable("要桶投票")}>
+        <a href="#vote">
           <Icon name="pin" />
           要桶投票
-        </button>
+        </a>
         <a
           className={page === "member" || page === "rewards" ? "active" : ""}
           href="#member"

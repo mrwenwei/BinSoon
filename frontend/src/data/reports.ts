@@ -36,6 +36,8 @@ export interface DemoReport {
   firstReporter: boolean;
   acceptedAt?: string;
   reviewedAt?: string;
+  eventId?: string;
+  quick?: boolean;
 }
 export interface ReportDraft {
   type: ReportType | null;

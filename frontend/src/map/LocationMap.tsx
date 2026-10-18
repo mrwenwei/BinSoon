@@ -8,6 +8,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { kindLabel, type LocationRecord } from "../data/locations";
 import { markerIcon } from "./marker";
 import { binDemo } from "../data/binDemo";
+import type { Point } from "../data/participation";
 setWorkerUrl(workerUrl);
 
 interface Props {
@@ -15,12 +16,29 @@ interface Props {
   selected: LocationRecord | null;
   onSelect: (location: LocationRecord) => void;
   demoRoute?: [number, number][];
+  removedIds?: string[];
+  point?: Point;
+  onPointChange?: (point: Point) => void;
+  proposalPoints?: (Point & { id: string; label: string; count: number })[];
+  onProposalSelect?: (id: string) => void;
+  selectionBounds?: {
+    south: number;
+    north: number;
+    west: number;
+    east: number;
+  };
 }
 export function LocationMap({
   locations,
   selected,
   onSelect,
   demoRoute,
+  point,
+  onPointChange,
+  proposalPoints,
+  onProposalSelect,
+  selectionBounds,
+  removedIds,
 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
@@ -79,11 +97,13 @@ export function LocationMap({
         icon: markerIcon(
           location.kind,
           false,
-          location.kind === "bin" ? binDemo(location).state : undefined,
           location.kind === "bin"
-            ? binDemo(location).removed
+            ? binDemo(location, removedIds).state
+            : undefined,
+          location.kind === "bin"
+            ? binDemo(location, removedIds).removed
               ? "removed"
-              : binDemo(location).isNew
+              : binDemo(location, removedIds).isNew
                 ? "new"
                 : undefined
             : undefined,
@@ -107,18 +127,20 @@ export function LocationMap({
         L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
         { padding: [45, 50], maxZoom: 15, animate: false },
       );
-  }, [locations, onSelect]);
+  }, [locations, onSelect, removedIds]);
   useEffect(() => {
     for (const { marker, location } of markerRecords.current) {
       marker.setIcon(
         markerIcon(
           location.kind,
           location.id === selected?.id,
-          location.kind === "bin" ? binDemo(location).state : undefined,
           location.kind === "bin"
-            ? binDemo(location).removed
+            ? binDemo(location, removedIds).state
+            : undefined,
+          location.kind === "bin"
+            ? binDemo(location, removedIds).removed
               ? "removed"
-              : binDemo(location).isNew
+              : binDemo(location, removedIds).isNew
                 ? "new"
                 : undefined
             : undefined,
@@ -131,7 +153,7 @@ export function LocationMap({
     map.current!.setView(point, Math.max(map.current!.getZoom(), 16), {
       animate: false,
     });
-  }, [selected, locations]);
+  }, [selected, locations, removedIds]);
   useEffect(() => {
     if (!demoRoute?.length || !map.current) return;
     const instance = map.current;
@@ -158,6 +180,65 @@ export function LocationMap({
       origin.remove();
     };
   }, [demoRoute]);
+  useEffect(() => {
+    const instance = map.current!;
+    const layer = L.layerGroup().addTo(instance);
+    if (selectionBounds) {
+      const bounds: L.LatLngBoundsExpression = [
+        [selectionBounds.south, selectionBounds.west],
+        [selectionBounds.north, selectionBounds.east],
+      ];
+      L.rectangle(bounds, {
+        color: "#9a6c3a",
+        weight: 2,
+        fillOpacity: 0.03,
+        interactive: false,
+      }).addTo(layer);
+      instance.fitBounds(bounds, { padding: [25, 25], animate: false });
+    }
+    for (const proposal of proposalPoints || []) {
+      const marker = L.marker([proposal.latitude, proposal.longitude], {
+        icon: L.divIcon({
+          className: "proposal-marker",
+          html: `<span>${proposal.count}</span>`,
+          iconSize: [34, 34],
+        }),
+        title: `提案：${proposal.label}`,
+        alt: `提案：${proposal.label}`,
+      }).addTo(layer);
+      marker.on("click", () => onProposalSelect?.(proposal.id));
+    }
+    if (
+      point &&
+      Number.isFinite(point.latitude) &&
+      Number.isFinite(point.longitude)
+    ) {
+      const marker = L.marker([point.latitude, point.longitude], {
+        icon: L.divIcon({
+          className: "point-marker",
+          html: "<span>＋</span>",
+          iconSize: [38, 38],
+        }),
+        draggable: Boolean(onPointChange),
+        title: "選點位置（可拖曳）",
+        alt: "選點位置（可拖曳）",
+      }).addTo(layer);
+      marker.on("dragend", () => {
+        const p = marker.getLatLng();
+        onPointChange?.({ latitude: p.lat, longitude: p.lng });
+      });
+    }
+    const pick = (event: L.LeafletMouseEvent) =>
+      onPointChange?.({
+        latitude: event.latlng.lat,
+        longitude: event.latlng.lng,
+      });
+    if (onPointChange) instance.on("click", pick);
+    return () => {
+      instance.off("click", pick);
+      layer.remove();
+    };
+  }, [point, onPointChange, proposalPoints, onProposalSelect, selectionBounds]);
   return (
     <div className="map-wrap">
       <div

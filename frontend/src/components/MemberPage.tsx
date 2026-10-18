@@ -10,13 +10,7 @@ import {
 import { pendingPoints } from "../data/reports";
 import { Icon } from "./Icon";
 import { ReportHistory } from "./ReportHistory";
-export function MemberPage({
-  state,
-  onNotice,
-}: {
-  state: DemoState;
-  onNotice: (text: string) => void;
-}) {
+export function MemberPage({ state }: { state: DemoState }) {
   const points = cumulativePoints(state);
   const level = memberLevel(points);
   const approved = state.reports.filter(
@@ -125,17 +119,9 @@ export function MemberPage({
                 初始累積／可用各 63 點為示意基準，不含新送出的待確認案件。
               </span>
             </div>
-            <button
-              className="button secondary"
-              onClick={() =>
-                onNotice(
-                  "認養屬於 B flow，尚未納入本次；可在回報頁切換認養者示意身分體驗 +2 點。",
-                )
-              }
-            >
-              認養電子雞
-              <Icon name="arrow" />
-            </button>
+            <a className="button secondary" href="#adopt">
+              認養電子雞 <Icon name="arrow" />
+            </a>
           </section>
           {rejectedCount(state) > 0 && (
             <p

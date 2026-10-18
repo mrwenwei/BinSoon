@@ -147,7 +147,13 @@ test("adopters earn two points, later reporters earn none, and three false repor
 }) => {
   await page.goto("/#login");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
-  await page.locator(".location-row").first().click();
+  await page.goto("/#adopt");
+  await page.getByLabel("認養者公開名稱").fill("A/B 接合示範認養者");
+  await page.getByRole("button", { name: "送出認養申請", exact: true }).click();
+  const adoption = page.getByRole("article", { name: /認養申請：/ }).first();
+  await adoption.getByText("展示控制：認養審批", { exact: true }).click();
+  await adoption.getByRole("button", { name: "核准認養", exact: true }).click();
+  await adoption.getByRole("link", { name: "查看這個桶", exact: true }).click();
   const binUrl = page.url();
   async function submit(
     type: string,
@@ -166,9 +172,14 @@ test("adopters earn two points, later reporters earn none, and three false repor
       .getByRole("button", { name: /拍一張示意照片|重拍示意照片/ })
       .click();
     await page.getByLabel("示意定位情境").selectOption("near");
-    await page
-      .getByLabel("示範身分", { exact: true })
-      .selectOption(adopter ? "adopter" : "citizen");
+    await expect(
+      page.getByText(
+        adopter
+          ? "這個桶的核准認養者 · 屬實首報 +2 點"
+          : "一般民眾 · 屬實首報 +1 點",
+        { exact: true },
+      ),
+    ).toBeVisible();
     await page
       .getByLabel("示範回報順序")
       .selectOption(first ? "first" : "later");
@@ -192,6 +203,9 @@ test("adopters earn two points, later reporters earn none, and three false repor
   await submit("滿了", true, false, "approved");
   await expect(page.getByText("審核通過 +0 點", { exact: true })).toBeVisible();
   await expect(page.getByText("可用點數 65", { exact: true })).toBeVisible();
+  await page.goto("/#adopt");
+  await adoption.getByRole("button", { name: "結束認養", exact: true }).click();
+  await page.getByRole("button", { name: "確認結束認養", exact: true }).click();
   await submit("很髒", false, true, "rejected");
   await submit("損壞", false, true, "rejected");
   await submit("其他", false, true, "rejected");

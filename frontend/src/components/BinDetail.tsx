@@ -11,14 +11,16 @@ export function BinDetail({
   location,
   liked,
   onLike,
-  onNotice,
+  adopter,
+  removedIds,
 }: {
   location: LocationRecord;
   liked: boolean;
   onLike: () => void;
-  onNotice: (text: string) => void;
+  adopter: string | null;
+  removedIds: string[];
 }) {
-  const demo = binDemo(location);
+  const demo = binDemo(location, removedIds);
   const [showMap, setShowMap] = useState(false);
   const mapLocations = useMemo(() => [location], [location]);
   const history = [18, 24, 30, 48, 78, 94, 4, 22, demo.capacity];
@@ -74,20 +76,15 @@ export function BinDetail({
                   : "隨手的小垃圾，就交給我吧！"}
           </p>
           <div className="buddy-tags">
-            <span>認養：{demo.adopter || "還沒有認養者"}</span>
-            {lifecycleLabel(location) && (
-              <span>{lifecycleLabel(location)}</span>
+            <span>認養：{adopter || "還沒有認養者"}</span>
+            {lifecycleLabel(location, removedIds) && (
+              <span>{lifecycleLabel(location, removedIds)}</span>
             )}
           </div>
-          {!demo.adopter && (
-            <button
-              className="button secondary"
-              onClick={() =>
-                onNotice("認養屬於 B flow，本版先提供找桶與回報展示。")
-              }
-            >
+          {!adopter && !demo.removed && (
+            <a className="button secondary" href={`#adopt/${location.id}`}>
               成為這個桶的認養者
-            </button>
+            </a>
           )}
           <span className="tiny">認養、開口與設撤狀態均為展示設定</span>
         </section>
@@ -174,6 +171,7 @@ export function BinDetail({
                 locations={mapLocations}
                 selected={location}
                 onSelect={ignoreSelect}
+                removedIds={removedIds}
               />
             </div>
           )}

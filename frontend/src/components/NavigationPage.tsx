@@ -17,23 +17,27 @@ const ignoreSelect = () => {};
 export function NavigationPage({
   location,
   fromId,
+  removedIds,
 }: {
   location: LocationRecord;
   fromId: string | null;
+  removedIds: string[];
 }) {
   const alternatives = useMemo(
     () =>
       locations
+        .filter((item) => !removedIds.includes(item.id))
         .filter(isUsableBin)
         .sort((a, b) => demoDistance(a) - demoDistance(b)),
-    [],
+    [removedIds],
   );
   const original =
     locations.find((item) => item.id === fromId && item.kind === "bin") ||
     location;
-  const initial = isUsableBin(location)
-    ? location
-    : alternatives.find((item) => item.id !== location.id);
+  const initial =
+    !removedIds.includes(location.id) && isUsableBin(location)
+      ? location
+      : alternatives.find((item) => item.id !== location.id);
   const [destination, setDestination] = useState(initial);
   const [unavailable, setUnavailable] = useState<string[]>(
     initial?.id !== location.id
@@ -87,9 +91,10 @@ export function NavigationPage({
       </div>
       {rerouted && (
         <p className="reroute-notice" role="status">
-          {binDemo(original).removed && unavailable.length < 2
+          {binDemo(original, removedIds).removed && unavailable.length < 2
             ? "原目的桶已撤除，已改導另一個可用桶。"
-            : unavailable.length < 2 && binDemo(original).state === "unknown"
+            : unavailable.length < 2 &&
+                binDemo(original, removedIds).state === "unknown"
               ? "原目的桶狀態未知，已改導另一個可用桶。"
               : "目的桶吃飽了，已改導另一個可用桶。"}
         </p>
@@ -101,6 +106,7 @@ export function NavigationPage({
               locations={mapLocations}
               selected={null}
               onSelect={ignoreSelect}
+              removedIds={removedIds}
               demoRoute={path}
             />
             <div className="turn-instruction">

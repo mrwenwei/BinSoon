@@ -16,6 +16,8 @@
 ## 與目前實作文件的關係
 
 - [A flow 規格](A_FLOW.md)：已確認的 1018 P1–P9 展示範圍與資料界線。
+- [B flow 規格](B_FLOW.md)：使用者已確認的 P10–P16 本機展示、投票、認養與 A flow 接合規則；前端本機展示已加入，驗證見 [B flow 驗證紀錄](B_FLOW_VALIDATION.md)。
+- [B flow 討論與決策紀錄](B_FLOW_OPEN_QUESTIONS.md)：PRD／Web／User flow 差異、程式查核及16項已確認決策。
 - [專案背景與架構](PROJECT_CONTEXT.md)：目前系統能力、領域規則、資料限制與 API 契約。
 - [A flow 驗證紀錄](A_FLOW_VALIDATION.md)：既有展示流程的驗證結果。
 - [A flow 1018 更新差異](A_FLOW_1018_GAP_ANALYSIS.md)：實作前缺漏、點數規則差異及三項已確認決策的歷史盤點。

@@ -33,7 +33,9 @@ export function ReportDone({
         <Mascot />
         <span>✦</span>
       </div>
-      <h1>謝謝你幫城市變乾淨！</h1>
+      <h1>
+        {report.quick ? "快捷通報已受理（示範）" : "謝謝你幫城市變乾淨！"}
+      </h1>
       <p className="muted">
         {location.label} · {reportInfo(report.type).label}
       </p>
@@ -108,6 +110,11 @@ export function ReportDone({
           前往會員中心
         </a>
       </div>
+      {report.quick && (
+        <a className="button secondary" href="#adopt">
+          返回我的電子雞
+        </a>
+      )}
       <a className="back-link done-back" href="#map">
         回到地圖
       </a>

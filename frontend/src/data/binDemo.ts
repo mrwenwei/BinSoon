@@ -16,12 +16,12 @@ export const binFilters: { id: BinFilter; label: string }[] = [
 ];
 
 // A separate presentation layer: never write simulated fields into the source snapshot.
-export function binDemo(location: LocationRecord) {
+export function binDemo(location: LocationRecord, removedIds: string[] = []) {
   const seed = [...location.id].reduce(
     (sum, char) => sum + char.charCodeAt(0),
     0,
   );
-  const removed = seed % 19 === 0;
+  const removed = seed % 19 === 0 || removedIds.includes(location.id);
   const newAge = seed % 41;
   const state = removed
     ? "unknown"
@@ -41,12 +41,16 @@ export function binDemo(location: LocationRecord) {
     code: `TP-${String(location.source_row).padStart(3, "0")}`,
   };
 }
-export function matchesBinFilter(location: LocationRecord, filter: BinFilter) {
+export function matchesBinFilter(
+  location: LocationRecord,
+  filter: BinFilter,
+  removedIds: string[] = [],
+) {
   if (filter === "all") return true;
   if (location.kind !== "bin") return false;
-  const demo = binDemo(location);
+  const demo = binDemo(location, removedIds);
   if (filter === "new") return demo.isNew;
-  if (filter === "can-fit") return isUsableBin(location);
+  if (filter === "can-fit") return !demo.removed && isUsableBin(location);
   return !demo.removed && demo.state === "hungry";
 }
 
@@ -76,8 +80,11 @@ export function isUsableBin(location: LocationRecord) {
 export function walkingMinutes(location: LocationRecord) {
   return Math.max(1, Math.ceil((demoDistance(location) * 1.3) / 75));
 }
-export function lifecycleLabel(location: LocationRecord) {
-  const demo = binDemo(location);
+export function lifecycleLabel(
+  location: LocationRecord,
+  removedIds: string[] = [],
+) {
+  const demo = binDemo(location, removedIds);
   return demo.removed
     ? `撤除 ${demo.removedAge} 天 · 保留 7 天`
     : demo.isNew
