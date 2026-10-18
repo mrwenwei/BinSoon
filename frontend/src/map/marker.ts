@@ -8,10 +8,11 @@ export function markerIcon(
   kind: LocationKind,
   selected: boolean,
   state?: BinState,
+  lifecycle?: "new" | "removed",
 ) {
   return L.divIcon({
     className: `pixel-marker ${kind} ${state || ""} ${selected ? "selected" : ""}`,
-    html: mascotSvg(kind),
+    html: `${mascotSvg(kind)}${lifecycle ? `<span class="marker-lifecycle ${lifecycle}">${lifecycle === "new" ? "新" : "撤"}</span>` : ""}`,
     iconSize: [40, 44],
     iconAnchor: [20, 40],
   });

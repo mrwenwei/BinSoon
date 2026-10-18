@@ -1,17 +1,30 @@
 import type { LocationRecord } from "../data/locations";
-import { reportInfo, type DemoReport } from "../data/reports";
+import {
+  reportAward,
+  reportInfo,
+  reportIsFinal,
+  type DemoReport,
+} from "../data/reports";
+import {
+  cumulativePoints,
+  memberLevel,
+  type DemoState,
+} from "../data/demoStore";
 import { Mascot } from "./Mascot";
 import { Icon } from "./Icon";
 export function ReportDone({
   report,
   location,
-  count,
+  state,
 }: {
   report: DemoReport;
   location: LocationRecord;
-  count: number;
+  state: DemoState;
 }) {
-  const info = reportInfo(report.type);
+  const award = reportAward(report);
+  const points = cumulativePoints(state);
+  const level = memberLevel(points);
+  const projected = reportIsFinal(report) ? points : points + award;
   return (
     <main className="page done-page">
       <span className="eyebrow">A SMALL ACT, A BIG THANK YOU</span>
@@ -21,7 +34,7 @@ export function ReportDone({
       </div>
       <h1>謝謝你幫城市變乾淨！</h1>
       <p className="muted">
-        {location.label} · {info.label}
+        {location.label} · {reportInfo(report.type).label}
       </p>
       <p className="done-notice">
         示範回報已儲存在此瀏覽器
@@ -32,25 +45,32 @@ export function ReportDone({
       <div className="done-grid">
         <section className="card">
           <Icon name="clock" />
-          <span className="eyebrow">PENDING POINTS</span>
-          <strong className="done-points">+{info.points}</strong>
-          <span className="status-pill half">待確認</span>
+          <span className="eyebrow">REVIEW BEFORE REWARD</span>
+          <strong className="done-points">+{award}</strong>
+          <span className="status-pill half">
+            {reportIsFinal(report) ? "已有審核結果" : "審核中"}
+          </span>
           <p>
-            清潔員到場確認屬實後才入帳。
+            {report.firstReporter
+              ? `確認屬實後${report.adopter ? "認養者得 2 點" : "一般回報得 1 點"}。`
+              : "此為同事件後續回報，沒有點數獎勵。"}
             <br />
-            示範回報維持待確認，不能用於兌換。
+            審核前不入帳，也不能用於兌換。
           </p>
         </section>
         <section className="card">
-          <span className="stamp-mark">順</span>
-          <h2>拿到這個桶的專屬印章</h2>
+          <span className="level-seal small-seal">{level.current.symbol}</span>
+          <h2>目前等級：{level.current.name}</h2>
           <p>
-            同一個桶只收集一次。
+            累積 {points} 點
+            {!reportIsFinal(report) && ` · 通過後 ${projected} 點`}
             <br />
-            {location.district}集章 {count} / 20
+            {level.next
+              ? `距離「${level.next.name}」還差 ${Math.max(0, level.next.threshold - projected)} 點`
+              : "已達最高等級"}
           </p>
-          <a href="#stamps">
-            查看我的集章
+          <a href={`#review/${report.id}`}>
+            看審核結果
             <Icon name="arrow" />
           </a>
         </section>
@@ -59,7 +79,7 @@ export function ReportDone({
         <h2>送出之後，會發生什麼？</h2>
         <div>
           <span>
-            01<span>派工</span>
+            01<span>接單</span>
           </span>
           <i>→</i>
           <span>
@@ -70,11 +90,19 @@ export function ReportDone({
             03<span>點數入帳</span>
           </span>
         </div>
-        <p className="tiny">正式服務規劃流程 · 展示不會自動進行後續處理</p>
+        <p className="tiny">可在審核結果切換示意情境 · 不連接真實清潔隊</p>
       </div>
-      <a className="button primary" href="#map">
+      <div className="done-actions">
+        <a className="button primary" href={`#review/${report.id}`}>
+          看審核結果
+          <Icon name="arrow" />
+        </a>
+        <a className="button secondary" href="#member">
+          前往會員中心
+        </a>
+      </div>
+      <a className="back-link done-back" href="#map">
         回到地圖
-        <Icon name="arrow" />
       </a>
       <a className="back-link done-back" href={`#bin/${location.id}`}>
         再看看這個小夥伴

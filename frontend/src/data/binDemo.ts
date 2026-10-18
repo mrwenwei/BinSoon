@@ -1,7 +1,7 @@
 import type { LocationRecord } from "./locations";
 
 export type BinState = "hungry" | "half" | "full" | "unknown";
-export type BinFilter = "all" | "vehicle" | "dog" | "event" | "hungry";
+export type BinFilter = "all" | "new" | "can-fit" | "hungry";
 export const stateLabels: Record<BinState, string> = {
   hungry: "餓了",
   half: "半飽",
@@ -10,9 +10,8 @@ export const stateLabels: Record<BinState, string> = {
 };
 export const binFilters: { id: BinFilter; label: string }[] = [
   { id: "all", label: "全部桶況" },
-  { id: "vehicle", label: "車上垃圾可丟" },
-  { id: "dog", label: "可丟狗便便" },
-  { id: "event", label: "活動限定" },
+  { id: "new", label: "新設的桶" },
+  { id: "can-fit", label: "還能裝的桶" },
   { id: "hungry", label: "只看餓了的" },
 ];
 
@@ -22,14 +21,23 @@ export function binDemo(location: LocationRecord) {
     (sum, char) => sum + char.charCodeAt(0),
     0,
   );
-  const state = (["hungry", "half", "full", "unknown"] as const)[seed % 4];
+  const removed = seed % 19 === 0;
+  const newAge = seed % 41;
+  const state = removed
+    ? "unknown"
+    : (["hungry", "half", "full", "unknown"] as const)[seed % 4];
   return {
     state,
     capacity: { hungry: 26, half: 62, full: 94, unknown: null }[state],
-    dog: seed % 2 === 0,
-    vehicle: seed % 3 === 0,
-    event: seed % 5 === 0,
-    adopter: ["巷口日常咖啡", "綠生活小隊", "暖暖早餐店"][seed % 3],
+    removed,
+    // Ages are frozen demo scenarios, not dates from the published inventory.
+    removedAge: removed ? seed % 7 : null,
+    newAge,
+    isNew: !removed && newAge < 30,
+    adopter:
+      seed % 4 === 0
+        ? null
+        : ["巷口日常咖啡", "綠生活小隊", "暖暖早餐店"][seed % 3],
     code: `TP-${String(location.source_row).padStart(3, "0")}`,
   };
 }
@@ -37,7 +45,9 @@ export function matchesBinFilter(location: LocationRecord, filter: BinFilter) {
   if (filter === "all") return true;
   if (location.kind !== "bin") return false;
   const demo = binDemo(location);
-  return filter === "hungry" ? demo.state === "hungry" : demo[filter];
+  if (filter === "new") return demo.isNew;
+  if (filter === "can-fit") return isUsableBin(location);
+  return !demo.removed && demo.state === "hungry";
 }
 
 // A fixed, disclosed demo starting point at Daan Park; never the user's location.
@@ -54,4 +64,22 @@ export function distanceLabel(meters: number) {
   return meters >= 1000
     ? `${(meters / 1000).toFixed(1)} 公里`
     : `${meters} 公尺`;
+}
+
+export const demoOrigin: [number, number] = [25.033, 121.5358];
+export function isUsableBin(location: LocationRecord) {
+  if (location.kind !== "bin") return false;
+  const demo = binDemo(location);
+  return !demo.removed && ["hungry", "half"].includes(demo.state);
+}
+export function walkingMinutes(location: LocationRecord) {
+  return Math.max(1, Math.ceil((demoDistance(location) * 1.3) / 75));
+}
+export function lifecycleLabel(location: LocationRecord) {
+  const demo = binDemo(location);
+  return demo.removed
+    ? `撤除 ${demo.removedAge} 天 · 保留 7 天`
+    : demo.isNew
+      ? `新設 ${demo.newAge} 天 · 標示 30 天`
+      : "";
 }

@@ -14,8 +14,14 @@ interface Props {
   locations: LocationRecord[];
   selected: LocationRecord | null;
   onSelect: (location: LocationRecord) => void;
+  demoRoute?: [number, number][];
 }
-export function LocationMap({ locations, selected, onSelect }: Props) {
+export function LocationMap({
+  locations,
+  selected,
+  onSelect,
+  demoRoute,
+}: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
@@ -74,6 +80,13 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
           location.kind,
           false,
           location.kind === "bin" ? binDemo(location).state : undefined,
+          location.kind === "bin"
+            ? binDemo(location).removed
+              ? "removed"
+              : binDemo(location).isNew
+                ? "new"
+                : undefined
+            : undefined,
         ),
         title: `${kindLabel[location.kind]}：${location.label}`,
         alt: `${kindLabel[location.kind]}：${location.label}`,
@@ -96,6 +109,13 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
           location.kind,
           location.id === selected?.id,
           location.kind === "bin" ? binDemo(location).state : undefined,
+          location.kind === "bin"
+            ? binDemo(location).removed
+              ? "removed"
+              : binDemo(location).isNew
+                ? "new"
+                : undefined
+            : undefined,
         ),
       );
       marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
@@ -106,6 +126,32 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
       animate: false,
     });
   }, [selected, locations]);
+  useEffect(() => {
+    if (!demoRoute?.length || !map.current) return;
+    const instance = map.current;
+    const line = L.polyline(demoRoute, {
+      color: "#305a48",
+      weight: 6,
+      dashArray: "10 9",
+    }).addTo(instance);
+    const origin = L.marker(demoRoute[0], {
+      icon: L.divIcon({
+        className: "demo-origin",
+        html: "<span>起</span>",
+        iconSize: [28, 28],
+      }),
+      title: "大安森林公園示意起點",
+    }).addTo(instance);
+    instance.fitBounds(line.getBounds(), {
+      padding: [55, 65],
+      maxZoom: 16,
+      animate: false,
+    });
+    return () => {
+      line.remove();
+      origin.remove();
+    };
+  }, [demoRoute]);
   return (
     <div className="map-wrap">
       <div

@@ -14,20 +14,33 @@ import {
   distanceLabel,
   matchesBinFilter,
   stateLabels,
+  isUsableBin,
+  walkingMinutes,
+  lifecycleLabel,
   type BinFilter,
 } from "./data/binDemo";
-import { availablePoints, useDemoStore } from "./data/demoStore";
+import {
+  availablePoints,
+  reviewReport,
+  redeemReward,
+  rewardStock,
+  reportingSuspended,
+  useDemoStore,
+} from "./data/demoStore";
 import { emptyDraft, type ReportDraft } from "./data/reports";
 import { LocationMap } from "./map/LocationMap";
 import { Mascot } from "./components/Mascot";
 import { Icon } from "./components/Icon";
 import { LocationDetails } from "./components/LocationDetails";
+import { NavigationPage } from "./components/NavigationPage";
 import { BinDetail } from "./components/BinDetail";
 import { LoginPage } from "./components/LoginPage";
 import { ReportPage } from "./components/ReportPage";
 import { ReportDone } from "./components/ReportDone";
-import { StampsPage, stampCount } from "./components/StampsPage";
-import { ScanPage } from "./components/ScanPage";
+import { MemberPage } from "./components/MemberPage";
+import { ReviewPage } from "./components/ReviewPage";
+import { RewardsPage } from "./components/RewardsPage";
+import type { Reward } from "./data/rewards";
 
 export default function App() {
   const [route, setRoute] = useState(
@@ -71,9 +84,16 @@ export default function App() {
         .sort((a, b) => demoDistance(a) - demoDistance(b)),
     [district, kind, filter, query],
   );
+  const nearest = visible.filter(isUsableBin).slice(0, 3);
   const [path, search] = route.split("?");
   const params = new URLSearchParams(search);
-  const [page, id] = path.split("/");
+  const [requestedPage, id] = path.split("/");
+  const page =
+    requestedPage === "stamps"
+      ? "member"
+      : requestedPage === "scan"
+        ? "report"
+        : requestedPage;
   const location = locations.find(
     (item) => item.id === id && item.kind === "bin",
   );
@@ -90,10 +110,10 @@ export default function App() {
     const [nextPage, nextId] = nextPath.split("/");
     const valid =
       next === "map" ||
-      next === "stamps" ||
-      ((["report", "scan", "bin"].includes(nextPage)
+      ["member", "rewards", "stamps"].includes(next) ||
+      ((["report", "scan", "bin", "nav"].includes(nextPage)
         ? locations.some((item) => item.id === nextId && item.kind === "bin")
-        : nextPage === "report-done" &&
+        : ["report-done", "review"].includes(nextPage) &&
           state.reports.some((item) => item.id === nextId)) &&
         /^[a-z-]+\/[\da-f-]+(?:\?demo=1)?$/.test(next));
     window.location.hash = valid ? next : "map";
@@ -102,7 +122,9 @@ export default function App() {
     if (
       submitting.current ||
       !location ||
+      binDemo(location).removed ||
       !state.loggedIn ||
+      reportingSuspended(state) ||
       !draft.type ||
       !draft.photo ||
       draft.proximity !== "near" ||
@@ -119,13 +141,31 @@ export default function App() {
       type: draft.type,
       description: draft.description.trim(),
       createdAt: new Date().toISOString(),
+      status: "pending" as const,
+      adopter: draft.adopter,
+      firstReporter: draft.firstReporter,
     };
     setState((prev) => ({
       ...prev,
       reports: [...prev.reports, record],
-      stamps: [...new Set([...prev.stamps, location.id])],
     }));
     window.location.hash = `report-done/${record.id}`;
+  }
+  function redeem(reward: Reward) {
+    if (
+      !state.loggedIn ||
+      availablePoints(state) < reward.cost ||
+      rewardStock(state, reward) <= 0
+    )
+      return;
+    const order = {
+      id: crypto.randomUUID(),
+      rewardId: reward.id,
+      cost: reward.cost,
+      createdAt: new Date().toISOString(),
+    };
+    setState((prev) => redeemReward(prev, order));
+    window.location.hash = `rewards?receipt=${order.id}`;
   }
   const select = useCallback((item: LocationRecord) => {
     if (item.kind === "bin") window.location.hash = `bin/${item.id}`;
@@ -137,7 +177,7 @@ export default function App() {
     setSelected(null);
   }
   function unavailable(label: string) {
-    setNotice(`${label}屬於其他 flow，本次先體驗找桶、回報與集章。`);
+    setNotice(`${label}屬於其他 flow，本次先體驗找桶、回報與會員集點。`);
   }
   return (
     <div className="app-shell">
@@ -155,15 +195,17 @@ export default function App() {
           >
             找垃圾桶
           </a>
-          <button onClick={() => unavailable("預約小車")}>預約小車</button>
           <button onClick={() => unavailable("這裡需要桶")}>這裡需要桶</button>
           <button onClick={() => unavailable("認養電子雞")}>認養電子雞</button>
+          <button onClick={() => unavailable("清潔隊榮譽榜")}>
+            清潔隊榮譽榜
+          </button>
         </nav>
         <span className="prototype">A FLOW · 展示模式</span>
-        <a className="account-link" href="#stamps">
+        <a className="account-link" href="#member">
           <Icon name="star" />
           <span>{availablePoints(state)} 點</span>
-          <strong>我的集章</strong>
+          <strong>會員中心</strong>
         </a>
         <a
           className="login-link"
@@ -197,7 +239,9 @@ export default function App() {
                   可以丟<span className="dot">？</span>
                 </h1>
                 <p>找到城市小夥伴，讓垃圾有個家。</p>
-                <span className="demo-tag">大安區試辦 · 桶況為示意資料</span>
+                <span className="demo-tag">
+                  大安區試辦 · 桶況與設撤均為示意
+                </span>
               </div>
               <div className="filters">
                 <label className="search-field">
@@ -261,12 +305,39 @@ export default function App() {
                   ))}
                 </div>
               </div>
+              {nearest.length > 0 && (
+                <section className="nearest-card">
+                  <h2>最近的可用小夥伴</h2>
+                  <p className="tiny">固定大安森林公園起點 · 非目前定位</p>
+                  <ol className="nearest-list" aria-label="最近三個可用桶">
+                    {nearest.map((item, index) => (
+                      <li key={item.id}>
+                        <span>{index + 1}</span>
+                        <a href={`#bin/${item.id}`}>
+                          <strong>{item.label}</strong>
+                          <small>
+                            步行約 {walkingMinutes(item)} 分鐘 · 示意估算
+                          </small>
+                        </a>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
               <div className="results-heading" role="status">
                 <strong>{query ? "搜尋結果" : "附近的小夥伴"}</strong>
                 <span>{visible.length} 筆位置紀錄</span>
               </div>
               <p className="distance-note">
                 依大安森林公園示意起點排序 · 直線距離
+                <br />
+                新設{" "}
+                {
+                  visible.filter(
+                    (item) => item.kind === "bin" && binDemo(item).isNew,
+                  ).length
+                }{" "}
+                桶（示意）
               </p>
               <div className="location-list" aria-label="位置清單">
                 {visible.length === 0 && (
@@ -304,9 +375,16 @@ export default function App() {
                         </small>
                         <span className={`row-state ${demo?.state || "place"}`}>
                           {demo
-                            ? `● ${stateLabels[demo.state]}${demo.dog ? " · 可丟狗便便" : ""}`
+                            ? `● ${demo.removed ? "已撤除（示意）" : stateLabels[demo.state]}`
                             : "✦ 場所代表點"}
                         </span>
+                        {demo && lifecycleLabel(item) && (
+                          <small
+                            className={`lifecycle-label ${demo.removed ? "removed" : ""}`}
+                          >
+                            {lifecycleLabel(item)}（示意）
+                          </small>
+                        )}
                       </span>
                       <Icon name="arrow" />
                     </button>
@@ -372,6 +450,12 @@ export default function App() {
             }
             onNotice={setNotice}
           />
+        ) : page === "nav" && location ? (
+          <NavigationPage
+            key={`${id}/${params.get("from") || ""}`}
+            location={location}
+            fromId={params.get("from")}
+          />
         ) : page === "report" && location ? (
           <ReportPage
             location={location}
@@ -384,12 +468,19 @@ export default function App() {
             onSubmit={submitReport}
             reports={state.reports}
             loginHref={loginHref}
+            suspended={reportingSuspended(state)}
           />
         ) : page === "report-done" && report && reportLocation ? (
-          <ReportDone
+          <ReportDone report={report} location={reportLocation} state={state} />
+        ) : page === "review" && report && reportLocation ? (
+          <ReviewPage
             report={report}
             location={reportLocation}
-            count={stampCount(state, reportLocation.district)}
+            state={state}
+            loginHref={loginHref}
+            onReview={(status) =>
+              setState((prev) => reviewReport(prev, report.id, status))
+            }
           />
         ) : page === "login" ? (
           <LoginPage
@@ -400,33 +491,14 @@ export default function App() {
               window.location.hash = "map";
             }}
           />
-        ) : page === "scan" && location ? (
-          <ScanPage
-            key={location.id}
-            location={location}
-            collected={state.stamps.includes(location.id)}
-            loggedIn={state.loggedIn}
-            loginHref={loginHref}
-            onCollect={() => {
-              if (!state.loggedIn) return;
-              setState((prev) => ({
-                ...prev,
-                stamps: [...new Set([...prev.stamps, location.id])],
-              }));
-              window.location.hash = "stamps";
-            }}
-          />
-        ) : page === "stamps" ? (
-          <StampsPage
+        ) : page === "rewards" ? (
+          <RewardsPage
             state={state}
-            onRedeem={() =>
-              setState((prev) =>
-                prev.loggedIn && !prev.redeemed && availablePoints(prev) >= 200
-                  ? { ...prev, redeemed: true }
-                  : prev,
-              )
-            }
+            receiptId={params.get("receipt")}
+            onRedeem={redeem}
           />
+        ) : page === "member" ? (
+          <MemberPage state={state} onNotice={setNotice} />
         ) : (
           <main className="page not-found">
             <Mascot />
@@ -446,15 +518,14 @@ export default function App() {
           <Icon name="map" />
           地圖
         </a>
-        <button onClick={() => unavailable("預約小車")}>
-          <Icon name="clock" />
-          小車
-        </button>
         <button onClick={() => unavailable("要桶投票")}>
           <Icon name="pin" />
           要桶投票
         </button>
-        <a className={page === "stamps" ? "active" : ""} href="#stamps">
+        <a
+          className={page === "member" || page === "rewards" ? "active" : ""}
+          href="#member"
+        >
           <Icon name="star" />
           我的
         </a>

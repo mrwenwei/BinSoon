@@ -1,6 +1,6 @@
 import type { LocationRecord } from "../data/locations";
 import { useMemo, useState } from "react";
-import { binDemo, stateLabels } from "../data/binDemo";
+import { binDemo, stateLabels, lifecycleLabel } from "../data/binDemo";
 import { Icon } from "./Icon";
 import { Mascot } from "./Mascot";
 import { LocationDetails } from "./LocationDetails";
@@ -36,7 +36,7 @@ export function BinDetail({
             {location.district} · #{demo.code} · 小開口桶（示意）
           </p>
         </div>
-        <span className="demo-tag">桶況為示意資料</span>
+        <span className="demo-tag">桶況與設撤狀態為示意資料</span>
       </div>
       <div className="detail-grid">
         <section
@@ -54,7 +54,7 @@ export function BinDetail({
             <span className="buddy-shadow" />
           </div>
           <span className={`status-pill ${demo.state}`}>
-            {stateLabels[demo.state]}{" "}
+            {demo.removed ? "已撤除" : stateLabels[demo.state]}{" "}
             {demo.capacity !== null && `${demo.capacity}%`}
           </span>
           <h2>
@@ -65,19 +65,31 @@ export function BinDetail({
                 : "謝謝你，讓垃圾有個家。"}
           </h2>
           <p>
-            {demo.state === "unknown"
-              ? "沒有可用桶況，請到場確認。"
-              : demo.state === "full"
-                ? "建議回地圖找其他還餓著的桶。"
-                : "隨手的小垃圾，就交給我吧！"}
+            {demo.removed
+              ? "此桶為撤除示意，請改用其他可用桶。"
+              : demo.state === "unknown"
+                ? "沒有可用桶況，請到場確認。"
+                : demo.state === "full"
+                  ? "建議回地圖找其他還餓著的桶。"
+                  : "隨手的小垃圾，就交給我吧！"}
           </p>
           <div className="buddy-tags">
-            <span>認養：{demo.adopter}</span>
-            {demo.dog && <span>可丟狗便便</span>}
-            {demo.vehicle && <span>車上垃圾可丟</span>}
-            {demo.event && <span>活動限定</span>}
+            <span>認養：{demo.adopter || "還沒有認養者"}</span>
+            {lifecycleLabel(location) && (
+              <span>{lifecycleLabel(location)}</span>
+            )}
           </div>
-          <span className="tiny">認養、開口與收受類型均為展示設定</span>
+          {!demo.adopter && (
+            <button
+              className="button secondary"
+              onClick={() =>
+                onNotice("認養屬於 B flow，本版先提供找桶與回報展示。")
+              }
+            >
+              成為這個桶的認養者
+            </button>
+          )}
+          <span className="tiny">認養、開口與設撤狀態均為展示設定</span>
         </section>
         <div className="detail-stack">
           <section className="card capacity-card">
@@ -112,19 +124,18 @@ export function BinDetail({
             </p>
           </section>
           <div className="action-row">
-            <a
-              className="button primary"
-              href={`https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}&travelmode=walking`}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a className="button primary" href={`#nav/${location.id}`}>
               <Icon name="pin" />
-              導航過去
+              {demo.removed || demo.state === "full"
+                ? "尋找可用桶並導航"
+                : "導航過去"}
             </a>
-            <a className="button secondary" href={`#report/${location.id}`}>
-              <Icon name="report" />
-              回報問題
-            </a>
+            {!demo.removed && (
+              <a className="button secondary" href={`#report/${location.id}`}>
+                <Icon name="report" />
+                回報問題
+              </a>
+            )}
           </div>
           <section className="thanks-card">
             <span className="thanks-icon">
@@ -138,26 +149,17 @@ export function BinDetail({
               {liked ? "已按讚" : "按讚"}
             </button>
           </section>
-          <section className="card stamp-teaser">
-            <span className="stamp-mark">順</span>
-            <div>
-              <h3>每個小夥伴，都有專屬印章</h3>
-              <p>手機完成示範回報或掃碼，就能收集這個桶。</p>
-              <a href={`#scan/${location.id}`}>
-                試試示範掃碼 <Icon name="arrow" />
-              </a>
-            </div>
+          <section className="card litter-reminder">
+            <span className="eyebrow">A LITTLE, NOT A BAGFUL</span>
+            <h3>只收隨手垃圾，請勿投入家用垃圾</h3>
+            <p className="muted">
+              小開口留給外出時的小垃圾，謝謝你一起照顧環境。
+            </p>
+            <p>回報確認屬實，一般 +1 點、認養者 +2 點；同事件僅第一位得點。</p>
+            <a href="#member">
+              查看會員集點 <Icon name="arrow" />
+            </a>
           </section>
-          <button
-            className="truck-notice"
-            onClick={() =>
-              onNotice(
-                "預約小車屬於 C flow，尚未開放；家用垃圾請依台北市收運規定處理。",
-              )
-            }
-          >
-            家用垃圾請交給垃圾車 <span>明早 7:00 · 和平東路市場（示意） ↗</span>
-          </button>
         </div>
       </div>
       <div className="source-card">
