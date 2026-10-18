@@ -39,3 +39,11 @@
 依使用者要求移除 Leaflet 範圍圈線、詳情的距離參考欄位與相關說明。桶詳情入口改為「查看地圖位置」，可繼續查看及縮放單一位置。上方驗證內容保留初次交付的歷史結果。
 
 調整後再次執行 typecheck、data:check、build，皆通過；完整 test:e2e **14 passed（1.1m）**。回歸確認場所代表點與桶詳情地圖皆沒有範圍覆蓋，並保留位置標記、來源精度、縮放及署名。已檢視桌面及手機模擬截圖；未以實體手機驗證。資料及展示模式限制同上。
+
+## 合併 main 前：組員本機 build 驗證
+
+使用乾淨的已提交原始碼副本（不含原工作目錄的 node_modules、dist 或 .env），在 macOS 的 Node **24.22.0** 下執行 `npm ci`、`npm run typecheck`、`npm run data:check`、`npm run build`，皆通過。沒有依賴本機原有套件或後端服務。
+
+以 `npm run preview -- --port 4180 --strictPort` 啟動正式產物；HTTP 檢查確認首頁、編譯後 JavaScript 及 CSS 皆回傳 200。4180 只用於避免本機測試時衝突，組員依 README 使用預設 4173 或終端機顯示的 Local URL 即可。
+
+根目錄及 frontend README 已改為從 `main` clone／更新，並加入 lockfile 安裝、build、preview、開發模式及常見問題。此輪只修改文件，前端程式沿用上方完整 E2E 14 項通過的版本；其他組員的 Windows／Linux 或實體手機尚未逐台驗證。

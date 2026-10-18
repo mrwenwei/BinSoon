@@ -175,7 +175,7 @@ docker compose exec api pytest -q
 
 ## 12. 前端地圖與 A flow 展示
 
-前端獨立啟動／建置，見 [frontend/README.md](../frontend/README.md)。初版地圖驗收見 [FRONTEND_V0.md](FRONTEND_V0.md)，使用者後續確認的 A flow 範圍及驗證見 [A_FLOW.md](A_FLOW.md)。10/20 初步展示、10/24 正式 Demo。
+組員從 `main` 取得前端，使用 Node 24 與 lockfile 安裝依賴後，可獨立 build／預覽，不需啟動後端或建立 `.env`。首次 clone、既有 checkout 更新與疑難排解見 [frontend/README.md](../frontend/README.md)。初版地圖驗收見 [FRONTEND_V0.md](FRONTEND_V0.md)，使用者後續確認的 A flow 範圍及驗證見 [A_FLOW.md](A_FLOW.md)。10/20 初步展示、10/24 正式 Demo。
 
 地圖以 Leaflet 顯示自製擬人像素標記與選取位置，MapLibre 透過官方 Leaflet adapter 顯示 OpenFreeMap Liberty 底圖；保留 OpenFreeMap、OpenMapTiles、OpenStreetMap 與 Leaflet 署名。需要網路及 WebGL，底圖失敗時顯示提示，靜態位置清單仍可使用。
 
