@@ -5,7 +5,7 @@
 ## 儲存庫邊界
 
 - `backend/` 包含後端程式、資料、migration、測試、Docker 設定、環境變數範例與 `backend/docs/` 部署文件。
-- `frontend/` 預留給後續前端，目前不存在；未有需求時不要建立前端或指定框架。
+- `frontend/` 是 React＋TypeScript＋Vite 地圖 V0，獨立開發與建置；前端工作另讀 `frontend/AGENTS.md`。
 - `docs/PROJECT_CONTEXT.md` 保存領域定義、資料限制、架構與驗收條件。
 - 後端指令的工作目錄為 `backend/`。若從根目錄執行 Compose，使用 `docker compose -f backend/compose.yaml --env-file backend/.env ...`。
 

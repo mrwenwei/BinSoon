@@ -1,5 +1,30 @@
 # BinSoon 專案背景與架構
 
+PM 提供的 PRD、Web flow、手機 App flow 與新增 User flow，統一由 [產品需求與使用者流程](PRODUCT_REQUIREMENTS.md) 提供入口。該頁記錄產品規劃來源；目前已確認的實作範圍仍以本文件與 [A flow 規格](A_FLOW.md) 為準。
+
+[B flow 規格](B_FLOW.md) 已於2026-10-18完成使用者確認，範圍為 P10–P16 前端本機展示，已加入投票、認養、快捷通報與展示控制。A flow 認養資格與回報事件週期已同步調整；驗證結果見 [B flow 驗證紀錄](B_FLOW_VALIDATION.md)。
+
+## 1. 產品目標與目前範圍
+
+BinSoon（台北丟垃圾變順）是台北市智慧垃圾桶黑客松 MVP。先以大安區作為主要分析與展示範圍，資料設計與 API 應能支援台北市十二行政區。
+
+目前已完成資料初始化、基本讀取、候選點新增與空間距離查詢。前端位於 `frontend/`，使用 React＋TypeScript＋Vite、Leaflet＋MapLibre 展示 811 筆位置紀錄（681 筆公布桶位置＋130 筆場所代表點），支援十二行政區篩選。前端已加入 [A flow 展示](A_FLOW.md)：找桶、桶詳情、示範登入、導航、回報審核與會員／獎品兌換（1018 版本於 `feat/frontend-v0`）。讀取原始 CSV 產生的靜態快照，未串接後端 API；新增桶況及互動皆為標示清楚的示意資料，不提供即時桶況。未實作 IoT、模擬感測器、推薦演算法、裝置管理、收運排程或自動選址。
+
+「候選點」表示需要人工現勘的提案，不表示已核准設置或已有真實清潔箱。距離較遠也不等於已證明有設置需求；本階段不提供此類推論。
+
+## 2. 儲存庫與執行位置
+
+儲存庫：`git@github.com:mrwenwei/BinSoon.git`。
+
+後端全部位於 `backend/`，前端位於 `frontend/`。後端 Docker build context、掛載路徑、pytest 工作目錄與 importer 預設資料目錄都以 `backend/` 為基準。
+
+從根目錄使用 Compose 時需同時指定檔案及環境檔：
+
+```sh
+docker compose -f backend/compose.yaml --env-file backend/.env up --build
+```
+
+建議直接 `cd backend` 後執行文件中的指令。Compose 專案名稱固定為 `trashbin_soon`，保留原開發環境的容器／volume 命名與資料相容性。
 ## 產品與範圍
 
 台北市智慧垃圾桶 MVP，地圖預設大安區，資料支援十二行政區。已有資料初始化、點位查詢、新增 Bin、滿度／清運歷史及可重現模擬。尚無前端、IoT 硬體通訊、選址最佳化或正式派工。
