@@ -1,15 +1,17 @@
 import { test, expect } from "@playwright/test";
 
-test("811 records, district filters, distinct precision, circles and usable map", async ({
+test("811 original records, twelve districts, source precision and 150m reference survive A flow", async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.locator(".location-row")).toHaveCount(47);
+  await expect(page.locator("#district option")).toHaveCount(13);
+  await page.locator("#district").selectOption("all");
+  await page.getByRole("button", { name: "全部", exact: true }).click();
   await expect(page.locator(".location-row")).toHaveCount(811);
   await expect(page.locator(".leaflet-marker-icon")).toHaveCount(811);
-  await expect(page.locator("#district option")).toHaveCount(13);
   await page.locator("#district").selectOption("大安區");
   await expect(page.locator(".location-row")).toHaveCount(65);
   await page.getByRole("button", { name: "公布桶位置", exact: true }).click();
@@ -17,37 +19,25 @@ test("811 records, district filters, distinct precision, circles and usable map"
   await page.getByRole("button", { name: "場所代表點", exact: true }).click();
   await expect(page.locator(".location-row")).toHaveCount(18);
   await page.locator(".map-section").scrollIntoViewIfNeeded();
-  const marker = page.locator(
-    '.leaflet-marker-icon[title="場所代表點：麟光捷運站"]',
-  );
-  await marker.click();
-  await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
-    "並非個別清潔箱位置",
-  );
-  await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
-    "經度 / 緯度",
-  );
-  await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
-    "150m",
-  );
+  await page
+    .locator('.leaflet-marker-icon[title="場所代表點：麟光捷運站"]')
+    .click();
+  const details = page.getByRole("region", { name: "位置詳情" });
+  await expect(details).toContainText("並非個別清潔箱位置");
+  await expect(details).toContainText("經度 / 緯度");
+  await expect(details).toContainText("150m");
   await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(1);
   await page.getByText("來源與位置精度", { exact: true }).click();
-  await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
-    "daan_hotspot_gap_screening.csv",
-  );
-  await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
-    "representative_point_only",
-  );
+  await expect(details).toContainText("daan_hotspot_gap_screening.csv");
+  await expect(details).toContainText("representative_point_only");
   await page.screenshot({
-    path: testInfo.outputPath("detail.png"),
+    path: testInfo.outputPath("place-source.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "關閉位置詳情" }).click();
-  await expect(page.getByRole("region", { name: "位置詳情" })).toHaveCount(0);
+  await expect(details).toHaveCount(0);
   await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(0);
-  await page.locator("#district").selectOption("all");
   await page.getByRole("button", { name: "全部", exact: true }).click();
-  await expect(page.locator(".location-row")).toHaveCount(811);
   for (const district of [
     "中正區",
     "大同區",
@@ -71,8 +61,8 @@ test("811 records, district filters, distinct precision, circles and usable map"
   await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
     "依公布座標標示",
   );
-  await page.getByRole("button", { name: "關閉位置詳情" }).click();
-  await page.locator(".map-section").scrollIntoViewIfNeeded();
+  await page.getByText("查看位置與 150m 直線參考圈", { exact: true }).click();
+  await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(1);
   await page.getByRole("button", { name: "Zoom in", exact: true }).click();
   await expect(page.locator(".leaflet-control-attribution")).toContainText(
     "OpenStreetMap",
@@ -83,10 +73,6 @@ test("811 records, district filters, distinct precision, circles and usable map"
     ),
   ).toBeTruthy();
   expect(errors).toEqual([]);
-  await page.screenshot({
-    path: testInfo.outputPath("map.png"),
-    fullPage: true,
-  });
 });
 
 test("basemap connection failure leaves records accessible", async ({
@@ -97,7 +83,7 @@ test("basemap connection failure leaves records accessible", async ({
   );
   await page.goto("/");
   await expect(page.locator(".map-warning")).toBeVisible({ timeout: 20000 });
-  await expect(page.locator(".location-row")).toHaveCount(811);
+  await expect(page.locator(".location-row")).toHaveCount(47);
   await page.locator(".location-row").first().click();
   await expect(page.getByRole("region", { name: "位置詳情" })).toBeVisible();
 });

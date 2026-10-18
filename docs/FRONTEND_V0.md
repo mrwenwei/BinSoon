@@ -1,6 +1,8 @@
-# 地圖 V0 規格與討論來源
+# 地圖 V0 規格與討論來源（歷史範圍）
 
-- 本次驗收範圍：[GitHub Issue #1](https://github.com/mrwenwei/BinSoon/issues/1)，保存 2026-10-18 使用者授權的需求。
+> 後續範圍更新：使用者於 2026-10-18 確認並授權實作 [A flow 展示](A_FLOW.md)。以下保存初版 V0 的需求，包含「預設全市」等歷史行為；目前預設大安區公布桶位置，新增登入／回報／集章僅為展示。
+
+- 初版驗收範圍：[GitHub Issue #1](https://github.com/mrwenwei/BinSoon/issues/1)，保存 2026-10-18 使用者授權的需求。
 - PM 完整原型：[智慧垃圾桶 介面流程（Web＋手機 Web）](https://claude.ai/artifact/Eng4CbzrW5vFfRyWWViHf8#page-ed25c7b30423)。可能需要受邀帳號查看；包含後續 A＋B 與其他營運頁面，不全部納入本次實作。
 - 共用領域與來源資料：[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)。
 

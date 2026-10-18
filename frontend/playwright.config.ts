@@ -3,6 +3,8 @@ export default defineConfig({
   testDir: "./tests",
   timeout: 60000,
   fullyParallel: false,
+  // MapLibre uses a GPU/WebGL context per page; avoid oversubscribing local renderers.
+  workers: 2,
   use: { baseURL: "http://127.0.0.1:5173", trace: "retain-on-failure" },
   webServer: {
     command: "npm run dev -- --port 5173",

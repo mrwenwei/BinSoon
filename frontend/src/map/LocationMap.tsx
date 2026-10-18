@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { kindLabel, type LocationRecord } from "../data/locations";
 import { markerIcon } from "./marker";
+import { binDemo } from "../data/binDemo";
 setWorkerUrl(workerUrl);
 
 interface Props {
@@ -70,7 +71,11 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
     markerRecords.current = [];
     for (const location of locations) {
       const marker = L.marker([location.latitude, location.longitude], {
-        icon: markerIcon(location.kind, false),
+        icon: markerIcon(
+          location.kind,
+          false,
+          location.kind === "bin" ? binDemo(location).state : undefined,
+        ),
         title: `${kindLabel[location.kind]}：${location.label}`,
         alt: `${kindLabel[location.kind]}：${location.label}`,
         riseOnHover: true,
@@ -91,7 +96,13 @@ export function LocationMap({ locations, selected, onSelect }: Props) {
       circle.current = null;
     }
     for (const { marker, location } of markerRecords.current) {
-      marker.setIcon(markerIcon(location.kind, location.id === selected?.id));
+      marker.setIcon(
+        markerIcon(
+          location.kind,
+          location.id === selected?.id,
+          location.kind === "bin" ? binDemo(location).state : undefined,
+        ),
+      );
       marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
     }
     if (!selected) return;
