@@ -4,7 +4,7 @@
 
 BinSoon（台北丟垃圾變順）是台北市智慧垃圾桶黑客松 MVP。先以大安區作為主要分析與展示範圍，資料設計與 API 應能支援台北市十二行政區。
 
-目前已完成資料初始化、基本讀取、候選點新增與空間距離查詢。後續可能建立前端，但目前沒有前端程式或已選定的前端技術。未實作 IoT、模擬感測器、推薦演算法、裝置管理、收運排程或自動選址。
+目前已完成資料初始化、基本讀取、候選點新增與空間距離查詢。前端位於 `frontend/`，使用 React＋TypeScript＋Vite、Leaflet＋MapLibre 展示 811 筆位置紀錄（681 筆公布桶位置＋130 筆場所代表點），支援十二行政區篩選。前端已加入 [A flow 展示](A_FLOW.md)：找桶、桶詳情、示範登入、回報與集章／兌換。讀取原始 CSV 產生的靜態快照，未串接後端 API；新增桶況及互動皆為標示清楚的示意資料，不提供即時桶況。未實作 IoT、模擬感測器、推薦演算法、裝置管理、收運排程或自動選址。
 
 「候選點」表示需要人工現勘的提案，不表示已核准設置或已有真實清潔箱。距離較遠也不等於已證明有設置需求；本階段不提供此類推論。
 
@@ -12,7 +12,7 @@ BinSoon（台北丟垃圾變順）是台北市智慧垃圾桶黑客松 MVP。先
 
 儲存庫：`git@github.com:mrwenwei/BinSoon.git`。
 
-後端全部位於 `backend/`，未來前端位於 `frontend/`。後端 Docker build context、掛載路徑、pytest 工作目錄與 importer 預設資料目錄都以 `backend/` 為基準。
+後端全部位於 `backend/`，前端位於 `frontend/`。後端 Docker build context、掛載路徑、pytest 工作目錄與 importer 預設資料目錄都以 `backend/` 為基準。
 
 從根目錄使用 Compose 時需同時指定檔案及環境檔：
 
@@ -148,7 +148,7 @@ Migration 必須是可追溯 revision。未來 schema 修改新增 migration；�
 
 PostGIS 映像使用 PostgreSQL 16 / PostGIS 3.4、linux/amd64；Apple Silicon 需要 Docker 模擬支援。Python runtime 為 3.12，依賴由 requirements.lock 固定。Compose 掛載 app、scripts、alembic、tests，以及唯讀 data；API 程式改動後需重啟服務，容器啟動未使用 uvicorn --reload。
 
-本階段尚無登入／權限、分頁、更新／刪除端點。Cloud Run 部署流程見第 11 節。若未來開放對外存取，需先依實際部署需求補足這些能力，不要將本機 Docker 設定直接當成正式環境設計。
+後端尚無登入／權限、分頁、更新／刪除端點。Cloud Run 部署流程見第 11 節。若未來開放對外存取，需先依實際部署需求補足這些能力，不要將本機 Docker 設定直接當成正式環境設計。
 
 ## 10. 驗證與已知警告
 
@@ -172,3 +172,13 @@ docker compose exec api pytest -q
 ## 11. Cloud Run 部署
 
 部署架構與操作見 [CLOUD_RUN.md](CLOUD_RUN.md)。API 映像只啟動 HTTP；Compose 在啟動前執行 `scripts.initialize_db`，Cloud Run 使用獨立初始化 Job。初始化入口以 advisory lock 序列化 migration 與匯入。DB pool 上限每 instance 2 條連線，連線與 pool 等待均有 timeout。
+
+## 12. 前端地圖與 A flow 展示
+
+組員從 `main` 取得前端，使用 Node 24 與 lockfile 安裝依賴後，可獨立 build／預覽，不需啟動後端或建立 `.env`。首次 clone、既有 checkout 更新與疑難排解見 [frontend/README.md](../frontend/README.md)。初版地圖驗收見 [FRONTEND_V0.md](FRONTEND_V0.md)，使用者後續確認的 A flow 範圍及驗證見 [A_FLOW.md](A_FLOW.md)。10/20 初步展示、10/24 正式 Demo。
+
+地圖以 Leaflet 顯示自製擬人像素標記與選取位置，MapLibre 透過官方 Leaflet adapter 顯示 OpenFreeMap Liberty 底圖；保留 OpenFreeMap、OpenMapTiles、OpenStreetMap 與 Leaflet 署名。需要網路及 WebGL，底圖失敗時顯示提示，靜態位置清單仍可使用。
+
+資料快照保留 source_type、source_row、source_file、location_precision，不載入 18 筆缺口分析，不展開 reported_count。前端已依使用者要求移除範圍圈線，地圖只標示位置。原始資料日期與實際設置狀態未經本次現勘確認。
+
+A flow 預設大安區公布桶位置（47 筆），仍可切換全市及場所資料。示意距離以固定大安森林公園起點計算直線距離，不是使用者定位。帳號、按讚、回報、印章、兌換券保留於本瀏覽器；無真實簡訊、相機、定位或派工。回報點數維持待確認，不參與兌換；桶況、收受類型與認養者皆屬展示設定。

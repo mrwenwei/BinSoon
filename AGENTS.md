@@ -5,7 +5,7 @@
 ## 儲存庫邊界
 
 - `backend/` 包含後端程式、資料、migration、測試、Docker 設定與環境變數範例。
-- `frontend/` 預留給後續前端，目前不存在；未有需求時不要建立前端或指定框架。
+- `frontend/` 是 React＋TypeScript＋Vite 地圖 V0，獨立開發與建置；前端工作另讀 `frontend/AGENTS.md`。
 - `docs/PROJECT_CONTEXT.md` 保存領域定義、資料限制、架構與驗收條件。
 - 後端指令的工作目錄為 `backend/`。若從根目錄執行 Compose，使用 `docker compose -f backend/compose.yaml --env-file backend/.env ...`。
 
@@ -29,7 +29,7 @@
 - 請求驗證放在 Pydantic schemas，資料存取使用 SQLAlchemy；SQL 參數不得用使用者輸入字串拼接。
 - 座標必須驗證範圍與有限值。行政區支援十二區，GET 預設大安區。
 - 目前只實作指定的 GET 列表與 POST 候選點；更新、刪除需有明確需求後再加。
-- 不自行擴充 IoT、感測器模擬、推薦演算法、前端、Redis、Kafka、Celery 或微服務。
+- 不自行擴充 IoT、感測器模擬、推薦演算法、Redis、Kafka、Celery 或微服務。
 - 修改契約、資料假設或啟動流程時同步更新文件。
 
 ## 標準驗證流程
