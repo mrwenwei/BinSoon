@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useDemoStore } from "../data/demoStore";
+import { useEffect, useMemo, useState } from "react";
 import { useQrCode } from "./useQrCode";
 import {
   binDemo,
@@ -23,19 +24,21 @@ export function NavigationPage({
   fromId: string | null;
   removedIds: string[];
 }) {
+  const { state: operations } = useDemoStore();
   const alternatives = useMemo(
     () =>
       locations
         .filter((item) => !removedIds.includes(item.id))
-        .filter(isUsableBin)
+        .filter((item) => isUsableBin(item, operations, removedIds))
         .sort((a, b) => demoDistance(a) - demoDistance(b)),
-    [removedIds],
+    [removedIds, operations],
   );
   const original =
     locations.find((item) => item.id === fromId && item.kind === "bin") ||
     location;
   const initial =
-    !removedIds.includes(location.id) && isUsableBin(location)
+    !removedIds.includes(location.id) &&
+    isUsableBin(location, operations, removedIds)
       ? location
       : alternatives.find((item) => item.id !== location.id);
   const [destination, setDestination] = useState(initial);
@@ -67,6 +70,19 @@ export function NavigationPage({
         : [],
     [destination],
   );
+  useEffect(() => {
+    if (destination && !isUsableBin(destination, operations, removedIds)) {
+      setUnavailable((prev) => [...new Set([...prev, destination.id])]);
+      setDestination(
+        alternatives.find(
+          (item) =>
+            item.id !== destination.id && !unavailable.includes(item.id),
+        ),
+      );
+      setRerouted(true);
+      setArrived(false);
+    }
+  }, [operations, removedIds, alternatives, destination]);
   function reroute() {
     if (!destination) return;
     const blocked = [...unavailable, destination.id];
@@ -91,10 +107,11 @@ export function NavigationPage({
       </div>
       {rerouted && (
         <p className="reroute-notice" role="status">
-          {binDemo(original, removedIds).removed && unavailable.length < 2
+          {binDemo(original, removedIds, operations).removed &&
+          unavailable.length < 2
             ? "原目的桶已撤除，已改導另一個可用桶。"
             : unavailable.length < 2 &&
-                binDemo(original, removedIds).state === "unknown"
+                binDemo(original, removedIds, operations).state === "unknown"
               ? "原目的桶狀態未知，已改導另一個可用桶。"
               : "目的桶吃飽了，已改導另一個可用桶。"}
         </p>
@@ -127,7 +144,12 @@ export function NavigationPage({
                 <h2 className="navigation-destination">{destination.label}</h2>
               </div>
               <span className="status-pill hungry">
-                {stateLabels[binDemo(destination).state]} · 桶況為示意
+                {
+                  stateLabels[
+                    binDemo(destination, removedIds, operations).state
+                  ]
+                }{" "}
+                · 桶況為示意
               </span>
               <div className="navigation-estimate">
                 <strong>約 {walkingMinutes(destination)} 分鐘</strong>

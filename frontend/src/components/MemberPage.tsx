@@ -14,7 +14,7 @@ export function MemberPage({ state }: { state: DemoState }) {
   const points = cumulativePoints(state);
   const level = memberLevel(points);
   const approved = state.reports.filter(
-    (report) => report.status === "approved",
+    (report) => report.status === "approved" && report.reporter !== "fixture",
   ).length;
   return (
     <main className="page member-page">

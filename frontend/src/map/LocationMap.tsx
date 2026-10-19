@@ -1,3 +1,4 @@
+import { useDemoStore } from "../data/demoStore";
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
@@ -41,6 +42,7 @@ export function LocationMap({
   selectionBounds,
   removedIds,
 }: Props) {
+  const { state: operations } = useDemoStore();
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
@@ -95,7 +97,7 @@ export function LocationMap({
     markerRecords.current = [];
     for (const location of locations) {
       const marker = L.marker([location.latitude, location.longitude], {
-        icon: locationMarkerIcon(location, false, removedIds),
+        icon: locationMarkerIcon(location, false, removedIds, operations),
         title: `${kindLabel[location.kind]}：${location.label}`,
         alt: `${kindLabel[location.kind]}：${location.label}`,
         riseOnHover: true,
@@ -119,7 +121,12 @@ export function LocationMap({
   useEffect(() => {
     for (const { marker, location } of markerRecords.current) {
       marker.setIcon(
-        locationMarkerIcon(location, location.id === selected?.id, removedIds),
+        locationMarkerIcon(
+          location,
+          location.id === selected?.id,
+          removedIds,
+          operations,
+        ),
       );
       marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
     }
@@ -128,7 +135,7 @@ export function LocationMap({
     map.current!.setView(point, Math.max(map.current!.getZoom(), 16), {
       animate: false,
     });
-  }, [selected, locations, removedIds]);
+  }, [selected, locations, removedIds, operations]);
   useEffect(() => {
     if (!demoRoute?.length || !map.current) return;
     const instance = map.current;

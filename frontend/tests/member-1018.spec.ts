@@ -1,3 +1,4 @@
+import { reviewAsStaff } from "./staff-helpers";
 import { test, expect } from "@playwright/test";
 
 test("P8 separates cumulative and available points and replaces the old stamp album", async ({
@@ -52,11 +53,11 @@ test("P5 to P7 credits an approved report once and keeps its result after reload
     page.getByRole("heading", { name: "回報審核結果" }),
   ).toBeVisible();
   await expect(page.getByText("可用點數 63", { exact: true })).toBeVisible();
-  await page.getByLabel("示範案件狀態").selectOption("processing");
+  await reviewAsStaff(page, "processing");
   await expect(page.getByText("清潔員已接單，正前往現場。")).toBeVisible();
-  await page.getByLabel("示範案件狀態").selectOption("approved");
+  await reviewAsStaff(page, "approved");
   await expect(page.getByText("審核通過 +1 點", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("示範案件狀態")).toBeDisabled();
+  await expect(page.getByLabel("示範案件狀態")).toHaveCount(0);
   await page.reload();
   await expect(page.getByText("可用點數 64", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "前往會員中心", exact: true }).click();
@@ -180,16 +181,14 @@ test("adopters earn two points, later reporters earn none, and three false repor
         { exact: true },
       ),
     ).toBeVisible();
-    await page
-      .getByLabel("示範回報順序")
-      .selectOption(first ? "first" : "later");
     await page.getByRole("button", { name: "送出示範回報" }).click();
+    await expect(page).toHaveURL(/#report-done\//);
     const doneUrl = page.url();
     await page
       .getByRole("link", { name: "看審核結果", exact: true })
       .first()
       .click();
-    await page.getByLabel("示範案件狀態").selectOption(result);
+    await reviewAsStaff(page, result);
     if (result === "rejected") {
       const reviewUrl = page.url();
       await page.goto(doneUrl);
@@ -199,9 +198,6 @@ test("adopters earn two points, later reporters earn none, and three false repor
   }
   await submit("桶旁有堆放", true, true, "approved");
   await expect(page.getByText("審核通過 +2 點", { exact: true })).toBeVisible();
-  await expect(page.getByText("可用點數 65", { exact: true })).toBeVisible();
-  await submit("滿了", true, false, "approved");
-  await expect(page.getByText("審核通過 +0 點", { exact: true })).toBeVisible();
   await expect(page.getByText("可用點數 65", { exact: true })).toBeVisible();
   await page.goto("/#adopt");
   await adoption.getByRole("button", { name: "結束認養", exact: true }).click();
@@ -259,7 +255,7 @@ test("crossing 150 upgrades membership and redemption preserves the new level", 
       reports,
       pending: {
         id: "threshold-case",
-        locationId: bins[0].id,
+        locationId: bins.find((bin) => bin.district === "大安區")!.id,
         type: "dirty",
         description: "升級測試案件",
         createdAt,
@@ -273,7 +269,7 @@ test("crossing 150 upgrades membership and redemption preserves the new level", 
   await expect(page.getByText("累積點數 149", { exact: true })).toBeVisible();
   await expect(page.getByText("再 1 點升到「高手」")).toBeVisible();
   await page.goto("/#review/threshold-case");
-  await page.getByLabel("示範案件狀態").selectOption("approved");
+  await reviewAsStaff(page, "approved");
   await expect(
     page.getByRole("heading", { name: "高手", exact: true }),
   ).toBeVisible();

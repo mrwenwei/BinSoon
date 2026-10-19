@@ -18,6 +18,8 @@
 - [A flow 規格](A_FLOW.md)：已確認的 1018 P1–P9 展示範圍與資料界線。
 - [B flow 規格](B_FLOW.md)：使用者已確認的 P10–P16 本機展示、投票、認養與 A flow 接合規則；前端本機展示已加入，驗證見 [B flow 驗證紀錄](B_FLOW_VALIDATION.md)。
 - [B flow 討論與決策紀錄](B_FLOW_OPEN_QUESTIONS.md)：PRD／Web／User flow 差異、程式查核及16項已確認決策。
+- [D flow 規格](D_FLOW.md)：2026-10-19四輪確認的P17–P22本機工作台、查證／事件／工單、清空回傳、排名及A／B整合；前端本機展示已實作，驗證見 [D flow 驗證紀錄](D_FLOW_VALIDATION.md)。
+- [D flow 整合盤點與討論](D_FLOW_OPEN_QUESTIONS.md)：原文與程式查核、四輪答覆及IoT／獎勵規則的收斂紀錄。
 - [專案背景與架構](PROJECT_CONTEXT.md)：目前系統能力、領域規則、資料限制與 API 契約。
 - [A flow 驗證紀錄](A_FLOW_VALIDATION.md)：既有展示流程的驗證結果。
 - [A flow 1018 更新差異](A_FLOW_1018_GAP_ANALYSIS.md)：實作前缺漏、點數規則差異及三項已確認決策的歷史盤點。

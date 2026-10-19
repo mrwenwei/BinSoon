@@ -1,3 +1,4 @@
+import type { OperationalState } from "../data/workOrders";
 import L from "leaflet";
 import type { LocationKind, LocationRecord } from "../data/locations";
 import { binDemo, type BinState } from "../data/binDemo";
@@ -22,9 +23,10 @@ export function locationMarkerIcon(
   location: LocationRecord,
   selected: boolean,
   removedIds?: string[],
+  operations?: OperationalState,
 ) {
   if (location.kind !== "bin") return markerIcon(location.kind, selected);
-  const demo = binDemo(location, removedIds);
+  const demo = binDemo(location, removedIds, operations);
   return markerIcon(
     location.kind,
     selected,

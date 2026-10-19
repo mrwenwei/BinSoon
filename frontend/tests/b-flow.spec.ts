@@ -1,3 +1,4 @@
+import { reviewAsStaff } from "./staff-helpers";
 import { test, expect } from "@playwright/test";
 test.use({ actionTimeout: 10000 });
 
@@ -26,6 +27,9 @@ test("P11 votes count people, support changes and withdrawal survive reload", as
   await expect(page.getByRole("region", { name: "選取的提案" })).toContainText(
     "總投票人數 50 / 60",
   );
+  await expect(
+    page.getByRole("button", { name: "改投支持", exact: true }),
+  ).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("button", { name: "改投支持", exact: true }),
@@ -79,7 +83,7 @@ test("a final report allows a new event and retains both awards across reload", 
       .getByRole("link", { name: "看審核結果", exact: true })
       .first()
       .click();
-    await page.getByLabel("示範案件狀態").selectOption("approved");
+    await reviewAsStaff(page, "approved");
     await page.reload();
     await expect(
       page.getByText(`可用點數 ${64 + index}`, { exact: true }),
@@ -107,7 +111,7 @@ test("a new event requires a fresh photo and proximity check without reloading t
     .getByRole("link", { name: "看審核結果", exact: true })
     .first()
     .click();
-  await page.getByLabel("示範案件狀態").selectOption("approved");
+  await reviewAsStaff(page, "approved");
   await page.getByRole("link", { name: "查看這個桶", exact: true }).click();
   await page.getByRole("link", { name: "回報問題", exact: true }).click();
   if (!isMobile)
@@ -160,6 +164,7 @@ test("P14 approval grants A/B adopter rewards and ending adoption preserves subm
     page.getByRole("heading", { name: "快捷通報已受理（示範）" }),
   ).toBeVisible();
   await expect(page.locator(".done-points")).toHaveText("+2");
+  await expect(page).toHaveURL(/#report-done\//);
   const doneUrl = page.url();
   await page.goto("/#adopt");
   await application
@@ -172,7 +177,7 @@ test("P14 approval grants A/B adopter rewards and ending adoption preserves subm
     .getByRole("link", { name: "看審核結果", exact: true })
     .first()
     .click();
-  await page.getByLabel("示範案件狀態").selectOption("approved");
+  await reviewAsStaff(page, "approved");
   await expect(page.getByText("可用點數 65", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByText("可用點數 65", { exact: true })).toBeVisible();
@@ -380,6 +385,8 @@ test("P15 withdrawal, rejection and removal preserve history and do not grant ad
     .first()
     .getByRole("button", { name: "核准認養", exact: true })
     .click();
+  await expect(records.first()).toContainText("認養中");
+  await expect(records.first().getByRole("checkbox")).toHaveCount(3);
   for (const checkbox of await records.first().getByRole("checkbox").all())
     await checkbox.uncheck();
   await expect(records.first()).toContainText("你已關閉全部桶況通知。");

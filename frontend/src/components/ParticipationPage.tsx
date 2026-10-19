@@ -23,7 +23,10 @@ export function ParticipationPage({
   id,
 }: {
   state: ParticipationState;
-  act: (action: ParticipationAction, loggedIn: boolean) => string | null;
+  act: (
+    action: ParticipationAction,
+    loggedIn: boolean,
+  ) => Promise<string | null>;
   loggedIn: boolean;
   page: string;
   id?: string;
@@ -73,9 +76,9 @@ export function ParticipationPage({
     setPoint(value);
     setConfirmed(false);
   }, []);
-  function vote(choice: "support" | "oppose" | null) {
+  async function vote(choice: "support" | "oppose" | null) {
     if (!proposal) return;
-    const error = act(
+    const error = await act(
       { type: "vote", id: proposal.id, vote: choice },
       loggedIn,
     );
@@ -83,9 +86,9 @@ export function ParticipationPage({
     if (!error && page === "vote")
       window.location.hash = `vote-done/${proposal.id}`;
   }
-  function create() {
+  async function create() {
     const newId = createId.current;
-    const error = act(
+    const error = await act(
       {
         type: "create",
         id: newId,
@@ -99,8 +102,8 @@ export function ParticipationPage({
     setFeedback(error || "提案已建立，已投下你的支持票。");
     if (!error) window.location.hash = `vote-progress/${newId}`;
   }
-  function perform(action: ParticipationAction) {
-    const error = act(action, loggedIn);
+  async function perform(action: ParticipationAction) {
+    const error = await act(action, loggedIn);
     setFeedback(error || "展示結果已更新，未傳送外部服務。");
   }
   async function share() {

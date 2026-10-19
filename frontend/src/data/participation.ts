@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { usePersistentState } from "./persistentStore";
 import { locations } from "./locations";
 import { binDemo, demoOrigin } from "./binDemo";
 
@@ -262,7 +262,12 @@ export type ParticipationAction =
       status: AdoptionStatus;
       reason: string;
     }
-  | { type: "notifications"; id: string; preferences: NotificationPreferences }
+  | {
+      type: "notifications";
+      id: string;
+      preferences: NotificationPreferences;
+      changed: keyof NotificationPreferences;
+    }
   | { type: "remove-bin"; locationId: string };
 function validText(
   value: unknown,
@@ -329,8 +334,10 @@ function validAdoption(value: unknown): value is Adoption {
     validText(a.reason, 500, false)
   );
 }
-function readState(): ParticipationState {
+export function loadParticipationState(): ParticipationState {
   try {
+    if (localStorage.getItem(participationStorageKey) === null)
+      return initialState();
     const value = JSON.parse(
       localStorage.getItem(participationStorageKey) || "null",
     );
@@ -339,7 +346,7 @@ function readState(): ParticipationState {
       !Array.isArray(value.proposals) ||
       !value.proposals.every(validProposal)
     )
-      return initialState();
+      throw new Error("B帳本格式無法載入；來源已保留。");
     const proposals: Proposal[] = value.proposals;
     const adoptions: unknown = value.adoptions ?? [];
     const removedBinIds: unknown = value.removedBinIds ?? [];
@@ -351,7 +358,7 @@ function readState(): ParticipationState {
         locations.some((p) => p.kind === "bin" && p.id === id),
       )
     )
-      return initialState();
+      throw new Error("B帳本格式無法載入；來源已保留。");
     const open = adoptions.filter((a) =>
       ["pending", "active"].includes(a.status),
     );
@@ -360,7 +367,7 @@ function readState(): ParticipationState {
       new Set(adoptions.map((a) => a.id)).size !== adoptions.length ||
       new Set(open.map((a) => a.locationId)).size !== open.length
     )
-      return initialState();
+      throw new Error("B帳本格式無法載入；來源已保留。");
     return {
       proposals,
       removedBinIds,
@@ -379,9 +386,8 @@ function readState(): ParticipationState {
       ),
     };
   } catch {
-    /* Browsing remains possible with blocked or stale storage. */
+    throw new Error("無法讀取B帳本；來源已保留，未覆寫。");
   }
-  return initialState();
 }
 function applyAction(
   state: ParticipationState,
@@ -445,7 +451,14 @@ function applyAction(
         if (action.type === "notifications") {
           if (a.status !== "active")
             throw new Error("核准認養後才能修改通知。");
-          return { ...a, preferences: action.preferences, updatedAt: now };
+          return {
+            ...a,
+            preferences: {
+              ...a.preferences,
+              [action.changed]: action.preferences[action.changed],
+            },
+            updatedAt: now,
+          };
         }
         const allowed: Partial<Record<AdoptionStatus, AdoptionStatus[]>> = {
           pending: ["active", "rejected", "withdrawn"],
@@ -579,26 +592,27 @@ function closeQualifyingVote(proposal: Proposal): Proposal {
     : proposal;
 }
 export function useParticipationStore() {
-  const [state, setState] = useState(readState);
-  const current = useRef(state);
-  const [storageFailed, setStorageFailed] = useState(false);
-  function act(action: ParticipationAction, loggedIn: boolean): string | null {
+  const store = usePersistentState(
+    participationStorageKey,
+    loadParticipationState,
+  );
+  const state = store.state || initialState();
+  async function act(
+    action: ParticipationAction,
+    loggedIn: boolean,
+  ): Promise<string | null> {
     if (!loggedIn) return "請先登入示範帳號。";
     try {
-      const next = applyAction(current.current, action);
-      current.current = next;
-      setState(next);
-      try {
-        localStorage.setItem(participationStorageKey, JSON.stringify(next));
-      } catch {
-        setStorageFailed(true);
-      }
-      return null;
+      applyAction(state, action);
+      const saved = await store.setState((previous) =>
+        applyAction(previous, action),
+      );
+      return saved ? null : "操作未儲存，請查看儲存提示並重試。";
     } catch (error) {
       return error instanceof Error
         ? error.message
         : "操作未完成，請再試一次。";
     }
   }
-  return { state, act, storageFailed };
+  return { state, act, storageFailed: Boolean(store.failure) };
 }

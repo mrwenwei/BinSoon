@@ -18,14 +18,12 @@ test("find a bin, inspect its demo status and preserve source distinctions", asy
     "href",
     /#nav\//,
   );
-  await page.getByRole("button", { name: "按讚", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "已按讚", exact: true }),
+    page.getByRole("button", { name: "按讚", exact: true }),
   ).toBeDisabled();
-  await page.reload();
   await expect(
-    page.getByRole("button", { name: "已按讚", exact: true }),
-  ).toBeDisabled();
+    page.getByText("尚無可驗證清運完成紀錄", { exact: true }),
+  ).toBeVisible();
   const detailUrl = page.url();
   await page.getByRole("link", { name: "登入", exact: true }).click();
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();

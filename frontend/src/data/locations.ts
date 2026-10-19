@@ -1,4 +1,4 @@
-import snapshot from "./locations.json";
+import snapshot from "./locations.json" with { type: "json" };
 export type LocationKind = "bin" | "place";
 export interface LocationRecord {
   id: string;
