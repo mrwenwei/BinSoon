@@ -3,12 +3,10 @@ import { Icon } from "./Icon";
 import { Mascot } from "./Mascot";
 export function LoginPage({
   loggedIn,
-  backHref,
   onLogin,
   onLogout,
 }: {
   loggedIn: boolean;
-  backHref: string | null;
   onLogin: () => void;
   onLogout: () => void;
 }) {
@@ -18,9 +16,9 @@ export function LoginPage({
   const [error, setError] = useState("");
   return (
     <main className="page login-page">
-      <a className="back-link" href={backHref || "#map"}>
+      <a className="back-link" href="#map">
         <Icon name="back" />
-        {backHref ? "返回回報" : "返回地圖"}
+        返回地圖
       </a>
       <div className="login-grid">
         <section className="login-story">

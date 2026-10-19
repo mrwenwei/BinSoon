@@ -52,7 +52,7 @@ test("report requires photo, proximity and login, then keeps a pending report wi
   }
   await page.getByRole("button", { name: "桶旁有堆放", exact: false }).click();
   await expect(
-    page.getByRole("button", { name: "登入並送出回報" }),
+    page.getByRole("button", { name: "送出示範回報" }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "拍一張示意照片" }).click();
   await page.getByLabel("示意定位情境").selectOption("far");
@@ -60,7 +60,7 @@ test("report requires photo, proximity and login, then keeps a pending report wi
     page.getByText("示意距離 78 公尺，超過 50 公尺限制。"),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "登入並送出回報" }),
+    page.getByRole("button", { name: "送出示範回報" }),
   ).toBeDisabled();
   await page.getByLabel("示意定位情境").selectOption("near");
   await page.getByRole("link", { name: "登入後繼續回報" }).click();
@@ -98,62 +98,6 @@ test("report requires photo, proximity and login, then keeps a pending report wi
   await expect(
     page.getByText("這個問題已有示範回報，請勿重複送出。", { exact: false }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "送出示範回報" }),
-  ).toBeDisabled();
-});
-
-test("logged-out reporters can go back to their draft, or log in and submit in one step", async ({
-  page,
-  isMobile,
-}) => {
-  await page.goto("/");
-  await page.locator(".location-row").first().click();
-  await page.getByRole("link", { name: "回報問題", exact: true }).click();
-  if (!isMobile)
-    await page.getByRole("link", { name: "在電腦體驗示範回報" }).click();
-  const loginAndSubmit = page.getByRole("button", { name: "登入並送出回報" });
-  await expect(loginAndSubmit).toBeDisabled();
-  await page.getByRole("button", { name: "桶旁有堆放", exact: false }).click();
-  await page.getByRole("button", { name: "拍一張示意照片" }).click();
-  await page.getByLabel("示意定位情境").selectOption("near");
-  await expect(loginAndSubmit).toBeEnabled();
-  await loginAndSubmit.click();
-  await page.getByRole("link", { name: "返回回報", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "桶旁有堆放", exact: false }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(page).not.toHaveURL(/submit=1/);
-  await loginAndSubmit.click();
-  await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
-  await expect(page).toHaveURL(/#report-done\//);
-  await expect(
-    page.getByRole("heading", { name: "謝謝你幫城市變乾淨！" }),
-  ).toBeVisible();
-  await page.goBack();
-  await expect(page).not.toHaveURL(/submit=1/);
-  await expect(page).not.toHaveURL(/#report-done\//);
-  await page.goBack();
-  await page.getByRole("button", { name: "繼續體驗", exact: true }).click();
-  await expect(page).not.toHaveURL(/submit=1/);
-  await expect(page.locator(".toast")).toHaveCount(0);
-});
-
-test("logging in to submit explains when nothing could be sent", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await page.locator(".location-row").first().click();
-  const binId = new URL(page.url()).hash.split("/")[1];
-  await page.goto(
-    `/#login?next=${encodeURIComponent(`report/${binId}?demo=1&submit=1`)}`,
-  );
-  await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "回報還有欄位沒完成" }),
-  ).toBeVisible();
-  await expect(page).not.toHaveURL(/submit=1/);
-  await expect(page).not.toHaveURL(/#report-done\//);
   await expect(
     page.getByRole("button", { name: "送出示範回報" }),
   ).toBeDisabled();

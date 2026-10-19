@@ -148,7 +148,7 @@ export function ParticipationPage({
           我的投票進度
         </a>
         <a className="button secondary" href="#adopt">
-          我的認養
+          我的電子雞
         </a>
         <a className="button secondary" href="#nearby">
           查看缺桶情境
@@ -658,11 +658,9 @@ export function ParticipationPage({
       </div>
       <section className="card participation-adoption-link">
         <h2>一起照顧附近的電子雞</h2>
-        <p>
-          投票提案仍需評估；你也可以先認養既有公布桶：在地圖點選桶，從桶詳情申請。
-        </p>
-        <a className="button secondary" href="#map">
-          到地圖挑一個桶認養
+        <p>投票提案仍需評估；你也可以先認養既有公布桶位置。</p>
+        <a className="button secondary" href="#adopt">
+          挑選既有桶認養
         </a>
       </section>
     </main>

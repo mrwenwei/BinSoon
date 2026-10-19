@@ -1,5 +1,4 @@
 import { reviewAsStaff } from "./staff-helpers";
-import { applyForAdoption } from "./adoption-helpers";
 import { test, expect } from "@playwright/test";
 
 test("P8 separates cumulative and available points and replaces the old stamp album", async ({
@@ -149,8 +148,9 @@ test("adopters earn two points, later reporters earn none, and three false repor
 }) => {
   await page.goto("/#login");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
-  await applyForAdoption(page, "A/B 接合示範認養者");
   await page.goto("/#adopt");
+  await page.getByLabel("認養者公開名稱").fill("A/B 接合示範認養者");
+  await page.getByRole("button", { name: "送出認養申請", exact: true }).click();
   const adoption = page.getByRole("article", { name: /認養申請：/ }).first();
   await adoption.getByText("展示控制：認養審批", { exact: true }).click();
   await adoption.getByRole("button", { name: "核准認養", exact: true }).click();

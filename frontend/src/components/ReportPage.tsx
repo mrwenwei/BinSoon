@@ -34,7 +34,6 @@ export function ReportPage({
   onSubmit,
   reports,
   loginHref,
-  loginSubmitHref,
   suspended,
   quick = false,
   removed = false,
@@ -47,7 +46,6 @@ export function ReportPage({
   onSubmit: () => void;
   reports: DemoReport[];
   loginHref: string;
-  loginSubmitHref: string;
   suspended: boolean;
   quick?: boolean;
   removed?: boolean;
@@ -63,7 +61,8 @@ export function ReportPage({
       report.type === draft.type &&
       reportEventOpen(operations, report),
   );
-  const readyExceptLogin = Boolean(
+  const ready = Boolean(
+    loggedIn &&
     !suspended &&
     info &&
     draft.photo &&
@@ -71,7 +70,6 @@ export function ReportPage({
     (draft.type !== "other" || draft.description.trim()) &&
     !duplicate,
   );
-  const ready = loggedIn && readyExceptLogin;
   const set = (patch: Partial<ReportDraft>) => onChange({ ...draft, ...patch });
   if (removed || binDemo(location).removed)
     return (
@@ -336,7 +334,7 @@ export function ReportPage({
                   ? "這個桶的核准認養者 · 屬實首報 +2 點"
                   : "一般民眾 · 屬實首報 +1 點"}
               </p>
-              <a href={`#bin/${location.id}?adopt=1`}>查看認養申請與資格</a>
+              <a href={`#adopt/${location.id}`}>查看認養申請與資格</a>
               <p className="tiny">
                 首報資格依同事件回報紀錄判定，不能自行指定。
               </p>
@@ -360,28 +358,14 @@ export function ReportPage({
                 <a href={`#review/${duplicate.id}`}>查看回報</a>
               </p>
             )}
-            {loggedIn ? (
-              <button
-                className="button primary wide"
-                type="submit"
-                disabled={!ready}
-              >
-                送出示範回報
-                <Icon name="arrow" />
-              </button>
-            ) : (
-              <button
-                className="button primary wide"
-                type="button"
-                disabled={!readyExceptLogin}
-                onClick={() => {
-                  window.location.hash = loginSubmitHref;
-                }}
-              >
-                登入並送出回報
-                <Icon name="arrow" />
-              </button>
-            )}
+            <button
+              className="button primary wide"
+              type="submit"
+              disabled={!ready}
+            >
+              送出示範回報
+              <Icon name="arrow" />
+            </button>
             <p className="tiny">需完成類型、照片、50m 內示意定位與登入。</p>
           </section>
         </aside>

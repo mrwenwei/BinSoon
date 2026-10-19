@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { adoptableBins, adoptLoginUrl } from "./adoption-helpers";
 
 test("P10-P16 fit desktop and phone and keep the keyboard form when tiles fail", async ({
   page,
@@ -8,14 +7,10 @@ test("P10-P16 fit desktop and phone and keep the keyboard form when tiles fail",
   await page.route("https://tiles.openfreemap.org/**", (route) =>
     route.abort(),
   );
-  await page.goto(adoptLoginUrl());
+  await page.goto("/#login?next=adopt");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page.getByLabel("認養者公開名稱").fill("畫面驗收小隊");
   await page.getByRole("button", { name: "送出認養申請", exact: true }).click();
-  await expect(
-    page.getByText("申請已送出，等待清潔隊審核。", { exact: false }),
-  ).toBeVisible();
-  await page.goto("/#adopt");
   const application = page.getByRole("article", { name: /認養申請：/ }).first();
   await application.getByText("展示控制：認養審批", { exact: true }).click();
   await application
@@ -30,7 +25,6 @@ test("P10-P16 fit desktop and phone and keep the keyboard form when tiles fail",
     "#vote-done/xinyi",
     "#vote-progress/heping",
     "#adopt",
-    `#bin/${adoptableBins[1].id}?adopt=1`,
     quickUrl!,
   ];
   for (const width of isMobile ? [412] : [1440, 768, 320]) {

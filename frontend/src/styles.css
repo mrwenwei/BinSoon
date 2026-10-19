@@ -3393,23 +3393,18 @@ a {
   background: white;
   font-size: 26px;
 }
-.participation-page form,
-.adoption-panel form {
+.participation-page form {
   display: grid;
   gap: 16px;
 }
-.participation-page label,
-.adoption-panel label {
+.participation-page label {
   display: grid;
   gap: 8px;
   font-weight: 600;
 }
 .participation-page input:not([type="checkbox"]),
 .participation-page textarea,
-.participation-page select,
-.adoption-panel input:not([type="checkbox"]),
-.adoption-panel textarea,
-.adoption-panel select {
+.participation-page select {
   min-width: 0;
   width: 100%;
   border: 1px solid #b6c1ae;
@@ -3418,19 +3413,16 @@ a {
   background: white;
   color: var(--ink);
 }
-.participation-page textarea,
-.adoption-panel textarea {
+.participation-page textarea {
   min-height: 96px;
   resize: vertical;
 }
-.participation-page .checkbox-field,
-.adoption-panel .checkbox-field {
+.participation-page .checkbox-field {
   display: flex;
   align-items: flex-start;
   font-size: 14px;
 }
-.participation-page .checkbox-field input,
-.adoption-panel .checkbox-field input {
+.participation-page .checkbox-field input {
   margin-top: 5px;
   flex: none;
 }
@@ -3517,101 +3509,12 @@ a {
   padding: 20px;
   margin-top: 20px;
 }
-/* Adoption is applied for in place on the bin detail page. */
-.adoption-panel {
-  scroll-margin-top: 16px;
-  min-width: 0;
+.adoption-intro .mascot svg {
+  width: 120px;
+  height: 140px;
 }
-.adoption-panel h2 {
-  font-size: 18px;
-  margin: 6px 0 4px;
-}
-.adoption-panel > .muted {
-  margin: 0 0 16px;
-}
-.adoption-panel p,
-.adoption-panel a {
-  overflow-wrap: anywhere;
-}
-.adoption-explainer {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 14px 16px;
-  background: #f4f7ed;
-  border-radius: 10px;
-}
-.adoption-explainer div {
-  display: grid;
-  grid-template-columns: 7.5em minmax(0, 1fr);
-  gap: 8px;
-}
-.adoption-explainer dt {
-  font-size: 12px;
-  font-weight: 700;
-  color: #48633b;
-}
-.adoption-explainer dd {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.7;
-}
-.adoption-login {
-  display: grid;
-  gap: 16px;
-}
-.adoption-login .tiny,
-.adoption-form .tiny {
-  margin: 0;
-  line-height: 1.7;
-}
-.adoption-sent {
-  font-size: 12px;
-  line-height: 1.7;
-  background: #ffffffa6;
-  padding: 10px 14px;
-  border-radius: 8px;
-  margin: 0 0 12px;
-}
-.adoption-sent a {
-  margin-left: 6px;
-}
-.adoption-empty {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  margin-top: 8px;
-}
-.adoption-empty .mascot svg {
-  width: 110px;
-  height: 128px;
-}
-.adoption-empty h2 {
-  margin: 0 0 8px;
-}
-.adoption-empty p {
-  line-height: 1.8;
-  max-width: 60ch;
-}
-.adoption-empty .button {
-  margin: 8px 0 4px;
-}
-@media (max-width: 760px) {
-  .adoption-empty {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  .adoption-empty .mascot svg {
-    width: 84px;
-    height: 98px;
-  }
-}
-@media (max-width: 420px) {
-  .adoption-explainer div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
-  }
+.adoption-intro h2 {
+  margin-top: 18px;
 }
 .adoption-record {
   margin-top: 20px;
