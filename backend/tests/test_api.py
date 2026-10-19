@@ -45,7 +45,7 @@ def test_new_bin_has_shared_identity_and_history(admin_client, seeded):
     assert id_ in {r['id'] for r in admin_client.get('/api/v1/bins').json()}
     assert admin_client.get('/api/v1/bins/'+id_).json() == item
     history = admin_client.get('/api/v1/bins/'+id_+'/history').json()
-    assert len(history) == 1 and history[0]['event_type'] == 'reset'
+    assert len(history) == 2 and {h['waste_type'] for h in history} == {'general','recycling'}
     assert history[0]['bin_id'] == id_
     assert len(admin_client.get('/api/v1/bins?bin_type=existing').json()) == 47
 
@@ -75,4 +75,4 @@ def test_empty_and_unknown_history(client, seeded):
     assert client.get(f'/api/v1/bins/{bin_.id}/history').json() == []
     for suffix in ('','/history'):
         assert client.get(f'/api/v1/bins/{uuid4()}{suffix}').status_code == 404
-    assert seeded.get(BinState, bin_.id) is None
+    assert seeded.get(BinState, (bin_.id,'general')) is None

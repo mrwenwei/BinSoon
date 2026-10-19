@@ -16,6 +16,11 @@ class Version:
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
 
+class WasteScope:
+    waste_type: Mapped[str] = mapped_column(String(20), default="general", server_default="general")
+    classification_source: Mapped[str] = mapped_column(String(40), default="demo_assumption", server_default="demo_assumption")
+
+
 class User(Entity, Base):
     __tablename__ = "users"
     account: Mapped[str] = mapped_column(String(100), unique=True)
@@ -67,7 +72,7 @@ class MediaAsset(Entity, Base):
     sha256: Mapped[str] = mapped_column(String(64))
 
 
-class Incident(Entity, Base):
+class Incident(Entity, WasteScope, Base):
     __tablename__ = "incidents"
     bin_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("bins.id"), index=True)
     type: Mapped[str] = mapped_column(String(20))
@@ -75,10 +80,11 @@ class Incident(Entity, Base):
     first_report_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("reports.id", use_alter=True,
         name="fk_incident_first_report", deferrable=True, initially="DEFERRED"))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    __table_args__ = (Index("uq_incident_open", "bin_id", "type", unique=True, postgresql_where=text("status = 'open'")),)
+    __table_args__ = (Index("uq_incident_open", "bin_id", "type", "waste_type", unique=True, postgresql_where=text("status = 'open'")),
+        CheckConstraint("waste_type IN ('general','recycling')", name="ck_incident_waste_type"))
 
 
-class Report(Entity, Base):
+class Report(Entity, WasteScope, Base):
     __tablename__ = "reports"
     bin_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("bins.id"))
     event_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("incidents.id"), index=True)
@@ -95,10 +101,11 @@ class Report(Entity, Base):
     awarded_points: Mapped[int] = mapped_column(Integer, default=0)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rule_version: Mapped[str] = mapped_column(String(40), default="phase1-2026-10-19")
-    __table_args__ = (UniqueConstraint("event_id", "user_id"),)
+    __table_args__ = (UniqueConstraint("event_id", "user_id"),
+        CheckConstraint("waste_type IN ('general','recycling')", name="ck_report_waste_type"))
 
 
-class WorkOrder(Entity, Version, Base):
+class WorkOrder(Entity, Version, WasteScope, Base):
     __tablename__ = "work_orders"
     event_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("incidents.id"), unique=True)
     bin_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("bins.id"), index=True)
@@ -116,6 +123,7 @@ class WorkOrder(Entity, Version, Base):
     reason: Mapped[str | None] = mapped_column(String(500))
     confirmed_problem: Mapped[bool | None] = mapped_column(Boolean)
     is_fixture: Mapped[bool] = mapped_column(Boolean, default=False)
+    __table_args__ = (CheckConstraint("waste_type IN ('general','recycling')", name="ck_work_order_waste_type"),)
 
 
 class Evidence(Entity, Base):
@@ -126,12 +134,13 @@ class Evidence(Entity, Base):
     __table_args__ = (UniqueConstraint("work_order_id", "purpose"),)
 
 
-class Completion(Entity, Base):
+class Completion(Entity, WasteScope, Base):
     __tablename__ = "completions"
     work_order_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("work_orders.id"), unique=True)
     bin_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("bins.id"), index=True)
     staff_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     type: Mapped[str] = mapped_column(String(20))
+    __table_args__ = (CheckConstraint("waste_type IN ('general','recycling')", name="ck_completion_waste_type"),)
 
 
 class WorkAction(Entity, Base):
@@ -230,6 +239,7 @@ class Notification(Entity, Base):
     type: Mapped[str] = mapped_column(String(30))
     title: Mapped[str] = mapped_column(String(100))
     message: Mapped[str] = mapped_column(String(500))
+    waste_type: Mapped[str | None] = mapped_column(String(20))
     target_kind: Mapped[str] = mapped_column(String(20))
     target_id: Mapped[uuid.UUID] = mapped_column()
     dedup_key: Mapped[str] = mapped_column(String(150))

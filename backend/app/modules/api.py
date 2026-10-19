@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from app.config import get_settings
 from app.models import Bin, BinState, Hotspot
 from app.services import bins as bin_service
+from app.waste import WasteType
 from app.schemas import District, DistrictFilter
 from app.modules import schemas as s, views as v, participation as p, workflows as w, membership as economy
 from app.modules.common import DB, etag, fail, get, now, page, product_lock, write
@@ -76,10 +77,10 @@ def me(user: CurrentUser):
     return user_view(user)
 
 
-def map_items(db, district, kind, q, filter_, include_proposed, include_removed, pos):
+def map_items(db, district, kind, q, filter_, include_proposed, include_removed, pos, waste_type="general"):
     items = []
-    states = {s.bin_id:s for s in db.scalars(select(BinState))} if kind != "place" else {}
-    repair_ids = set(db.scalars(select(WorkOrder.bin_id).where(WorkOrder.type == "broken", WorkOrder.arrived_at.is_not(None), WorkOrder.status.not_in(v.CLOSED)))) if kind != "place" else set()
+    states = {(s.bin_id,s.waste_type):s for s in db.scalars(select(BinState))} if kind != "place" else {}
+    repair_ids = set(db.execute(select(WorkOrder.bin_id,WorkOrder.waste_type).where(WorkOrder.type == "broken", WorkOrder.arrived_at.is_not(None), WorkOrder.status.not_in(v.CLOSED)))) if kind != "place" else set()
     for model in ([Bin] if kind == "bin" else [Hotspot] if kind == "place" else [Bin, Hotspot]):
         query = bin_service.location_query(model)
         if pos:
@@ -92,8 +93,8 @@ def map_items(db, district, kind, q, filter_, include_proposed, include_removed,
             if isinstance(item, Bin):
                 if not include_proposed and not v.installed(item): continue
                 if item.removed_at and not include_removed and now()-item.removed_at > timedelta(days=7): continue
-            loc = v.location(db, item, pos, coordinates=(row.longitude,row.latitude), state=states.get(item.id), repair_ids=repair_ids,
-                             known_distance=float(row.distance_m) if pos else None)
+            loc = v.location(db, item, pos, coordinates=(row.longitude,row.latitude), states=states, repair_ids=repair_ids,
+                             known_distance=float(row.distance_m) if pos else None, waste_type=waste_type)
             st = loc["bin_status"]
             if st:
                 if filter_ == "hungry" and (st["fill_status"] != "hungry" or not st["is_usable"]): continue
@@ -107,22 +108,22 @@ def map_items(db, district, kind, q, filter_, include_proposed, include_removed,
 def map_locations(db: DB, user: OptionalUser, district: DistrictFilter="大安區", kind: Literal["bin", "place", "all"]="bin",
     q: Annotated[str, Query(max_length=200)]="", filter: Literal["all", "hungry", "can_fit", "new"]="all",
     include_proposed: bool=False, include_removed: bool=False, latitude: Latitude=None, longitude: Longitude=None,
-    limit: Limit=20, offset: Offset=0):
-    return page(map_items(db, district, kind, q.strip(), filter, include_proposed, include_removed, position(latitude, longitude)), limit, offset)
+    limit: Limit=20, offset: Offset=0, waste_type: WasteType="general"):
+    return page(map_items(db, district, kind, q.strip(), filter, include_proposed, include_removed, position(latitude, longitude), waste_type), limit, offset)
 
 
 @router.get("/map/nearest-usable", response_model=s.Locations)
 def nearest(db: DB, district: DistrictFilter="大安區", q: Annotated[str, Query(max_length=200)]="",
-    latitude: Latitude=None, longitude: Longitude=None, limit: Annotated[int, Query(ge=1, le=10)]=3):
-    items = map_items(db, district, "bin", q.strip(), "can_fit", False, False, position(latitude, longitude, True))
+    latitude: Latitude=None, longitude: Longitude=None, limit: Annotated[int, Query(ge=1, le=10)]=3, waste_type: WasteType="general"):
+    items = map_items(db, district, "bin", q.strip(), "can_fit", False, False, position(latitude, longitude, True), waste_type)
     return dict(items=items[:limit])
 
 
 @router.get("/map/availability", response_model=s.Nearby)
 def availability(db: DB, user: OptionalUser, latitude: Latitude=None, longitude: Longitude=None,
-    radius_m: Annotated[int, Query(ge=300, le=300)]=300):
+    radius_m: Annotated[int, Query(ge=300, le=300)]=300, waste_type: WasteType="general"):
     pos = position(latitude, longitude, True)
-    candidates = [b for b in map_items(db, "all", "bin", "", "all", False, True, pos) if b["bin_status"]["operational_status"] != "removed"]
+    candidates = [b for b in map_items(db, "all", "bin", "", "all", False, True, pos, waste_type) if b["bin_status"]["operational_status"] != "removed"]
     nearby_proposals = [v.proposal(db, prop, user) for prop in db.scalars(select(Proposal).where(Proposal.status != "declined"))
                         if v.distance(db, get(db, Bin, prop.bin_id), pos) <= radius_m]
     within = [b for b in candidates if b["distance_m"] <= radius_m]
@@ -131,8 +132,8 @@ def availability(db: DB, user: OptionalUser, latitude: Latitude=None, longitude:
 
 
 @router.get("/bins/{bin_id}/view", response_model=s.BinView)
-def bin_view(bin_id: UUID, db: DB, user: OptionalUser):
-    return v.bin_view(db, get(db, Bin, bin_id), user)
+def bin_view(bin_id: UUID, db: DB, user: OptionalUser, waste_type: WasteType="general"):
+    return v.bin_view(db, get(db, Bin, bin_id), user, waste_type)
 
 
 @router.get("/bins/{bin_id}/lifecycle", response_model=s.Lifecycle)
@@ -154,9 +155,10 @@ def create_report(body: s.ReportCreate, db: DB, user: Citizen, request: Request,
 
 @router.get("/me/reports", response_model=s.Page[s.ReportRead])
 def my_reports(db: DB, user: Citizen, status: Literal["pending", "processing", "approved", "rejected"]|None=None,
-    bin_id: UUID|None=None, limit: Limit=20, offset: Offset=0):
+    bin_id: UUID|None=None, limit: Limit=20, offset: Offset=0, waste_type: WasteType|None=None):
     query = select(Report).where(Report.user_id == user.id).order_by(Report.created_at.desc(), Report.id)
     if bin_id: query = query.where(Report.bin_id == bin_id)
+    if waste_type: query = query.where(Report.waste_type == waste_type)
     items = [v.report(db, r) for r in db.scalars(query)]
     if status: items = [r for r in items if r["status"] == status]
     return page(items, limit, offset)
@@ -173,11 +175,12 @@ def report_detail(report_id: UUID, db: DB, user: UserOrAdmin):
 @router.get("/staff/work-orders", response_model=s.Page[s.WorkRead])
 def work_orders(db: DB, user: Staff, bucket: Literal["pending", "processing", "completed", "all"]="all",
     district: District|None=None, type: s.Problem|None=None, source: Literal["citizen", "sensor", "inspection"]|None=None,
-    limit: Limit=20, offset: Offset=0):
+    limit: Limit=20, offset: Offset=0, waste_type: WasteType|None=None):
     if district and district not in user.districts: fail(403, "FORBIDDEN")
     query = select(WorkOrder).where(WorkOrder.district.in_([district] if district else user.districts))
     if type: query = query.where(WorkOrder.type == type)
     if source: query = query.where(WorkOrder.source == source)
+    if waste_type: query = query.where(WorkOrder.waste_type == waste_type)
     if bucket != "all":
         statuses = {"pending":["pending"], "processing":["processing", "arrived", "waiting_sensor", "repair"], "completed":["completed", "dismissed"]}
         query = query.where(WorkOrder.status.in_(statuses[bucket]))
@@ -384,7 +387,7 @@ def read_notification(id: UUID, body: s.Empty, db: DB, user: CurrentUser, reques
 def like(id: UUID, body: s.Empty, db: DB, user: Citizen, request: Request, response: Response):
     def operation():
         item = get(db, Completion, id)
-        latest = v.latest_cleanup(db, item.bin_id)
+        latest = v.latest_cleanup(db, item.bin_id, item.waste_type)
         if not latest or latest.id != item.id: fail(409, "INVALID_TRANSITION")
         if not db.scalar(select(CompletionLike.id).where(CompletionLike.completion_id == id, CompletionLike.user_id == user.id)):
             db.add(CompletionLike(completion_id=id, user_id=user.id))
@@ -394,39 +397,43 @@ def like(id: UUID, body: s.Empty, db: DB, user: Citizen, request: Request, respo
 
 
 @router.get("/staff/route-stops", response_model=s.RouteStops)
-def route_stops(db: DB, user: Staff):
+def route_stops(db: DB, user: Staff, waste_type: WasteType|None=None):
     items = [v.work(db, item) for item in db.scalars(select(WorkOrder).where(WorkOrder.district.in_(user.districts), WorkOrder.status.in_(["pending", "processing", "arrived"]),
         (WorkOrder.assigned_staff_id.is_(None)) | (WorkOrder.assigned_staff_id == user.id)))]
     stops = {}
     for item in sorted(items, key=v.work_sort):
+        if waste_type and item["waste_type"] != waste_type: continue
         bin_ = get(db, Bin, item["bin_id"])
         if bin_.operational_status == "removed" or not v.installed(bin_): continue
         if bin_.id not in stops:
             loc = v.location(db, bin_)
-            stops[bin_.id] = dict(bin_id=bin_.id, label=loc["label"], latitude=loc["latitude"], longitude=loc["longitude"], work_order_ids=[], priority=item["priority"])
+            stops[bin_.id] = dict(bin_id=bin_.id, label=loc["label"], latitude=loc["latitude"], longitude=loc["longitude"], work_order_ids=[], waste_types=[], priority=item["priority"])
         stops[bin_.id]["work_order_ids"].append(item["id"])
+        if item["waste_type"] not in stops[bin_.id]["waste_types"]: stops[bin_.id]["waste_types"].append(item["waste_type"])
     return dict(origin=dict(**v.ORIGIN, source="demo_fixed"), stops=list(stops.values()), generated_at=now())
 
 
-def outcome_data(db, district, month):
+def outcome_data(db, district, month, waste_type=None):
     value, start, end = v.month_bounds(month)
-    completed = db.scalars(select(Completion).join(WorkOrder).where(WorkOrder.district == district,
-        Completion.created_at >= start, Completion.created_at < end)).all()
+    query = select(Completion).join(WorkOrder).where(WorkOrder.district == district,
+        Completion.created_at >= start, Completion.created_at < end)
+    if waste_type: query = query.where(Completion.waste_type == waste_type)
+    completed = db.scalars(query).all()
     likes = db.scalar(select(func.count()).select_from(CompletionLike).where(CompletionLike.completion_id.in_([c.id for c in completed]))) if completed else 0
     return value, completed, likes
 
 
 @router.get("/public/outcomes", response_model=s.PublicOutcomes)
-def outcomes(db: DB, district: District="大安區", month: str|None=None):
-    value, completed, likes = outcome_data(db, district, month)
-    return dict(month=value, timezone="Asia/Taipei", district=district, completed_count=len(completed), like_count=likes)
+def outcomes(db: DB, district: District="大安區", month: str|None=None, waste_type: WasteType|None=None):
+    value, completed, likes = outcome_data(db, district, month, waste_type)
+    return dict(month=value, timezone="Asia/Taipei", district=district, waste_type=waste_type, completed_count=len(completed), like_count=likes)
 
 
 @router.get("/staff/statistics", response_model=s.StaffMonth)
-def statistics(db: DB, user: Staff, district: District|None=None, month: str|None=None):
+def statistics(db: DB, user: Staff, district: District|None=None, month: str|None=None, waste_type: WasteType|None=None):
     district = district or (user.districts[0] if user.districts else "大安區")
     if district not in user.districts: fail(403, "FORBIDDEN")
-    value, completed, likes = outcome_data(db, district, month)
+    value, completed, likes = outcome_data(db, district, month, waste_type)
     ranking = []
     for staff in db.scalars(select(User).where(User.enabled.is_(True))):
         if "staff" not in staff.roles or district not in staff.districts: continue
@@ -445,5 +452,5 @@ def statistics(db: DB, user: Staff, district: District|None=None, month: str|Non
         if item["completed_count"] != previous: rank += 1
         item["rank"], previous = rank, item["completed_count"]
     mine = next((r for r in ranking if r["staff_id"] == user.id), {})
-    return dict(month=value, timezone="Asia/Taipei", district=district, completed_count=mine.get("completed_count", 0),
+    return dict(month=value, timezone="Asia/Taipei", district=district, waste_type=waste_type, completed_count=mine.get("completed_count", 0),
         average_processing_seconds=mine.get("average_processing_seconds"), like_count=mine.get("like_count", 0), bonus_display_only=True, ranking=ranking)

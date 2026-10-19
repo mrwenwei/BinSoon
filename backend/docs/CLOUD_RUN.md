@@ -1,5 +1,7 @@
 # BinSoon：Google Cloud Run 部署與操作
 
+> **雙種類0006已部署；與0005舊程式不相容，禁止直接回滾舊映像。** 升級前先備份、切維護並排空舊請求，再用新映像初始化Job遷移及補齊兩槽，最後切新程式；不要直接執行普通滾動部署或回滾舊映像。詳見 [雙種類部署限制](WASTE_STREAMS.md#6-初始化測試與部署)。
+
 > 2026-10-19 A／B／D後端及0004／0005已部署至既有展示服務 binsoon-api-00006-n96，私有GCS與三角色登入已驗證。重部署請用 [binsoon-product.env.example](../deploy/binsoon-product.env.example) 保留Secret reference／媒體／CORS設定；完整結果見 [部署紀錄](DEPLOYMENT_STATUS.md) 最新章節。展示登入不能接到真實作業環境。以下初版／0003內容為歷史與資源建立說明。
 
 > 統一 Bin（0003）已於 2026-10-19 完成備份、維護與雲端切換，版本見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。0003 整併表結構，需備份、停止舊寫入並協調程式切換；不能直接以原流程宣稱無停機升級，也不能只回滾舊映像。新 API、權限、官方筆數篩選與歷史行為見 [BINS.md](BINS.md)。

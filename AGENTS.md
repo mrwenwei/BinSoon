@@ -32,6 +32,13 @@
 - 已核准所有既有與新增 Bin 共用模擬狀態與歷史，控制在 /simulation，詳見 `backend/docs/BINS.md`；不自行擴充 IoT 硬體通訊、選址最佳化演算法、前端、Redis、Kafka、Celery 或微服務。
 - 修改契約、資料假設或啟動流程時同步更新文件。
 
+## 垃圾種類
+
+- 每個Bin點位有general／recycling兩個獨立State，主鍵(bin_id,waste_type)，Bin ID不變；bin_type仍只代表existing/proposed。
+- CSV無種類證據，兩槽均為展示假設；舊State標legacy_assumed_general、舊Reading的waste_type保持null及legacy_unclassified，不複製歷史。
+- 查詢／導航／清運／事件／工單按種類；省略讀取或回報種類預設general，history未篩選則包含全部；清運不得順便歸零另一種類。
+- 0006不相容於舊程式的單槽主鍵與數量假設，上雲端需備份與維護切換。細節見backend/docs/WASTE_STREAMS.md。
+
 ## 標準驗證流程
 
 在 `backend/` 執行：

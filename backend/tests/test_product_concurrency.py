@@ -22,7 +22,7 @@ from test_migration import revision
 @pytest.fixture
 def concurrent_product(isolated_engine):
     with isolated_engine.begin() as connection:
-        for name in ['0001_initial.py','0002_demo.py','0003_unified_bins.py','0004_product.py','0005_product_integrity.py']:
+        for name in ['0001_initial.py','0002_demo.py','0003_unified_bins.py','0004_product.py','0005_product_integrity.py','0006_waste_streams.py']:
             revision(connection, name)
     with Session(isolated_engine) as db, db.begin():
         bin_ = Bin(name='並行驗證桶', district='大安區', bin_type='existing', source_type='test_fixture',

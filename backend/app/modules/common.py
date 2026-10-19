@@ -57,10 +57,10 @@ def version(item, request):
         fail(412, "VERSION_CONFLICT")
 
 
-def notify(db, user_id, type_, target_kind, target_id, dedup, title, message=""):
+def notify(db, user_id, type_, target_kind, target_id, dedup, title, message="", waste_type=None):
     if not db.scalar(select(Notification.id).where(Notification.user_id == user_id, Notification.dedup_key == dedup)):
         db.add(Notification(user_id=user_id, type=type_, target_kind=target_kind, target_id=target_id,
-                            dedup_key=dedup, title=title, message=message))
+                            dedup_key=dedup, title=title, message=message, waste_type=waste_type))
 
 
 def write(db, request: Request, response: Response, actor, body, operation, status=200):
@@ -85,7 +85,13 @@ def write(db, request: Request, response: Response, actor, body, operation, stat
     digest = hashlib.sha256(json.dumps(jsonable_encoder(body), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     old = db.scalar(select(Idempotency).where(Idempotency.actor == actor_key, Idempotency.key == key, Idempotency.path == path))
     if old:
-        if old.body_hash != digest:
+        # Before 0006 report bodies had no waste_type. Preserve retry keys for
+        # those exact old commands; never allow a recycling payload to replay it.
+        legacy_digest = None
+        if path == "POST /api/v1/reports" and body.get("waste_type") == "general" and "waste_type" not in old.response:
+            legacy_body = {k:v for k,v in body.items() if k != "waste_type"}
+            legacy_digest = hashlib.sha256(json.dumps(jsonable_encoder(legacy_body), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        if old.body_hash != digest and old.body_hash != legacy_digest:
             fail(409, "IDEMPOTENCY_CONFLICT")
         response.status_code = old.status_code
         response.headers["Idempotency-Replayed"] = "true"

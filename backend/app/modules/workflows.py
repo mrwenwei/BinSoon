@@ -16,18 +16,19 @@ def media(db, id_, user, purpose):
     return item
 
 
-def adoption_alert(db, bin_id, problem, event_id):
+def adoption_alert(db, bin_id, problem, event_id, waste_type="general"):
     adoption = views.active_adoption(db, bin_id)
     if adoption and adoption.preferences.get(problem) and get(db, Bin, bin_id).operational_status != "removed":
         notify(db, adoption.user_id, "adoption_alert", "adoption", adoption.id,
-               f"alert:{problem}:{event_id}", "認養桶有新狀況", problem)
+               f"alert:{problem}:{event_id}", "認養桶有新狀況", f"{waste_type}:{problem}", waste_type=waste_type)
 
 
 def create_report(db, user, body):
     bin_ = get(db, Bin, body.bin_id)
     if user.rejected_count >= 3: fail(403, "REPORTING_SUSPENDED")
     if not views.installed(bin_) or bin_.operational_status == "removed": fail(409, "BIN_UNAVAILABLE")
-    event = db.scalar(select(Incident).where(Incident.bin_id == bin_.id, Incident.type == body.type, Incident.status == "open"))
+    event = db.scalar(select(Incident).where(Incident.bin_id == bin_.id, Incident.type == body.type,
+        Incident.waste_type == body.waste_type, Incident.status == "open"))
     if event:
         old = db.scalar(select(Report).where(Report.event_id == event.id, Report.user_id == user.id))
         if old: return dict(**views.report(db, old), _status=200)
@@ -39,19 +40,19 @@ def create_report(db, user, body):
     adopted = views.active_adoption(db, bin_.id, user.id) is not None
     if body.quick and not adopted: fail(403, "FORBIDDEN", "Active adoption required for quick report")
     if event is None:
-        event = Incident(bin_id=bin_.id, type=body.type, status="open")
+        event = Incident(bin_id=bin_.id, type=body.type, waste_type=body.waste_type, status="open")
         db.add(event)
         db.flush()
         if bin_.district == "大安區":
-            work = WorkOrder(event_id=event.id, bin_id=bin_.id, type=body.type, district=bin_.district)
+            work = WorkOrder(event_id=event.id, bin_id=bin_.id, type=body.type, waste_type=body.waste_type, district=bin_.district)
             db.add(work)
             db.flush()
             for staff in db.scalars(select(User).where(User.enabled.is_(True))):
                 if "staff" in staff.roles and bin_.district in staff.districts:
-                    notify(db, staff.id, "work_assigned", "work_order", work.id, f"new-work:{work.id}", "新待辦工單")
+                    notify(db, staff.id, "work_assigned", "work_order", work.id, f"new-work:{work.id}", "新待辦工單", waste_type=body.waste_type)
         if body.type in {"dirty", "dumping"}:
-            adoption_alert(db, bin_.id, body.type, event.id)
-    item = Report(bin_id=bin_.id, event_id=event.id, user_id=user.id, type=body.type,
+            adoption_alert(db, bin_.id, body.type, event.id, body.waste_type)
+    item = Report(bin_id=bin_.id, event_id=event.id, user_id=user.id, type=body.type, waste_type=body.waste_type,
         description=body.description, adopter=adopted, first_reporter=event.first_report_id is None,
         quick=body.quick, photo_id=asset.id)
     db.add(item)
@@ -88,9 +89,10 @@ def finish_if_ready(db, item):
     item.status, item.completed_at, item.confirmed_problem = "completed", now(), True
     event = get(db, Incident, item.event_id)
     event.status, event.closed_at = "closed", item.completed_at
-    db.add(Completion(work_order_id=item.id, bin_id=item.bin_id, staff_id=item.assigned_staff_id, type=item.type, created_at=item.completed_at))
+    db.add(Completion(work_order_id=item.id, bin_id=item.bin_id, waste_type=item.waste_type,
+        classification_source=item.classification_source, staff_id=item.assigned_staff_id, type=item.type, created_at=item.completed_at))
     for report in db.scalars(select(Report).where(Report.event_id == item.event_id)):
-        notify(db, report.user_id, "work_completed", "report", report.id, f"completed:{item.id}:{report.id}", "案件工作已完成")
+        notify(db, report.user_id, "work_completed", "report", report.id, f"completed:{item.id}:{report.id}", "案件工作已完成", waste_type=item.waste_type)
     db.flush()
 
 
@@ -159,7 +161,7 @@ def review_report(db, id_, report_id, user, request, body):
         # Zero-point approvals also receive an immutable settlement entry.
         db.add(PointEntry(user_id=owner.id, type="report_award", amount=amount,
             balance_after=owner.available_points, report_id=report.id))
-    notify(db, owner.id, "report_reviewed", "report", report.id, f"review:{report.id}", "回報查證完成", body.decision)
+    notify(db, owner.id, "report_reviewed", "report", report.id, f"review:{report.id}", "回報查證完成", body.decision, waste_type=report.waste_type)
     finish_if_ready(db, item)
     action(db, item, user, "review", dict(report_id=str(report_id), **body.model_dump()))
     return dict(report=views.report(db, report), work_order=views.work(db, item))
@@ -172,8 +174,9 @@ def demo_clear(db, id_, user, request, body):
     arrived(item)
     if item.type != "full" or item.clear_reading_id or db.get(BinReading, body.reading_id):
         fail(409, "INVALID_TRANSITION")
-    state = simulation.collect(db, item.bin_id)
-    reading = db.scalar(select(BinReading).where(BinReading.bin_id == item.bin_id).order_by(BinReading.observation_sequence.desc()).limit(1))
+    state = simulation.collect(db, item.bin_id, item.waste_type)
+    reading = db.scalar(select(BinReading).where(BinReading.bin_id == item.bin_id, BinReading.waste_type == item.waste_type)
+        .order_by(BinReading.observation_sequence.desc()).limit(1))
     # collect creates one new reading under the shared simulation advisory lock.
     reading.id = body.reading_id
     reading.observed_at = reading.received_at = now()

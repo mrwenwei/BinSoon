@@ -30,7 +30,7 @@ def test_real_http_demo_smoke(isolated_engine,monkeypatch,tmp_path,capsys):
         monkeypatch.setattr(settings,f'demo_{role}_password',SecretStr(password))
         monkeypatch.setenv(f'DEMO_{role.upper()}_PASSWORD',password)
     with isolated_engine.begin() as connection:
-        for name in ['0001_initial.py','0002_demo.py','0003_unified_bins.py','0004_product.py','0005_product_integrity.py']:
+        for name in ['0001_initial.py','0002_demo.py','0003_unified_bins.py','0004_product.py','0005_product_integrity.py','0006_waste_streams.py']:
             revision(connection,name)
     with Session(isolated_engine) as db,db.begin():
         import_data(Path('data'),db)

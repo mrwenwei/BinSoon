@@ -129,3 +129,5 @@ Cloud Run 部署架構、建立 GCP 專案與詳細操作見 [部署指南](back
 已部署的公開 API 與資源版本見 [部署紀錄](backend/docs/DEPLOYMENT_STATUS.md)。
 
 下次自行更新部署，請依 [手動部署操作手冊](backend/docs/MANUAL_DEPLOYMENT.md) 逐步執行，包含腳本與完全手動兩種方式。
+
+本輪已實作一般垃圾／資源回收雙種類（本機與Cloud Run均為0006），每個Bin有兩個獨立滿度／歷史／清運狀態，點位ID不變；完整遷移假設、API參數與前端用法見 [雙種類串接](backend/docs/WASTE_STREAMS.md)。

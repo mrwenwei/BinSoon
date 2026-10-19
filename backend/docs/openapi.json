@@ -506,6 +506,13 @@
             ],
             "title": "Boundary Warning"
           },
+          "compartments": {
+            "items": {
+              "$ref": "#/components/schemas/CompartmentRead"
+            },
+            "title": "Compartments",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -687,7 +694,8 @@
           "demand_score",
           "reason",
           "boundary_warning",
-          "current_usage"
+          "current_usage",
+          "compartments"
         ],
         "title": "BinRead",
         "type": "object"
@@ -704,6 +712,11 @@
               }
             ],
             "title": "Capacity Liters"
+          },
+          "classification_source": {
+            "default": "legacy_assumed_general",
+            "title": "Classification Source",
+            "type": "string"
           },
           "estimated_hours_to_90_pct": {
             "anyOf": [
@@ -863,6 +876,15 @@
             },
             "title": "Unavailable Reasons",
             "type": "array"
+          },
+          "waste_type": {
+            "default": "general",
+            "enum": [
+              "general",
+              "recycling"
+            ],
+            "title": "Waste Type",
+            "type": "string"
           }
         },
         "required": [
@@ -905,6 +927,13 @@
           "can_report": {
             "title": "Can Report",
             "type": "boolean"
+          },
+          "compartments": {
+            "items": {
+              "$ref": "#/components/schemas/BinStatus"
+            },
+            "title": "Compartments",
+            "type": "array"
           },
           "latest_cleanup": {
             "anyOf": [
@@ -949,6 +978,7 @@
         "required": [
           "location",
           "status",
+          "compartments",
           "adopter",
           "latest_cleanup",
           "my_adoption_id",
@@ -989,6 +1019,11 @@
             "title": "Can Like",
             "type": "boolean"
           },
+          "classification_source": {
+            "default": "legacy_assumed_general",
+            "title": "Classification Source",
+            "type": "string"
+          },
           "completed_at": {
             "format": "date-time",
             "title": "Completed At",
@@ -1006,6 +1041,15 @@
           "liked_by_me": {
             "title": "Liked By Me",
             "type": "boolean"
+          },
+          "waste_type": {
+            "default": "general",
+            "enum": [
+              "general",
+              "recycling"
+            ],
+            "title": "Waste Type",
+            "type": "string"
           },
           "work_order_id": {
             "format": "uuid",
@@ -1114,6 +1158,39 @@
           "source_type"
         ],
         "title": "ClockRead",
+        "type": "object"
+      },
+      "CompartmentRead": {
+        "properties": {
+          "classification_source": {
+            "title": "Classification Source",
+            "type": "string"
+          },
+          "current_usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UsageRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "waste_type": {
+            "enum": [
+              "general",
+              "recycling"
+            ],
+            "title": "Waste Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "waste_type",
+          "classification_source",
+          "current_usage"
+        ],
+        "title": "CompartmentRead",
         "type": "object"
       },
       "Empty": {
@@ -1443,6 +1520,13 @@
               }
             ],
             "title": "Bin Type"
+          },
+          "compartments": {
+            "items": {
+              "$ref": "#/components/schemas/BinStatus"
+            },
+            "title": "Compartments",
+            "type": "array"
           },
           "distance_m": {
             "anyOf": [
@@ -1869,6 +1953,21 @@
           "type": {
             "title": "Type",
             "type": "string"
+          },
+          "waste_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "general",
+                  "recycling"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waste Type"
           }
         },
         "required": [
@@ -2243,6 +2342,10 @@
             "title": "Bin Type",
             "type": "string"
           },
+          "classification_source": {
+            "title": "Classification Source",
+            "type": "string"
+          },
           "estimated_hours_to_90_pct": {
             "anyOf": [
               {
@@ -2280,9 +2383,19 @@
           "source_type": {
             "title": "Source Type",
             "type": "string"
+          },
+          "waste_type": {
+            "enum": [
+              "general",
+              "recycling"
+            ],
+            "title": "Waste Type",
+            "type": "string"
           }
         },
         "required": [
+          "waste_type",
+          "classification_source",
           "bin_id",
           "name",
           "bin_type",
@@ -2633,6 +2746,21 @@
             "const": "Asia/Taipei",
             "title": "Timezone",
             "type": "string"
+          },
+          "waste_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "general",
+                  "recycling"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waste Type"
           }
         },
         "required": [
@@ -2732,6 +2860,10 @@
             "title": "Bin Id",
             "type": "string"
           },
+          "classification_source": {
+            "title": "Classification Source",
+            "type": "string"
+          },
           "event_type": {
             "enum": [
               "measurement",
@@ -2769,6 +2901,21 @@
           "source_type": {
             "title": "Source Type",
             "type": "string"
+          },
+          "waste_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "general",
+                  "recycling"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waste Type"
           }
         },
         "required": [
@@ -2778,7 +2925,9 @@
           "recorded_at",
           "source_type",
           "event_type",
-          "generation"
+          "generation",
+          "waste_type",
+          "classification_source"
         ],
         "title": "ReadingRead",
         "type": "object"
@@ -2949,6 +3098,15 @@
             ],
             "title": "Type",
             "type": "string"
+          },
+          "waste_type": {
+            "default": "general",
+            "enum": [
+              "general",
+              "recycling"
+            ],
+            "title": "Waste Type",
+            "type": "string"
           }
         },
         "required": [
@@ -2993,6 +3151,11 @@
           "bin_id": {
             "format": "uuid",
             "title": "Bin Id",
+            "type": "string"
+          },
+          "classification_source": {
+            "default": "legacy_assumed_general",
+            "title": "Classification Source",
             "type": "string"
           },
           "created_at": {
@@ -3100,6 +3263,15 @@
               "other"
             ],
             "title": "Type",
+            "type": "string"
+          },
+          "waste_type": {
+            "default": "general",
+            "enum": [
+              "general",
+              "recycling"
+            ],
+            "title": "Waste Type",
             "type": "string"
           },
           "work_order_id": {
@@ -3418,6 +3590,21 @@
             "const": "Asia/Taipei",
             "title": "Timezone",
             "type": "string"
+          },
+          "waste_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "general",
+                  "recycling"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waste Type"
           }
         },
         "required": [
@@ -3461,6 +3648,17 @@
             "title": "Priority",
             "type": "string"
           },
+          "waste_types": {
+            "items": {
+              "enum": [
+                "general",
+                "recycling"
+              ],
+              "type": "string"
+            },
+            "title": "Waste Types",
+            "type": "array"
+          },
           "work_order_ids": {
             "items": {
               "format": "uuid",
@@ -3476,6 +3674,7 @@
           "bin_id",
           "label",
           "work_order_ids",
+          "waste_types",
           "priority"
         ],
         "title": "Stop",
@@ -3513,6 +3712,11 @@
             "title": "Bin Id",
             "type": "string"
           },
+          "classification_source": {
+            "default": "legacy_unclassified",
+            "title": "Classification Source",
+            "type": "string"
+          },
           "event_type": {
             "const": "collection",
             "title": "Event Type",
@@ -3540,6 +3744,21 @@
           "source_type": {
             "title": "Source Type",
             "type": "string"
+          },
+          "waste_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "general",
+                  "recycling"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waste Type"
           },
           "work_order_id": {
             "format": "uuid",
@@ -3588,6 +3807,10 @@
           "capacity_liters": {
             "title": "Capacity Liters",
             "type": "number"
+          },
+          "classification_source": {
+            "title": "Classification Source",
+            "type": "string"
           },
           "estimated_hours_to_90_pct": {
             "anyOf": [
@@ -3642,9 +3865,19 @@
           "source_type": {
             "title": "Source Type",
             "type": "string"
+          },
+          "waste_type": {
+            "enum": [
+              "general",
+              "recycling"
+            ],
+            "title": "Waste Type",
+            "type": "string"
           }
         },
         "required": [
+          "waste_type",
+          "classification_source",
           "fill_level_pct",
           "capacity_liters",
           "estimated_used_liters",
@@ -3863,6 +4096,11 @@
             "title": "Blocked By Removed Bin",
             "type": "boolean"
           },
+          "classification_source": {
+            "default": "legacy_assumed_general",
+            "title": "Classification Source",
+            "type": "string"
+          },
           "clear_reading_id": {
             "anyOf": [
               {
@@ -4049,6 +4287,15 @@
           "version": {
             "title": "Version",
             "type": "integer"
+          },
+          "waste_type": {
+            "default": "general",
+            "enum": [
+              "general",
+              "recycling"
+            ],
+            "title": "Waste Type",
+            "type": "string"
           }
         },
         "required": [
@@ -6977,6 +7224,20 @@
               "title": "Format",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "default": "general",
+              "enum": [
+                "general",
+                "recycling"
+              ],
+              "title": "Waste Type",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -7111,6 +7372,20 @@
               ],
               "title": "Bin Type"
             }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "default": "general",
+              "enum": [
+                "general",
+                "recycling"
+              ],
+              "title": "Waste Type",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -7155,6 +7430,20 @@
               "title": "Bin Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "default": "general",
+              "enum": [
+                "general",
+                "recycling"
+              ],
+              "title": "Waste Type",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -7193,6 +7482,20 @@
             "schema": {
               "format": "uuid",
               "title": "Bin Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "default": "general",
+              "enum": [
+                "general",
+                "recycling"
+              ],
+              "title": "Waste Type",
               "type": "string"
             }
           }
@@ -7333,6 +7636,27 @@
                 }
               ],
               "title": "Source Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "general",
+                    "recycling",
+                    "legacy_unknown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Waste Type"
             }
           }
         ],
@@ -7542,6 +7866,20 @@
             "schema": {
               "format": "uuid",
               "title": "Bin Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "default": "general",
+              "enum": [
+                "general",
+                "recycling"
+              ],
+              "title": "Waste Type",
               "type": "string"
             }
           }
@@ -7992,6 +8330,20 @@
               "title": "Radius M",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "default": "general",
+              "enum": [
+                "general",
+                "recycling"
+              ],
+              "title": "Waste Type",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -8301,6 +8653,20 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "default": "general",
+              "enum": [
+                "general",
+                "recycling"
+              ],
+              "title": "Waste Type",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -8547,6 +8913,20 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "default": "general",
+              "enum": [
+                "general",
+                "recycling"
+              ],
+              "title": "Waste Type",
+              "type": "string"
             }
           }
         ],
@@ -10337,6 +10717,26 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "general",
+                    "recycling"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Waste Type"
+            }
           }
         ],
         "responses": {
@@ -11975,6 +12375,26 @@
               ],
               "title": "Month"
             }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "general",
+                    "recycling"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Waste Type"
+            }
           }
         ],
         "responses": {
@@ -13170,6 +13590,28 @@
     "/api/v1/staff/route-stops": {
       "get": {
         "operationId": "route_stops_api_v1_staff_route_stops_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "general",
+                    "recycling"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Waste Type"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -13369,6 +13811,26 @@
                 }
               ],
               "title": "Month"
+            }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "general",
+                    "recycling"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Waste Type"
             }
           }
         ],
@@ -13638,6 +14100,26 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "waste_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "general",
+                    "recycling"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Waste Type"
             }
           }
         ],

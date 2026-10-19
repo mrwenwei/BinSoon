@@ -1,5 +1,7 @@
 # 統一 Bin API 與模擬
 
+> 本輪新增一般垃圾／回收雙種類，先看 [雙種類API與遷移](WASTE_STREAMS.md)。本機需0006；雲端仍為0005，此輪未部署。下列UUID與單一usage範例為節錄，current_usage代表選定種類，完整兩槽在compartments。
+
 ## 使用方式
 
 既有清潔箱、十個推薦點、人工新增點都在 bins 表，每個 UUID 可直接用於同一組 API。沒有額外監測 registry 或 Candidate ORM。原始點位來源與 proposed 標記保留，hotspots 仍是獨立聚合資料。
@@ -27,6 +29,8 @@ scenario_id 只是原始十點的來源分組，不再決定哪些 Bin 能取得
   "feasibility_status": "pending_review",
   "source_type": "model_recommendation",
   "current_usage": {
+    "waste_type": "general",
+    "classification_source": "demo_assumption",
     "fill_level_pct": 65.2,
     "capacity_liters": 120,
     "estimated_used_liters": 78.24,
@@ -50,13 +54,14 @@ GET /api/v1/bins/{id}/history
     &end=2026-01-06T00:00:00Z
     &generation=2
     &source_type=simulated
+    &waste_type=recycling
     &limit=100
     &offset=0
 ```
 
 時間參數必須帶時區，UTC 存入資料庫；起訖皆包含。limit 預設 100、上限 1000。可省略篩選查所有模擬輪次。依 generation、recorded_at 新到舊排序；同時刻 collection 優先。generation 用來區分 reset 後時鐘重回起點的多輪歷史。
 
-每筆紀錄含 id、bin_id、fill_level_pct、recorded_at、source_type、event_type、generation。event_type 為 measurement／collection／reset。source_type 預留 iot_sensor 查詢，這階段沒有 IoT 寫入端點。
+每筆紀錄含id、bin_id、waste_type、classification_source、fill_level_pct、recorded_at、source_type、event_type、generation；舊歷史waste_type=null，不複製成兩類。history不帶種類回全部；legacy_unknown只查舊未分類。event_type 為 measurement／collection／reset。source_type 預留 iot_sensor 查詢，這階段沒有 IoT 寫入端點。
 
 ## 新增 Bin
 
@@ -78,7 +83,7 @@ Content-Type: application/json
 }
 ```
 
-回傳 201 與完整 BinRead，包括 UUID、current_usage.fill_level_pct=0。Bin、初始狀態與 reset 紀錄在同一 transaction 建立，立即可透過 /bins/{id} 及 /history 查詢。新增點標記 proposed、pending_review，不開放以此端點冒充官方既有清冊。
+回傳201與完整BinRead，包括UUID、general的current_usage.fill_level_pct=0及兩個獨立compartments。Bin、初始狀態與 reset 紀錄在同一 transaction 建立，立即可透過 /bins/{id} 及 /history 查詢。新增點標記 proposed、pending_review，不開放以此端點冒充官方既有清冊。
 
 所有 POST 都需管理 token；未設定時 503，缺少／錯誤時 401。舊 DEMO_ADMIN_TOKEN 仍可讀取，避免本機或既有雲端 Secret 必須立即輪替。推薦使用 ADMIN_TOKEN。
 
@@ -89,7 +94,7 @@ Content-Type: application/json
 3. GET /api/v1/simulation/status，取得目前 generation 與 UTC 模擬時間。
 4. POST /api/v1/simulation/advance。
 5. GET /bins/{id}、/history、/bins/collection-priorities 查看結果。
-6. POST /bins/{id}/collect 清空單一 Bin。
+6. POST /bins/{id}/collect?waste_type=recycling只清回收槽；省略時只清general。
 7. POST /simulation/reset 開始下一輪；舊歷史不刪除。
 
 Advance 請求：
@@ -112,7 +117,7 @@ POST /simulation/pause 禁止 advance；resume 恢復，不補算牆鐘經過時
 
 ```text
 bins              # 所有點位及來源；bin_type 區分 existing/proposed
-bin_states        # 每 Bin 一筆目前滿度、容量、模擬速度
+bin_states        # 每(bin_id,waste_type)一筆；一般／回收各自滿度、容量、速度
 bin_readings      # 所有 Bin 的滿度／清運歷史
 simulation_clocks # 一個共用時鐘、seed、generation、速度倍率
 simulation_advances # 推進 request ID 去重
@@ -121,11 +126,11 @@ hotspots          # 原景點聚合資料，與 Bin 監測無關
 
 對應程式：app/api.py、services/bins.py 負責 Bin 查詢／建立；simulation_api.py、services/simulation.py 負責模擬；security.py 共用管理權限。
 
-固定 seed=42，逐模擬分鐘更新。每一分鐘的 noise 由 seed、bin_id、絕對模擬分鐘的 BLAKE2 雜湊決定；同 ID、相同推進和清運事件可重現，分段 advance 與一次推進的滿度相同。0003 後引擎版本為 unified-v1；已保存舊版讀值原樣保留，未重算。
+固定 seed=42，逐模擬分鐘更新。每一分鐘的noise由seed、bin_id、waste_type、絕對模擬分鐘的 BLAKE2 雜湊決定；同 ID、相同推進和清運事件可重現，分段 advance 與一次推進的滿度相同。0006後引擎版本為waste-streams-v2；已保存舊版讀值原樣保留，未重算。
 
 十點速度使用 demand_score/10+(11-rank)*0.03；其他點依 UUID 決定 4～8 %/hour 的基礎速率。這都是合成假設。台北時間週末倍率 1.2、平日 1；07～10、17～21 點倍率 1.3，11～14 點 1.1，其餘 0.6，沒有國定假日行事曆。每分鐘 noise 為 ±0.02 個百分點；零速度不增加滿度，滿度限制 0～100。
 
-每次 advance 為每個模擬 Bin 新增一筆 measurement，不保存內部逐分鐘計算。達到 100 後略過多餘填滿運算，但仍更新觀測時間。未來來源為 iot_sensor 的狀態不會被 advance/reset 覆寫。
+每次advance為每個模擬桶槽各新增一筆measurement，不保存內部逐分鐘計算。達到 100 後略過多餘填滿運算，但仍更新觀測時間。未來來源為 iot_sensor 的狀態不會被 advance/reset 覆寫。
 
 清運規則：>=90 critical、>=80 high、>=50 medium，其餘 low。排序依滿度、預估到 90% 時間、UUID。預估時間以基礎填滿速度外推，不含未來時段／噪音；已達 90% 為 0，零速度為 null。不是正式清運標準。
 
@@ -137,6 +142,6 @@ hotspots          # 原景點聚合資料，與 Bin 監測無關
 
 2026-10-19 已完成0003遷移及後續0005產品功能部署。/demo路由已移除；本輪亦依使用者授權移除GET／POST /candidates（404）。市民新增點改用POST /proposals，維運直接建立用POST /bins；GET /bins包含所有類型及current_usage，歷史仍用相同 /bins/{id}/history。現有Bin UUID與資料不刪除。
 
-## 本機驗證紀錄
+## 先前統一Bin版本驗證紀錄（歷史）
 
 本次 36 項 pytest 全部通過，包含獨立 schema 遷移保留、UUID 衝突、並行 seed／advance、重試去重、所有 Bin 查詢與歷史。Alembic check 無差異。實際 HTTP 驗收為 681 個 existing + 10 個 proposed，所有 Bin 具狀態，新舊 ID 均能查歷史；官方全市／大安區與景點筆數維持 681／47、130／18。本機遷移前已另存資料庫備份。雲端另完成按需備份與維護切換，驗收詳見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。CSV 對調與 TestClient 棄用提醒仍存在。

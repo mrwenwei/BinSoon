@@ -78,7 +78,7 @@ def check(base_url: str, create_bin: bool = False):
         assert bin_["current_usage"]["fill_level_pct"] == 0
         assert get('/api/v1/bins/'+bin_['id']) == bin_
         readings = get('/api/v1/bins/'+bin_['id']+'/history')
-        assert len(readings) == 1 and readings[0]['event_type'] == 'reset'
+        assert len(readings) == 2 and {r['waste_type'] for r in readings} == {'general','recycling'}
         assert len(get("/api/v1/bins?bin_type=existing")) == 47
         result["created_test_bin_id"] = bin_["id"]
     print(json.dumps(result, ensure_ascii=False, indent=2))

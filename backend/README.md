@@ -4,7 +4,11 @@ Python 3.12、FastAPI、SQLAlchemy 2、PostgreSQL 16 / PostGIS、Alembic。
 
 所有清潔箱和新增點統一為 **Bin**。資料來源及現勘狀態仍保留：`bin_type=existing` 為既有清潔箱，`proposed` 為新增待現勘點。所有 Bin 使用相同 ID、狀態及歷史 API。景點／商圈 `hotspots` 不是 bin。
 
-## A／B／D 後端（2026-10-19 已部署）
+## 一般垃圾／資源回收雙種類（已部署 Cloud Run）
+
+每個Bin包含general與recycling兩個獨立桶槽，容量、滿度、歷史、清運與工單分開；Bin UUID與官方來源不變。舊歷史保留為未分類，不能複製成兩份。遷移與前端用法見 [WASTE_STREAMS.md](docs/WASTE_STREAMS.md)。本機與Cloud Run head=0006，正式revision=binsoon-api-00008-v7k。已完成備份／維護切換；0006與舊程式不相容，不能直接回滾舊映像。
+
+## A／B／D 後端（先前版本已部署）
 
 本分支已提供登入、私有照片、地圖、回報／事件／工單、查證發點、會員／兌換、提案／投票／命名、認養、站內通知及成果統計。前端仍使用靜態快照與 localStorage，未修改也尚未串接。
 
@@ -15,7 +19,7 @@ Python 3.12、FastAPI、SQLAlchemy 2、PostgreSQL 16 / PostGIS、Alembic。
 - [API 全覽與舊入口整理：保留、維運與淘汰建議](docs/API_INVENTORY.md)
 - [初始化、A→D 手動驗收、HTTP smoke 及 Cloud Run 準備](docs/PRODUCT_OPERATIONS.md)
 
-本機與雲端 migration head 均為 0005；線上 revision 為 binsoon-api-00006-n96。展示登入程式預設關閉；既有 BinSoon 雲端展示環境已明確啟用並初始化三個角色與獎品，沒有初始贈點。CSV 初始化不會自動建立帳號。連線、測試與資源見 [部署紀錄](docs/DEPLOYMENT_STATUS.md)。
+雲端及本機 migration head=0006；線上 revision 為 binsoon-api-00008-v7k。展示登入程式預設關閉；既有 BinSoon 雲端展示環境已明確啟用並初始化三個角色與獎品，沒有初始贈點。CSV 初始化不會自動建立帳號。連線、測試與資源見 [部署紀錄](docs/DEPLOYMENT_STATUS.md)。
 
 ## 本機啟動
 
@@ -68,7 +72,7 @@ curl 'http://localhost:8000/api/v1/bins/replace-with-bin-id/history?limit=100'
 - `daan_hotspot_gap_screening.csv`：實際為 130 筆景點聚合，大安區 18 筆；匯入 hotspots。
 - `hotspots_all_taipei.csv`：實際為 18 筆缺口分析，不自動匯入。
 - 後兩檔名對調，匯入器檢查欄位、警告並保留實際來源檔名。UTF-8-SIG 讀取，兩組資料同一 transaction upsert，保留 UUID、source_type/source_row/source_file，不刪除來源消失的資料。
-- 所有 Bin 的滿度目前都是 simulated，包含真實既有清潔箱；沒有實測資料。預設容量 120 公升也是模擬設定，估計公升數不能當成實測垃圾量。
+- 所有Bin的兩種滿度目前都是simulated，包含真實既有清潔箱；沒有實測資料。新一般槽預設120公升、回收槽80公升也是模擬設定，估計公升數不能當成實測垃圾量。
 - 十點原始座標與排名不變，第 4、7 點屬中正區並保留警告。新增點須現勘，不代表已實際設置。維運直接建桶未檢查行政區邊界；市民提案用官方大安區多邊形驗證。
 - 座標為 Geography(Point,4326)，UTC timestamptz。距離使用PostGIS ST_Distance；提案前周邊檢查用 `/map/availability`，包含已設置新增桶，不將場所當桶。
 

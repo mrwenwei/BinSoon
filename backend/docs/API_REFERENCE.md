@@ -469,6 +469,7 @@ Request body：無。
 | query | `bin_type` | 否 | `"existing"`、`"proposed"` / null | — |
 | query | `scenario_id` | 否 | string / null | — |
 | query | `format` | 否 | `"json"`、`"geojson"` | 預設 `"json"` |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 Request body：無。
 
@@ -494,6 +495,7 @@ Request：`application/json`，必填；[BinCreate](#schema-bincreate)。
 | --- | --- | --- | --- | --- |
 | query | `district` | 否 | `"中正區"`、`"大同區"`、`"中山區"`、`"松山區"`、`"大安區"`、`"萬華區"`、`"信義區"`、`"士林區"`、`"北投區"`、`"內湖區"`、`"南港區"`、`"文山區"` / `"all"` | 預設 `"大安區"` |
 | query | `bin_type` | 否 | `"existing"`、`"proposed"` / null | — |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 Request body：無。
 
@@ -507,6 +509,7 @@ Request body：無。
 | 位置 | 名稱 | 必填 | 型別／允許值 | 限制／預設 |
 | --- | --- | --- | --- | --- |
 | path | `bin_id` | 是 | string (uuid) | — |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 Request body：無。
 
@@ -520,6 +523,7 @@ Request body：無。
 | 位置 | 名稱 | 必填 | 型別／允許值 | 限制／預設 |
 | --- | --- | --- | --- | --- |
 | path | `bin_id` | 是 | string (uuid) | — |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 Request body：無。
 
@@ -539,6 +543,7 @@ Request body：無。
 | query | `end` | 否 | string (date-time) / null | — |
 | query | `generation` | 否 | integer / null | 最小 `0` |
 | query | `source_type` | 否 | `"simulated"`、`"iot_sensor"` / null | — |
+| query | `waste_type` | 否 | `"general"`、`"recycling"`、`"legacy_unknown"` / null | — |
 
 Request body：無。
 
@@ -576,6 +581,7 @@ Request body：無。
 | 位置 | 名稱 | 必填 | 型別／允許值 | 限制／預設 |
 | --- | --- | --- | --- | --- |
 | path | `bin_id` | 是 | string (uuid) | — |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 Request body：無。
 
@@ -640,6 +646,7 @@ Request body：無。
 | query | `latitude` | 否 | number / null | 最小 `-90`；最大 `90` |
 | query | `longitude` | 否 | number / null | 最小 `-180`；最大 `180` |
 | query | `radius_m` | 否 | integer | 最小 `300`；最大 `300`；預設 `300` |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 Request body：無。
 
@@ -673,6 +680,7 @@ Request body：無。
 | query | `longitude` | 否 | number / null | 最小 `-180`；最大 `180` |
 | query | `limit` | 否 | integer | 最小 `1`；最大 `100`；預設 `20` |
 | query | `offset` | 否 | integer | 最小 `0`；預設 `0` |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 Request body：無。
 
@@ -701,6 +709,7 @@ Request body：無。
 | query | `latitude` | 否 | number / null | 最小 `-90`；最大 `90` |
 | query | `longitude` | 否 | number / null | 最小 `-180`；最大 `180` |
 | query | `limit` | 否 | integer | 最小 `1`；最大 `10`；預設 `3` |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 Request body：無。
 
@@ -946,6 +955,7 @@ Request body：無。
 | query | `bin_id` | 否 | string (uuid) / null | — |
 | query | `limit` | 否 | integer | 最小 `1`；最大 `100`；預設 `20` |
 | query | `offset` | 否 | integer | 最小 `0`；預設 `0` |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` / null | — |
 
 Request body：無。
 
@@ -1168,6 +1178,7 @@ Request：`application/json`，必填；[VoteCreate](#schema-votecreate)。
 | --- | --- | --- | --- | --- |
 | query | `district` | 否 | `"中正區"`、`"大同區"`、`"中山區"`、`"松山區"`、`"大安區"`、`"萬華區"`、`"信義區"`、`"士林區"`、`"北投區"`、`"內湖區"`、`"南港區"`、`"文山區"` | 預設 `"大安區"` |
 | query | `month` | 否 | string / null | — |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` / null | — |
 
 Request body：無。
 
@@ -1372,7 +1383,9 @@ Request body：無。
 
 ### GET `/api/v1/staff/route-stops`
 
-無 path／query／額外命令 header 參數（仍依權限帶 Bearer）。
+| 位置 | 名稱 | 必填 | 型別／允許值 | 限制／預設 |
+| --- | --- | --- | --- | --- |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` / null | — |
 
 Request body：無。
 
@@ -1398,6 +1411,7 @@ Request body：無。
 | --- | --- | --- | --- | --- |
 | query | `district` | 否 | `"中正區"`、`"大同區"`、`"中山區"`、`"松山區"`、`"大安區"`、`"萬華區"`、`"信義區"`、`"士林區"`、`"北投區"`、`"內湖區"`、`"南港區"`、`"文山區"` / null | — |
 | query | `month` | 否 | string / null | — |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` / null | — |
 
 Request body：無。
 
@@ -1427,6 +1441,7 @@ Request body：無。
 | query | `source` | 否 | `"citizen"`、`"sensor"`、`"inspection"` / null | — |
 | query | `limit` | 否 | integer | 最小 `1`；最大 `100`；預設 `20` |
 | query | `offset` | 否 | integer | 最小 `0`；預設 `0` |
+| query | `waste_type` | 否 | `"general"`、`"recycling"` / null | — |
 
 Request body：無。
 
@@ -1846,6 +1861,7 @@ Request body：無。
 | `address` | 是 | string / null | — |
 | `bin_type` | 是 | `"existing"`、`"proposed"` | — |
 | `boundary_warning` | 是 | string / null | — |
+| `compartments` | 是 | Array&lt;[CompartmentRead](#schema-compartmentread)&gt; | — |
 | `created_at` | 是 | string (date-time) | — |
 | `current_usage` | 是 | [UsageRead](#schema-usageread) / null | — |
 | `demand_score` | 是 | number / null | — |
@@ -1877,6 +1893,7 @@ Request body：無。
 | 欄位 | 必填 | 型別／允許值 | 限制／預設 |
 | --- | --- | --- | --- |
 | `capacity_liters` | 是 | number / null | — |
+| `classification_source` | 否 | string | 預設 `"legacy_assumed_general"` |
 | `estimated_hours_to_90_pct` | 是 | number / null | — |
 | `estimated_used_liters` | 是 | number / null | — |
 | `fill_level_pct` | 是 | number / null | — |
@@ -1892,6 +1909,7 @@ Request body：無。
 | `removed_at` | 是 | string (date-time) / null | — |
 | `risk_priority` | 是 | `"critical"`、`"high"`、`"medium"`、`"low"` / null | — |
 | `unavailable_reasons` | 是 | Array&lt;string&gt; | — |
+| `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 <a id="schema-binview"></a>
 
@@ -1904,6 +1922,7 @@ Request body：無。
 | `adopter` | 是 | [AdoptionPublic](#schema-adoptionpublic) / null | — |
 | `can_apply_adoption` | 是 | boolean | — |
 | `can_report` | 是 | boolean | — |
+| `compartments` | 是 | Array&lt;[BinStatus](#schema-binstatus)&gt; | — |
 | `latest_cleanup` | 是 | [Cleanup](#schema-cleanup) / null | — |
 | `location` | 是 | [Location](#schema-location) | — |
 | `my_adoption_id` | 是 | string (uuid) / null | — |
@@ -1931,10 +1950,12 @@ Request body：無。
 | --- | --- | --- | --- |
 | `bin_id` | 是 | string (uuid) | — |
 | `can_like` | 是 | boolean | — |
+| `classification_source` | 否 | string | 預設 `"legacy_assumed_general"` |
 | `completed_at` | 是 | string (date-time) | — |
 | `id` | 是 | string (uuid) | — |
 | `like_count` | 是 | integer | — |
 | `liked_by_me` | 是 | boolean | — |
+| `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 | `work_order_id` | 是 | string (uuid) | — |
 
 <a id="schema-clearcreate"></a>
@@ -1975,6 +1996,18 @@ Request body：無。
 | `simulation_status` | 是 | `"running"`、`"paused"` | — |
 | `source_type` | 是 | `"simulated"` | — |
 | `time_multiplier` | 是 | number | — |
+
+<a id="schema-compartmentread"></a>
+
+### Schema CompartmentRead
+
+—
+
+| 欄位 | 必填 | 型別／允許值 | 限制／預設 |
+| --- | --- | --- | --- |
+| `classification_source` | 是 | string | — |
+| `current_usage` | 是 | [UsageRead](#schema-usageread) / null | — |
+| `waste_type` | 是 | `"general"`、`"recycling"` | — |
 
 <a id="schema-empty"></a>
 
@@ -2093,6 +2126,7 @@ Request body：無。
 | `address` | 是 | string / null | — |
 | `bin_status` | 是 | [BinStatus](#schema-binstatus) / null | — |
 | `bin_type` | 是 | `"existing"`、`"proposed"` / null | — |
+| `compartments` | 否 | Array&lt;[BinStatus](#schema-binstatus)&gt; | — |
 | `distance_m` | 是 | number / null | — |
 | `district` | 是 | string | — |
 | `id` | 是 | string (uuid) | — |
@@ -2214,6 +2248,7 @@ Request body：無。
 | `target` | 是 | [Target](#schema-target) | — |
 | `title` | 是 | string | — |
 | `type` | 是 | string | — |
+| `waste_type` | 否 | `"general"`、`"recycling"` / null | — |
 
 <a id="schema-origin"></a>
 
@@ -2388,12 +2423,14 @@ Request body：無。
 | --- | --- | --- | --- |
 | `bin_id` | 是 | string (uuid) | — |
 | `bin_type` | 是 | `"existing"`、`"proposed"` | — |
+| `classification_source` | 是 | string | — |
 | `estimated_hours_to_90_pct` | 是 | number / null | — |
 | `fill_level_pct` | 是 | number | — |
 | `last_updated_at` | 是 | string (date-time) | — |
 | `name` | 是 | string | — |
 | `priority` | 是 | `"critical"`、`"high"`、`"medium"`、`"low"` | — |
 | `source_type` | 是 | string | — |
+| `waste_type` | 是 | `"general"`、`"recycling"` | — |
 
 <a id="schema-proposalcreate"></a>
 
@@ -2489,6 +2526,7 @@ Request body：無。
 | `like_count` | 是 | integer | — |
 | `month` | 是 | string | — |
 | `timezone` | 是 | `"Asia/Taipei"` | — |
+| `waste_type` | 否 | `"general"`、`"recycling"` / null | — |
 
 <a id="schema-quota"></a>
 
@@ -2528,12 +2566,14 @@ Request body：無。
 | 欄位 | 必填 | 型別／允許值 | 限制／預設 |
 | --- | --- | --- | --- |
 | `bin_id` | 是 | string (uuid) | — |
+| `classification_source` | 是 | string | — |
 | `event_type` | 是 | `"measurement"`、`"collection"`、`"reset"` | — |
 | `fill_level_pct` | 是 | number | — |
 | `generation` | 是 | integer / null | — |
 | `id` | 是 | string (uuid) | — |
 | `recorded_at` | 是 | string (date-time) | — |
 | `source_type` | 是 | string | — |
+| `waste_type` | 是 | `"general"`、`"recycling"` / null | — |
 
 <a id="schema-reason"></a>
 
@@ -2608,6 +2648,7 @@ Request body：無。
 | `position` | 是 | [Position](#schema-position) | — |
 | `quick` | 否 | boolean | 預設 `false` |
 | `type` | 是 | `"full"`、`"dirty"`、`"dumping"`、`"broken"`、`"other"` | — |
+| `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 
 <a id="schema-reportread"></a>
 
@@ -2622,6 +2663,7 @@ Request body：無。
 | `assignment_status` | 是 | `"assigned"`、`"unassigned"` | — |
 | `awarded_points` | 是 | integer | — |
 | `bin_id` | 是 | string (uuid) | — |
+| `classification_source` | 否 | string | 預設 `"legacy_assumed_general"` |
 | `created_at` | 是 | string (date-time) | — |
 | `description` | 是 | string | — |
 | `event_id` | 是 | string (uuid) | — |
@@ -2637,6 +2679,7 @@ Request body：無。
 | `settled_at` | 是 | string (date-time) / null | — |
 | `status` | 是 | `"pending"`、`"processing"`、`"approved"`、`"rejected"` | — |
 | `type` | 是 | `"full"`、`"dirty"`、`"dumping"`、`"broken"`、`"other"` | — |
+| `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |
 | `work_order_id` | 是 | string (uuid) / null | — |
 | `work_status` | 是 | `"pending"`、`"processing"`、`"arrived"`、`"waiting_sensor"`、`"repair"`、`"completed"`、`"dismissed"` / null | — |
 
@@ -2745,6 +2788,7 @@ Request body：無。
 | `month` | 是 | string | — |
 | `ranking` | 是 | Array&lt;[Rank](#schema-rank)&gt; | — |
 | `timezone` | 是 | `"Asia/Taipei"` | — |
+| `waste_type` | 否 | `"general"`、`"recycling"` / null | — |
 
 <a id="schema-stop"></a>
 
@@ -2759,6 +2803,7 @@ Request body：無。
 | `latitude` | 是 | number | 最小 `-90.0`；最大 `90.0` |
 | `longitude` | 是 | number | 最小 `-180.0`；最大 `180.0` |
 | `priority` | 是 | string | — |
+| `waste_types` | 是 | Array&lt;`"general"`、`"recycling"`&gt; | — |
 | `work_order_ids` | 是 | Array&lt;string (uuid)&gt; | — |
 
 <a id="schema-target"></a>
@@ -2781,12 +2826,14 @@ Request body：無。
 | 欄位 | 必填 | 型別／允許值 | 限制／預設 |
 | --- | --- | --- | --- |
 | `bin_id` | 是 | string (uuid) | — |
+| `classification_source` | 否 | string | 預設 `"legacy_unclassified"` |
 | `event_type` | 是 | `"collection"` | — |
 | `fill_level_pct` | 是 | number | — |
 | `id` | 是 | string (uuid) | — |
 | `observed_at` | 是 | string (date-time) | — |
 | `received_at` | 是 | string (date-time) | — |
 | `source_type` | 是 | string | — |
+| `waste_type` | 否 | `"general"`、`"recycling"` / null | — |
 | `work_order_id` | 是 | string (uuid) | — |
 
 <a id="schema-tier"></a>
@@ -2810,6 +2857,7 @@ Request body：無。
 | 欄位 | 必填 | 型別／允許值 | 限制／預設 |
 | --- | --- | --- | --- |
 | `capacity_liters` | 是 | number | — |
+| `classification_source` | 是 | string | — |
 | `estimated_hours_to_90_pct` | 是 | number / null | — |
 | `estimated_used_liters` | 是 | number | — |
 | `fill_level_pct` | 是 | number | — |
@@ -2818,6 +2866,7 @@ Request body：無。
 | `priority` | 是 | `"critical"`、`"high"`、`"medium"`、`"low"` | — |
 | `recorded_at` | 是 | string (date-time) | — |
 | `source_type` | 是 | string | — |
+| `waste_type` | 是 | `"general"`、`"recycling"` | — |
 
 <a id="schema-userread"></a>
 
@@ -2885,6 +2934,7 @@ Request body：無。
 | `assigned_staff_id` | 是 | string (uuid) / null | — |
 | `bin_id` | 是 | string (uuid) | — |
 | `blocked_by_removed_bin` | 是 | boolean | — |
+| `classification_source` | 否 | string | 預設 `"legacy_assumed_general"` |
 | `clear_reading_id` | 是 | string (uuid) / null | — |
 | `completed_at` | 是 | string (date-time) / null | — |
 | `completion_id` | 是 | string (uuid) / null | — |
@@ -2906,3 +2956,4 @@ Request body：無。
 | `target_at` | 是 | string (date-time) / null | — |
 | `type` | 是 | `"full"`、`"dirty"`、`"dumping"`、`"broken"`、`"other"` | — |
 | `version` | 是 | integer | — |
+| `waste_type` | 否 | `"general"`、`"recycling"` | 預設 `"general"` |

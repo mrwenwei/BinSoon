@@ -2,6 +2,10 @@
 
 更新日期：2026-10-19（Asia/Taipei）。線上數量與驗收結果以最近一次部署紀錄為基準，非即時統計。
 
+## 本輪雙種類（已部署 Cloud Run）
+
+每Bin新增general／recycling獨立滿度、容量、速率、歷史與清運；回報／工單／成果／通知及地圖／導航同步按種類處理。新增0006，舊歷史保留未分類，舊State明示假設對應general。分類與規格都是展示假設，並非CSV新證據。完整API及影響範圍見 [雙種類文件](../backend/docs/WASTE_STREAMS.md)。已部署0006／binsoon-api-00008-v7k；本輪程式、測試與部署紀錄一併提交；部署時來源為工作樹快照。
+
 ## A／B／D後端新增（2026-10-19已部署）
 
 - 已實作A／B／D持久化展示後端：身分／角色、照片、地圖讀取、回報／事件／工單、查證發點、會員／兌換、提案／投票／命名、認養、通知、按讚、路線站點及月統計。
@@ -27,16 +31,16 @@
 | 項目 | 結果 |
 | --- | --- |
 | GCP 專案／區域 | binsoon／asia-east1 |
-| 正式 revision | binsoon-api-00006-n96，100% 流量 |
-| 資料庫 schema | Alembic 0005 |
+| 正式 revision | binsoon-api-00008-v7k，100% 流量 |
+| 資料庫 schema | Alembic 0006 |
 | 部署驗收時 Bin | 692：既有 681、新增 11（十個推薦點及一筆既存驗收點） |
 | 景點聚合 | 全市 130／大安區 18 |
 | 既有清潔箱 | 全市 681／大安區 47，需 bin_type=existing 篩選 |
-| 遷移前 Cloud SQL 備份 | 1792389532929，SUCCESSFUL |
-| 初始化 execution | binsoon-api-initialize-r8fqh，成功 |
+| 遷移前 Cloud SQL 備份 | 1792413961467，SUCCESSFUL |
+| 初始化 execution | binsoon-api-initialize-2ndsb，成功 |
 | 展示帳號 execution | binsoon-api-product-seed-2sgbz，成功；0初始贈點 |
 
-0003切換曾採維護入口與資料保留比對；最新0004／0005為相容新增表／欄位，先備份與初始化Job，再切新revision流量。本機最新74項測試通過，線上完成登入、GCS及明示回報／查證／結案驗收。完整映像digest、Cloud Build、來源快照與驗收證據見 [部署紀錄](../backend/docs/DEPLOYMENT_STATUS.md) 最新章節。
+0003切換曾採維護入口與資料保留比對；0006亦採維護／排空／備份／初始化Job／新版切流；不可直接回滾舊映像。本機83個不同測試案例分批實際通過，線上完成登入、GCS及明示回報／查證／結案驗收。完整映像digest、Cloud Build、來源快照與驗收證據見 [部署紀錄](../backend/docs/DEPLOYMENT_STATUS.md) 最新章節。
 
 [Swagger](https://binsoon-api-887203439341.asia-east1.run.app/docs)・[全市 Bin](https://binsoon-api-887203439341.asia-east1.run.app/api/v1/bins?district=all)・[模擬狀態](https://binsoon-api-887203439341.asia-east1.run.app/api/v1/simulation/status)
 

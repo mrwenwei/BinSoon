@@ -26,7 +26,7 @@ def db(isolated_engine):
     from test_migration import revision
     with isolated_engine.begin() as connection:
         for name in ('0001_initial.py', '0002_demo.py', '0003_unified_bins.py',
-                     '0004_product.py', '0005_product_integrity.py'):
+                     '0004_product.py', '0005_product_integrity.py','0006_waste_streams.py'):
             revision(connection, name)
     with isolated_engine.connect() as connection:
         transaction = connection.begin()
@@ -160,7 +160,7 @@ def test_map_semantics_and_history_do_not_mutate(product):
     query = f"latitude={p['bin']['latitude']}&longitude={p['bin']['longitude']}"
     result = c.get('/api/v1/map/availability?'+query).json()
     assert result['has_existing_bin_within_radius']
-    state = db.get(BinState, p['bin']['id']); state.fill_level_pct = 100; db.flush()
+    state = db.get(BinState, (p['bin']['id'],'general')); state.fill_level_pct = 100; db.flush()
     assert c.get('/api/v1/map/availability?'+query).json()['has_existing_bin_within_radius']
     assert c.get('/api/v1/map/nearest-usable?'+query).json()['items'][0]['id'] != p['bin']['id']
 
@@ -204,7 +204,7 @@ def test_full_workflow_points_clear_completion_and_likes(product, clear_first):
         result = command(p, work, 'demo-clear', dict(reading_id=reading_id), 'admin')
         assert result.status_code == 200, result.text
         assert result.json()['work_order']['status'] == 'arrived'
-        assert db.get(BinState, p['bin']['id']).fill_level_pct == 0
+        assert db.get(BinState, (p['bin']['id'],'general')).fill_level_pct == 0
     assert evidence(p, work).status_code == 200
     finish = command(p, work, 'finish'); assert finish.status_code == 200, finish.text
     if not clear_first:
@@ -560,7 +560,7 @@ def test_full_adoption_alert_only_on_threshold_crossing(product):
     create_report(p)
     alerts=lambda:db.scalar(select(func.count()).select_from(Notification).where(Notification.type=='adoption_alert'))
     assert alerts()==0
-    state=db.get(BinState,p['bin']['id']); state.fill_level_pct=81
+    state=db.get(BinState,(p['bin']['id'],'general')); state.fill_level_pct=81
     clock=simulation.get_clock(db)
     simulation.record(db,state,'measurement',clock); db.flush()
     assert alerts()==1

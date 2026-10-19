@@ -229,3 +229,37 @@ gcloud run services update-traffic binsoon-api --project=binsoon --region=asia-e
 - 線上只新增並撤銷短效登入session及更新登入節流紀錄，沒有業務寫入；未對Cloud SQL跑pytest。前端完全未修改，實體手機與前端對接仍待驗證。
 
 目前唯一的滿度歷史仍為 `/bins/{id}/history`；沒有另加demo history。所有滿度依舊為simulated，不代表實測IoT。緊急回復可切流量回00005（會暫時恢復舊candidates入口），不需downgrade DB。
+
+
+## 雙種類桶槽：2026-10-19 已部署（目前正式版本）
+
+| 項目 | 結果 |
+| --- | --- |
+| 正式 revision／流量 | `binsoon-api-00008-v7k`／100% |
+| Schema／資料版本 | `0006`／`waste-streams-v2` |
+| Cloud Build | `fc0bdd3d-da0e-4f25-ac0a-dd23c5c1b064`，SUCCESS |
+| 映像 digest | `sha256:8981beab42767445c69a8993c282adf48f1fd9f1babd1644de436cd470b2d251` |
+| 維護 revision | `binsoon-api-00007-lzh`；確認GET／POST皆503，排空至少61秒 |
+| 升級前 Cloud SQL 備份 | `1792413961467`，SUCCESSFUL |
+| 初始化 execution | `binsoon-api-initialize-2ndsb`，成功；與API相同digest |
+| 資料保留 | 692個Bin，693筆舊Reading全部逐筆比對通過 |
+| 新增回收槽 | 692個獨立State及692筆reset Reading，初始0%、80L |
+| 契約 | 68 paths／70 operations／88 schemas，線上與快照完全一致 |
+
+本次部署使用尚未commit的工作樹，基底為 `38b67b8`；可重現來源由Cloud Build上傳物件及不可變映像digest識別，非宣稱該基底commit已包含雙種類變更。來源物件、逐檔SHA256、備份及驗收metadata見 [release manifest](../deploy/releases/waste-streams-20261019.json)。部署結果文件是在映像建置後更新；未push遠端。
+
+已沿用既有Cloud SQL、五個Secret references、帳號、CORS及私有GCS；沒有建立新付費資源。以新映像維護模式切流、排空舊請求、建立備份、執行初始化Job升級及補齊槽，再切新版API。手動 `binsoon-api-product-seed` Job也已同步同一digest與模擬設定，但未執行，避免未來使用不相容舊映像。API冷啟動仍不執行migration或匯入。
+
+線上實際驗收：
+
+- 全部692個Bin UUID、座標、名稱、來源、推薦排名／分數、設置狀態及原current_usage數值完整保留；一般槽分類標記為legacy_assumed_general。官方位置仍681，全市hotspots130。
+- 每點恰有general／recycling兩槽；回收槽初始0%、80L，速率為原一般槽的0.65倍，皆明示simulated及demo_assumption，非官方規格證據。
+- 全部693筆舊Reading逐欄位及ID比對一致，新增waste_type=null／legacy_unclassified；沒有複製或改分類成兩份。692筆新Reading皆為recycling／reset／0%。歷史類型篩選隔離正確。
+- 模擬時鐘、seed、generation及執行狀態不變，僅data_version更新為waste-streams-v2；未advance、reset或collect。
+- general／recycling列表、單點view、GeoJSON座標、優先清單、map、未授權collect拒絕、舊candidates404、Swagger及線上OpenAPI均通過。
+- 三角色登入／登出與角色隔離、市民／隊員／管理員既有讀取、CORS preflight、重用舊照片的GCS短效下載與匿名物件拒絕均通過。只建立並撤銷登入session，沒有新增照片或業務案件。
+- pytest僅使用本機PostGIS：81項完整回歸，加上2個後補不同案例分批驗證，合計83個案例實際通過；未在正式DB執行pytest。前端及實體手機尚未串接驗收。
+
+**回復限制：本節覆蓋上方歷史紀錄的直接切回舊版建議。0006不相容於0005／舊單槽映像，不可直接切回00006-n96或更早版本。** 若故障，先切維護，優先向前修復；需要還原時必須協調資料庫備份及對應舊程式，評估備份後寫入，不直接downgrade或丟棄回收歷史。後續同為0006相容版本可沿用一般部署流程。
+
+前端現在可使用 `GET /api/v1/bins/{id}?waste_type=recycling` 取得回收滿度，`GET /api/v1/bins/{id}/history?waste_type=recycling` 取得回收歷史。省略種類的目前滿度預設general；歷史省略種類則返回所有種類及未分類舊紀錄。完整語意見 [雙種類串接](WASTE_STREAMS.md)。

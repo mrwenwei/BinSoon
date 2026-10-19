@@ -63,7 +63,7 @@ def seed_work_orders(db):
     bins = db.scalars(select(Bin).where(Bin.bin_type == 'existing', Bin.district == '大安區', Bin.operational_status == 'normal').order_by(Bin.id).limit(3)).all()
     for bin_, (problem, source) in zip(bins, [('full','sensor'),('dirty','inspection'),('broken','inspection')]):
         event_id = uuid5(NAMESPACE_URL, f'binsoon:demo:work:{bin_.id}:{problem}')
-        if db.get(Incident,event_id) or db.scalar(select(Incident.id).where(Incident.bin_id == bin_.id,Incident.type == problem,Incident.status == 'open')):
+        if db.get(Incident,event_id) or db.scalar(select(Incident.id).where(Incident.bin_id == bin_.id,Incident.type == problem,Incident.waste_type == 'general',Incident.status == 'open')):
             continue
         event=Incident(id=event_id,bin_id=bin_.id,type=problem,status='open')
         db.add(event); db.flush()
@@ -72,7 +72,7 @@ def seed_work_orders(db):
             task.status, task.assigned_staff_id, task.accepted_at, task.arrived_at, task.reason = 'repair',staff.id,now(),now(),'明示示範：待修繕'
         db.add(task)
         if problem == 'full':
-            state=db.get(BinState,bin_.id)
+            state=db.get(BinState,(bin_.id,'general'))
             if state and state.source_type == 'simulated':
                 state.fill_level_pct=94
                 simulation.record(db,state,'measurement',clock)

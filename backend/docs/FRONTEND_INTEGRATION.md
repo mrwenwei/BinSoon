@@ -1,5 +1,7 @@
 # 前端串接指南：從地圖到回報、工單與提案
 
+**雙種類已部署Cloud Run，schema=0006、revision=binsoon-api-00008-v7k；可直接使用線上API及OpenAPI。**
+
 這份文件供前端工程師直接開始串接。前端 A／B／D 畫面目前仍使用靜態資料及 localStorage；後端已提供持久化 API，本次沒有修改前端。詳細欄位及限制見 [API 契約](API_CONTRACT.md)，每一個 endpoint 的參數、必填欄位、回應型別見 [API Reference](API_REFERENCE.md)。
 
 ## 1. 連線資訊與先決條件
@@ -252,3 +254,7 @@ P16 快捷通報仍 POST `/reports`，只是 quick=true；仍須照片、位置�
 既有 API 格式保留，詳見 [統一 Bin 手冊](BINS.md)。完整 P1–P22 與 camelCase 對照見 [API 契約第 12 節](API_CONTRACT.md#12-前端頁面及欄位對照)。
 
 本輪移除舊GET／POST `/candidates`，現回404；前端不要接這兩個入口。市民提案依第8節POST `/proposals`，維運直接POST `/bins`不經提案流程。其餘舊入口分類與全部70個操作見 [API全覽](API_INVENTORY.md)。
+
+## 11. 一般／回收種類串接
+
+完整範例及預設見 [WASTE_STREAMS.md](WASTE_STREAMS.md)。UI切換general／recycling後，把waste_type加入map、nearest、Bin詳情及history query；cache key也含種類。原status／current_usage是選定種類，compartments提供兩個獨立狀態，不能平均。照片回報body加入waste_type；工單沿回傳的種類處理，demo-clear依工單而不接受任意另一種類。歷史按種類分線，null只表示舊未分類。認養／提案仍依Bin點位，路線同桶合站但work_order_ids分開；月榜可用waste_type篩選。

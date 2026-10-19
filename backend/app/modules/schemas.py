@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Generic, Literal, TypeVar
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from app.waste import WasteType
 
 Problem = Literal["full", "dirty", "dumping", "broken", "other"]
 WorkStatus = Literal["pending", "processing", "arrived", "waiting_sensor", "repair", "completed", "dismissed"]
@@ -36,6 +37,7 @@ class Login(Body):
 
 class ReportCreate(Body):
     bin_id: UUID
+    waste_type: WasteType = "general"
     type: Problem
     description: str = Field(default="", max_length=500)
     photo_ids: list[UUID] = Field(min_length=1, max_length=1)
@@ -172,6 +174,8 @@ class AccessRead(BaseModel):
 
 
 class BinStatus(BaseModel):
+    waste_type: WasteType = "general"
+    classification_source: str = "legacy_assumed_general"
     fill_level_pct: float | None
     capacity_liters: float | None
     estimated_used_liters: float | None
@@ -209,6 +213,7 @@ class Location(BaseModel):
     distance_m: float | None
     walking_estimate_seconds: int | None
     bin_status: BinStatus | None
+    compartments: list[BinStatus] = Field(default_factory=list)
 
 
 class Locations(BaseModel):
@@ -216,6 +221,8 @@ class Locations(BaseModel):
 
 
 class Cleanup(BaseModel):
+    waste_type: WasteType = "general"
+    classification_source: str = "legacy_assumed_general"
     id: UUID
     work_order_id: UUID
     bin_id: UUID
@@ -234,6 +241,7 @@ class AdoptionPublic(BaseModel):
 class BinView(BaseModel):
     location: Location
     status: BinStatus
+    compartments: list[BinStatus]
     adopter: AdoptionPublic | None
     latest_cleanup: Cleanup | None
     my_adoption_id: UUID | None
@@ -253,6 +261,8 @@ class Lifecycle(BaseModel):
 
 
 class ReportRead(BaseModel):
+    waste_type: WasteType = "general"
+    classification_source: str = "legacy_assumed_general"
     id: UUID
     bin_id: UUID
     event_id: UUID
@@ -278,6 +288,8 @@ class ReportRead(BaseModel):
 
 
 class WorkRead(BaseModel):
+    waste_type: WasteType = "general"
+    classification_source: str = "legacy_assumed_general"
     id: UUID
     version: int
     event_id: UUID
@@ -314,6 +326,8 @@ class EvidenceRead(BaseModel):
 
 
 class TaskReading(BaseModel):
+    waste_type: WasteType | None = None
+    classification_source: str = "legacy_unclassified"
     id: UUID
     bin_id: UUID
     work_order_id: UUID
@@ -494,6 +508,7 @@ class Target(BaseModel):
 
 
 class NotificationRead(BaseModel):
+    waste_type: WasteType | None = None
     id: UUID
     type: str
     title: str
@@ -511,6 +526,7 @@ class Stop(Position):
     bin_id: UUID
     label: str
     work_order_ids: list[UUID]
+    waste_types: list[WasteType]
     priority: str
 
 
@@ -530,6 +546,7 @@ class Rank(BaseModel):
 
 
 class PublicOutcomes(BaseModel):
+    waste_type: WasteType | None = None
     month: str
     timezone: Literal["Asia/Taipei"]
     district: str

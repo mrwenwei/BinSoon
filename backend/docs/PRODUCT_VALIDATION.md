@@ -1,5 +1,20 @@
 # A／B／D後端驗證紀錄
 
+## 本輪雙種類0006（已部署 Cloud Run）
+
+- Python3.12＋本機真實PostGIS完整回歸：**81 passed／67 warnings／638.35秒**。執行開始後補入的兩個新案例另驗：四連線跨種類事件／首報（1 passed／8.78秒），舊evidence快照重播（包含在下方容器3項中）。目前共83個不同測試案例均已實際通過。
+- 最終Docker補驗：舊evidence快照重播、最新OpenAPI快照、general零速率／滿度邊界 **3 passed／4 warnings／57.40秒**。前兩種重點測試與遷移／Bin API先行22項亦通過（128.95秒）。
+- 0006在本機upgrade成功，host及Docker的alembic check均無新差異；CSV重入維持681個existing位置及130個場所，缺少的回收槽初始化後不再重複建立。
+- 本機Compose已重新build且API／DB healthy；首次啟動曾停在Created，停止並重建API後恢復。測試使用本機Python與獨立schema完成，不對正式Cloud SQL執行。
+- 兩支交付的唯讀HTTP腳本均通過；實際HTTP另驗證兩個compartments、recycling current_usage／view／history與官方點位數不變。
+- 68 paths／70 operations／88 schemas快照同步；15份改動Markdown的130個本機連結、14個JSON範例有效，另5組完整API JSON範例通過實際Pydantic模型驗證。shell語法及git diff格式檢查通過。
+- 新涵蓋：兩槽各自容量／速度／可重現、滿度邊界及reset，單槽清運、不混歷史、一般已滿回收可導航、修繕隔離、兩個滿桶事件與首報、清空只完成對應工單、種類統計／成果、舊未分類歷史ID保留、分類假設及舊冪等重播。
+- 原始CSV、Bin UUID／座標／來源及歷史不改寫；兩種類配置是展示假設，不代表官方清冊證實有兩個實體桶。未修改frontend／本機.env；本輪程式、測試與部署紀錄一併提交；已部署Cloud Run 0006／binsoon-api-00008-v7k，線上驗收見部署紀錄。
+
+本輪雲端實際驗收：692個點位／原滿度與693筆舊歷史逐筆保留，新增692筆回收reset；三角色、CORS、私有GCS及線上OpenAPI一致性通過。未操作advance／reset／collect，詳細見 [部署紀錄](DEPLOYMENT_STATUS.md)。
+
+模型、API及升級限制見 [雙種類文件](WASTE_STREAMS.md)。以下為先前單種類版本的歷史驗證紀錄。
+
 2026-10-19。pytest僅使用本機開發PostGIS及獨立測試schema，未對Cloud SQL執行pytest。後續依使用者要求已部署Cloud Run並完成明示HTTP展示驗收，frontend未修改；部署／GCS結果見 [部署紀錄](DEPLOYMENT_STATUS.md) 最新章節。
 
 ## 測試結果

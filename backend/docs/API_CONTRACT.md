@@ -2,9 +2,9 @@
 
 前端工程師請先讀 [串接指南](FRONTEND_INTEGRATION.md)：內含線上 URL、TypeScript fetch、登入／上傳範例、P1–P22 呼叫順序與錯誤處理。逐一查詢 endpoint 的參數及完整欄位限制請看 [API Reference](API_REFERENCE.md)；本文件說明業務語意及權限。
 
-日期：2026-10-19。**以下契約已部署至 Cloud Run，revision=binsoon-api-00006-n96；frontend未修改、尚未串接。** 實作順序見 [BACKEND_ROADMAP.md](BACKEND_ROADMAP.md)，初始化／HTTP驗收見 [PRODUCT_OPERATIONS.md](PRODUCT_OPERATIONS.md)，驗證見 [PRODUCT_VALIDATION.md](PRODUCT_VALIDATION.md)。執行中的 `/openapi.json` 列出實際schema及必要headers；線上快照已比對一致。
+日期：2026-10-19。**本文件描述雙種類程式契約（0006），已部署Cloud Run 0006／binsoon-api-00008-v7k。frontend未修改、尚未串接。** 實作順序見 [BACKEND_ROADMAP.md](BACKEND_ROADMAP.md)，初始化／HTTP驗收見 [PRODUCT_OPERATIONS.md](PRODUCT_OPERATIONS.md)，驗證見 [PRODUCT_VALIDATION.md](PRODUCT_VALIDATION.md)。執行中的 `/openapi.json` 列出實際schema及必要headers；雙種類線上OpenAPI已與本分支快照完整比對一致。
 
-提供可供前端型別產生器使用的 [OpenAPI JSON快照](openapi.json)。在backend/執行 `python -m scripts.export_openapi` 更新；契約測試比對快照與實際回應。雲端目前已是新版，可由線上 OpenAPI 產生型別。
+提供可供前端型別產生器使用的 [OpenAPI JSON快照](openapi.json)。在backend/執行 `python -m scripts.export_openapi` 更新；契約測試比對快照與實際回應。雙種類型別可從本分支快照或線上OpenAPI產生，兩者已驗證一致。詳細遷移、各API的waste_type預設與分類假設見 [雙種類串接](WASTE_STREAMS.md)。
 
 ## 1. 共通規格
 
@@ -78,7 +78,7 @@ fields 為 `{field:string, code:string, message:string}[]`，無欄位錯誤時�
 
 BinRead／UsageRead／ReadingRead 正確欄位以 [schemas.py](../app/schemas.py) 為準；ClockRead 等以 [simulation_schemas.py](../app/simulation_schemas.py) 為準，不在本計畫改寫。
 
-2026-10-19依使用者確認移除GET／POST `/candidates`（404），不再提供CandidateRead。讀建議點用 `/bins?bin_type=proposed`；市民建立提案用POST `/proposals`，維運直接建桶用POST `/bins`。這是已公告的路由移除，不刪除既有Bin、來源或歷史；其他既有API回應維持不變。目前共68 paths／70 operations／87 schemas。
+2026-10-19依使用者確認移除GET／POST `/candidates`（404），不再提供CandidateRead。讀建議點用 `/bins?bin_type=proposed`；市民建立提案用POST `/proposals`，維運直接建桶用POST `/bins`。這是已公告的路由移除，不刪除既有Bin、來源或歷史；其他既有API回應維持不變。目前共68 paths／70 operations／88 schemas。
 
 歷史範例（既有格式）：
 
@@ -91,16 +91,20 @@ BinRead／UsageRead／ReadingRead 正確欄位以 [schemas.py](../app/schemas.py
     "recorded_at": "2026-01-05T08:00:00Z",
     "source_type": "simulated",
     "event_type": "measurement",
-    "generation": 0
+    "generation": 0,
+    "waste_type": "general",
+    "classification_source": "demo_assumption"
   }
 ]
 ```
+
+history新增waste_type篩選：general／recycling／legacy_unknown；不帶時回全部，舊讀值waste_type=null且classification_source=legacy_unclassified。不得把不同種類混成一條曲線。
 
 recorded_at 為讀值所屬時間，模擬使用 simulated_at，不能當成真實作業時間；歷史陣列不足 limit 即讀取完畢。前端依 recorded_at、id 穩定排序後畫圖，不補固定示意柱。
 
 ## 3. DTO 字典
 
-下列型別以 TypeScript 表達 JSON 契約，僅作文件，不新增或修改 frontend 程式。`UUID`／`UTC` 為 string；`Page<T>` 使用第 1 節 envelope；`Versioned` 為 `{version:number}`。所有下列列出的欄位皆必回傳（含 null）。Object 的開放字典只有明確宣告的 Record。
+下列型別以 TypeScript 表達 JSON 契約，僅作文件，不新增或修改 frontend 程式。`UUID`／`UTC` 為 string；`Page<T>` 使用第 1 節 envelope；`Versioned` 為 `{version:number}`。所有下列列出的欄位皆必回傳（含 null）。BinRead新增compartments陣列，各項為{waste_type,classification_source,current_usage}，原current_usage是query選定種類（預設general）；產品Location／BinView的compartments則為BinStatus陣列。Object 的開放字典只有明確宣告的 Record。
 
 ### 3.1 身分、位置、桶況
 
@@ -115,6 +119,8 @@ type Media = {
   content_type:"image/jpeg"|"image/png"|"image/webp";
   size_bytes:number; status:"ready"; created_at:UTC;
 };
+type WasteType = "general"|"recycling";
+type ClassificationSource = "demo_assumption"|"legacy_assumed_general"|"legacy_unclassified";
 type Location = {
   id:UUID; kind:"bin"|"place"; district:string; label:string;
   address:string|null; longitude:number; latitude:number; note:string;
@@ -123,9 +129,10 @@ type Location = {
   reported_count:number|null; bin_type:"existing"|"proposed"|null;
   placement_status:"existing"|"proposed"|"installed"|null;
   distance_m:number|null; walking_estimate_seconds:number|null;
-  bin_status:BinStatus|null;
+  bin_status:BinStatus|null; compartments:BinStatus[];
 };
 type BinStatus = {
+  waste_type:WasteType; classification_source:ClassificationSource;
   fill_level_pct:number|null; capacity_liters:number|null;
   estimated_used_liters:number|null;
   fill_status:"hungry"|"half"|"full"|"unknown";
@@ -140,11 +147,12 @@ type BinStatus = {
 };
 type AdoptionPublic = {display_name:string; role:"居民"|"店家"|"學校"|"社區團體"; intro:string};
 type Cleanup = {
+  waste_type:WasteType; classification_source:ClassificationSource;
   id:UUID; work_order_id:UUID; bin_id:UUID; completed_at:UTC;
   like_count:number; liked_by_me:boolean; can_like:boolean;
 };
 type BinView = {
-  location:Location; status:BinStatus; adopter:AdoptionPublic|null;
+  location:Location; status:BinStatus; compartments:BinStatus[]; adopter:AdoptionPublic|null;
   latest_cleanup:Cleanup|null;
   my_adoption_id:UUID|null; can_apply_adoption:boolean; can_report:boolean;
   report_block_reason:"login_required"|"suspended"|"not_installed"|"removed"|null;
@@ -166,6 +174,7 @@ is_new 只依有證據的 installed_at 於過去 30 天判定；舊 CSV 日期�
 ```ts
 type Problem = "full"|"dirty"|"dumping"|"broken"|"other";
 type Report = {
+  waste_type:WasteType; classification_source:ClassificationSource;
   id:UUID; bin_id:UUID; event_id:UUID; work_order_id:UUID|null;
   type:Problem; description:string; created_at:UTC;
   status:"pending"|"processing"|"approved"|"rejected";
@@ -178,6 +187,7 @@ type Report = {
 };
 type WorkStatus = "pending"|"processing"|"arrived"|"waiting_sensor"|"repair"|"completed"|"dismissed";
 type WorkOrder = {
+  waste_type:WasteType; classification_source:ClassificationSource;
   id:UUID; version:number; event_id:UUID; bin_id:UUID; type:Problem;
   source:"citizen"|"sensor"|"inspection"; status:WorkStatus; district:string;
   assigned_staff_id:UUID|null; created_at:UTC; accepted_at:UTC|null;
@@ -201,6 +211,7 @@ type WorkDetail = {
 };
 type Evidence = {id:UUID; media_id:UUID; purpose:"completion"|"site"; created_at:UTC};
 type TaskReading = {
+  waste_type:WasteType|null; classification_source:ClassificationSource;
   id:UUID; bin_id:UUID; work_order_id:UUID;
   fill_level_pct:number; observed_at:UTC; received_at:UTC;
   source_type:"simulated"|"iot_sensor"; event_type:"collection";
@@ -277,22 +288,24 @@ type AdoptionMonth = {
   is_partial_month:boolean; source_type:"demo"|"operational";
 };
 type Notification = {
+  waste_type:WasteType|null;
   id:UUID; type:"report_reviewed"|"work_assigned"|"work_completed"|"proposal_updated"|"adoption_updated"|"adoption_alert";
   title:string; message:string; created_at:UTC; read_at:UTC|null;
   target:{kind:"report"|"work_order"|"proposal"|"adoption"; id:UUID};
 };
 type RouteStops = {
   origin:{latitude:number; longitude:number; source:"demo_fixed"};
-  stops:{bin_id:UUID; label:string; latitude:number; longitude:number; work_order_ids:UUID[]; priority:WorkOrder["priority"]}[];
+  stops:{bin_id:UUID; label:string; latitude:number; longitude:number; work_order_ids:UUID[]; waste_types:WasteType[]; priority:WorkOrder["priority"]}[];
   generated_at:UTC;
 };
 type StaffMonth = {
+  waste_type:WasteType|null;
   month:string; timezone:"Asia/Taipei"; district:string;
   completed_count:number; average_processing_seconds:number|null;
   like_count:number; bonus_display_only:true;
   ranking:{rank:number; staff_id:UUID; display_name:string; completed_count:number; average_processing_seconds:number|null; like_count:number}[];
 };
-type PublicOutcomes = {month:string; timezone:"Asia/Taipei"; district:string; completed_count:number; like_count:number};
+type PublicOutcomes = {waste_type:WasteType|null; month:string; timezone:"Asia/Taipei"; district:string; completed_count:number; like_count:number};
 type BinLifecycle = {
   bin_id:UUID; version:number; operational_status:"normal"|"repair"|"removed";
   placement_status:"existing"|"proposed"|"installed";
@@ -344,32 +357,154 @@ BinView 範例（UUID 為文件示例，不代表資料庫已有該點）：
 ```json
 {
   "location": {
-    "id":"10000000-0000-4000-8000-000000000001", "kind":"bin",
-    "district":"大安區", "label":"展示清潔箱", "address":null,
-    "longitude":121.5358, "latitude":25.033, "note":"",
-    "source_type":"existing_bin", "source_row":1, "source_file":"existing_bins_all_taipei.csv",
-    "location_precision":"point_as_published", "reported_count":null,
-    "bin_type":"existing", "placement_status":"existing",
-    "distance_m":null, "walking_estimate_seconds":null,
-    "bin_status":{
-      "fill_level_pct":62.5,"capacity_liters":120,"estimated_used_liters":75,
-      "fill_status":"half","operational_status":"normal","is_usable":true,
-      "unavailable_reasons":[],"is_new":false,"installed_at":null,"removed_at":null,
-      "reading_source_type":"simulated","observed_at":"2026-01-05T08:00:00Z",
-      "received_at":null,"last_emptied_at":null,"risk_priority":"medium",
-      "estimated_hours_to_90_pct":5.5
+    "id": "10000000-0000-4000-8000-000000000001",
+    "kind": "bin",
+    "district": "大安區",
+    "label": "展示清潔箱",
+    "address": null,
+    "longitude": 121.5358,
+    "latitude": 25.033,
+    "note": "",
+    "source_type": "existing_bin",
+    "source_row": 1,
+    "source_file": "existing_bins_all_taipei.csv",
+    "location_precision": "point_as_published",
+    "reported_count": null,
+    "bin_type": "existing",
+    "placement_status": "existing",
+    "distance_m": null,
+    "walking_estimate_seconds": null,
+    "bin_status": {
+      "fill_level_pct": 62.5,
+      "capacity_liters": 120,
+      "estimated_used_liters": 75,
+      "fill_status": "half",
+      "operational_status": "normal",
+      "is_usable": true,
+      "unavailable_reasons": [],
+      "is_new": false,
+      "installed_at": null,
+      "removed_at": null,
+      "reading_source_type": "simulated",
+      "observed_at": "2026-01-05T08:00:00Z",
+      "received_at": null,
+      "last_emptied_at": null,
+      "risk_priority": "medium",
+      "estimated_hours_to_90_pct": 5.5,
+      "waste_type": "general",
+      "classification_source": "demo_assumption"
+    },
+    "compartments": [
+      {
+        "fill_level_pct": 62.5,
+        "capacity_liters": 120,
+        "estimated_used_liters": 75,
+        "fill_status": "half",
+        "operational_status": "normal",
+        "is_usable": true,
+        "unavailable_reasons": [],
+        "is_new": false,
+        "installed_at": null,
+        "removed_at": null,
+        "reading_source_type": "simulated",
+        "observed_at": "2026-01-05T08:00:00Z",
+        "received_at": null,
+        "last_emptied_at": null,
+        "risk_priority": "medium",
+        "estimated_hours_to_90_pct": 5.5,
+        "waste_type": "general",
+        "classification_source": "demo_assumption"
+      },
+      {
+        "fill_level_pct": 20,
+        "capacity_liters": 80,
+        "estimated_used_liters": 16,
+        "fill_status": "hungry",
+        "operational_status": "normal",
+        "is_usable": true,
+        "unavailable_reasons": [],
+        "is_new": false,
+        "installed_at": null,
+        "removed_at": null,
+        "reading_source_type": "simulated",
+        "observed_at": "2026-01-05T08:00:00Z",
+        "received_at": null,
+        "last_emptied_at": null,
+        "risk_priority": "low",
+        "estimated_hours_to_90_pct": 20,
+        "waste_type": "recycling",
+        "classification_source": "demo_assumption"
+      }
+    ]
+  },
+  "status": {
+    "fill_level_pct": 62.5,
+    "capacity_liters": 120,
+    "estimated_used_liters": 75,
+    "fill_status": "half",
+    "operational_status": "normal",
+    "is_usable": true,
+    "unavailable_reasons": [],
+    "is_new": false,
+    "installed_at": null,
+    "removed_at": null,
+    "reading_source_type": "simulated",
+    "observed_at": "2026-01-05T08:00:00Z",
+    "received_at": null,
+    "last_emptied_at": null,
+    "risk_priority": "medium",
+    "estimated_hours_to_90_pct": 5.5,
+    "waste_type": "general",
+    "classification_source": "demo_assumption"
+  },
+  "adopter": null,
+  "latest_cleanup": null,
+  "my_adoption_id": null,
+  "can_apply_adoption": false,
+  "can_report": false,
+  "report_block_reason": "login_required",
+  "compartments": [
+    {
+      "fill_level_pct": 62.5,
+      "capacity_liters": 120,
+      "estimated_used_liters": 75,
+      "fill_status": "half",
+      "operational_status": "normal",
+      "is_usable": true,
+      "unavailable_reasons": [],
+      "is_new": false,
+      "installed_at": null,
+      "removed_at": null,
+      "reading_source_type": "simulated",
+      "observed_at": "2026-01-05T08:00:00Z",
+      "received_at": null,
+      "last_emptied_at": null,
+      "risk_priority": "medium",
+      "estimated_hours_to_90_pct": 5.5,
+      "waste_type": "general",
+      "classification_source": "demo_assumption"
+    },
+    {
+      "fill_level_pct": 20,
+      "capacity_liters": 80,
+      "estimated_used_liters": 16,
+      "fill_status": "hungry",
+      "operational_status": "normal",
+      "is_usable": true,
+      "unavailable_reasons": [],
+      "is_new": false,
+      "installed_at": null,
+      "removed_at": null,
+      "reading_source_type": "simulated",
+      "observed_at": "2026-01-05T08:00:00Z",
+      "received_at": null,
+      "last_emptied_at": null,
+      "risk_priority": "low",
+      "estimated_hours_to_90_pct": 20,
+      "waste_type": "recycling",
+      "classification_source": "demo_assumption"
     }
-  },
-  "status":{
-    "fill_level_pct":62.5,"capacity_liters":120,"estimated_used_liters":75,
-    "fill_status":"half","operational_status":"normal","is_usable":true,
-    "unavailable_reasons":[],"is_new":false,"installed_at":null,"removed_at":null,
-    "reading_source_type":"simulated","observed_at":"2026-01-05T08:00:00Z",
-    "received_at":null,"last_emptied_at":null,"risk_priority":"medium",
-    "estimated_hours_to_90_pct":5.5
-  },
-  "adopter":null,"latest_cleanup":null,"my_adoption_id":null,
-  "can_apply_adoption":false,"can_report":false,"report_block_reason":"login_required"
+  ]
 }
 ```
 
@@ -398,12 +533,18 @@ ReportCreate：
 
 ```json
 {
-  "bin_id":"10000000-0000-4000-8000-000000000001",
-  "type":"full",
-  "description":"垃圾已接近投入口。",
-  "photo_ids":["20000000-0000-4000-8000-000000000001"],
-  "position":{"latitude":25.033,"longitude":121.5358},
-  "quick":false
+  "bin_id": "10000000-0000-4000-8000-000000000001",
+  "type": "full",
+  "description": "垃圾已接近投入口。",
+  "photo_ids": [
+    "20000000-0000-4000-8000-000000000001"
+  ],
+  "position": {
+    "latitude": 25.033,
+    "longitude": 121.5358
+  },
+  "quick": false,
+  "waste_type": "general"
 }
 ```
 
@@ -427,18 +568,32 @@ Report 回應範例：
 
 ```json
 {
-  "id":"30000000-0000-4000-8000-000000000001",
-  "bin_id":"10000000-0000-4000-8000-000000000001",
-  "event_id":"40000000-0000-4000-8000-000000000001",
-  "work_order_id":"50000000-0000-4000-8000-000000000001",
-  "type":"full","description":"垃圾已接近投入口。",
-  "created_at":"2026-10-19T08:00:00Z","status":"pending",
-  "adopter":false,"first_reporter":true,"quick":false,
-  "photo_ids":["20000000-0000-4000-8000-000000000001"],
-  "accepted_at":null,"reviewed_at":null,"rejection_reason":null,
-  "pending_points":1,"awarded_points":0,"settled_at":null,
-  "rule_version":"phase1-2026-10-19","event_status":"open",
-  "work_status":"pending","assignment_status":"assigned"
+  "id": "30000000-0000-4000-8000-000000000001",
+  "bin_id": "10000000-0000-4000-8000-000000000001",
+  "event_id": "40000000-0000-4000-8000-000000000001",
+  "work_order_id": "50000000-0000-4000-8000-000000000001",
+  "type": "full",
+  "description": "垃圾已接近投入口。",
+  "created_at": "2026-10-19T08:00:00Z",
+  "status": "pending",
+  "adopter": false,
+  "first_reporter": true,
+  "quick": false,
+  "photo_ids": [
+    "20000000-0000-4000-8000-000000000001"
+  ],
+  "accepted_at": null,
+  "reviewed_at": null,
+  "rejection_reason": null,
+  "pending_points": 1,
+  "awarded_points": 0,
+  "settled_at": null,
+  "rule_version": "phase1-2026-10-19",
+  "event_status": "open",
+  "work_status": "pending",
+  "assignment_status": "assigned",
+  "waste_type": "general",
+  "classification_source": "demo_assumption"
 }
 ```
 
@@ -472,11 +627,11 @@ POST 兌換不接受 client cost／stock／points，伺服器再次檢查並原�
 
 ```json
 {
-  "name":"示範路口新增點",
-  "reason":"希望進一步評估通行與垃圾需求。",
-  "latitude":25.033,
-  "longitude":121.5358,
-  "confirmed_nearby":true
+  "name": "示範路口新增點",
+  "reason": "希望進一步評估通行與垃圾需求。",
+  "latitude": 25.033,
+  "longitude": 121.5358,
+  "confirmed_nearby": true
 }
 ```
 
@@ -504,9 +659,15 @@ POST 兌換不接受 client cost／stock／points，伺服器再次檢查並原�
 
 ```json
 {
-  "bin_id":"10000000-0000-4000-8000-000000000001",
-  "role":"店家","display_name":"示範店家","intro":"附近店家，一起照顧環境。",
-  "preferences":{"full":true,"dumping":true,"dirty":false}
+  "bin_id": "10000000-0000-4000-8000-000000000001",
+  "role": "店家",
+  "display_name": "示範店家",
+  "intro": "附近店家，一起照顧環境。",
+  "preferences": {
+    "full": true,
+    "dumping": true,
+    "dirty": false
+  }
 }
 ```
 
@@ -601,6 +762,10 @@ If-Match: "v2"
 
 ## 13. 變更管理及範圍
 
-本文件描述已部署新版。Pydantic／OpenAPI及契約測試驗證欄位、狀態碼、headers及auth；未列的刪除、任意修正點數、翻案、重開結案、多人搶單轉派、真實 IoT ingestion、外部訊息或正式派工未加入。
+本文件描述已部署的雙種類程式（0006）。Pydantic／OpenAPI及契約測試驗證欄位、狀態碼、headers及auth；未列的刪除、任意修正點數、翻案、重開結案、多人搶單轉派、真實 IoT ingestion、外部訊息或正式派工未加入。
 
 實作若發現契約不能安全沿用，先在文件記錄具體差異及相容方案，再調整；不可默默把某個 enum／單位／source_type 改成另一種語意。前端目前仍可獨立展示，本次未對其程式作任何變更。
+
+## 14. 雙種類API的共通增補
+
+詳見 [WASTE_STREAMS.md](WASTE_STREAMS.md)。Bin列表／詳情／GeoJSON／優先清單、map三個入口與BinView新增waste_type（預設general）；history預設全部，可篩general、recycling、legacy_unknown。ReportCreate新增waste_type（預設general），報告／工單／成果／通知回傳種類。我的回報、工單清單、route-stops、staff/statistics與public/outcomes可選種類，不帶則兩種合併。清運只操作指定槽，工單demo-clear依工單種類，不接受任意指定另一槽。提案／認養仍依點位，不為兩種重複建立。

@@ -84,7 +84,9 @@ def test_both_existing_and_new_bin_collect_history(admin):
 
 
 def test_bounds_zero_rate_and_priorities(admin,seeded):
-    states=list(seeded.scalars(select(BinState).order_by(BinState.bin_id)))
+    # This legacy endpoint defaults to general; recycling bounds have their own
+    # independent coverage. Do not rely on row order between two states per bin.
+    states=list(seeded.scalars(select(BinState).where(BinState.waste_type == 'general').order_by(BinState.bin_id)))
     states[0].fill_rate_pct_per_hour=0
     states[0].fill_level_pct=0
     for s in states[1:]:

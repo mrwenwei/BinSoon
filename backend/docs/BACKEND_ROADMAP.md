@@ -1,6 +1,6 @@
 # A／B／D 後端實作計畫
 
-日期：2026-10-19。狀態：已依確認範圍完成後端實作並部署Cloud Run（0005），frontend尚未串接。以下保留階段及驗收依據；實際操作見 [PRODUCT_OPERATIONS.md](PRODUCT_OPERATIONS.md)，測試見 [PRODUCT_VALIDATION.md](PRODUCT_VALIDATION.md)，前端交接見 [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)。
+日期：2026-10-19。狀態：已依確認範圍完成後端實作並部署Cloud Run（0006），frontend尚未串接。以下保留階段及驗收依據；實際操作見 [PRODUCT_OPERATIONS.md](PRODUCT_OPERATIONS.md)，測試見 [PRODUCT_VALIDATION.md](PRODUCT_VALIDATION.md)，前端交接見 [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)。
 
 ## 1. 已確認範圍
 
@@ -119,3 +119,7 @@ backend/app/
 - 提供 OpenAPI 匯出、完整 schema／enum、頁面對照、前後欄位 mapping、錯誤碼、權限及串接操作範例。
 - 不承諾零前端改動即可對接；前端需改資料層、登入、媒體上傳與事件／工單 ID 關聯，移除本機計算發點、虛構歷史與 fixtures。
 - 先交付 Bin／歷史，再交付 A→D 閉環，接著 B；前端可依階段替換資料來源，不要同一業務同時使用後端與 localStorage 結算。
+
+## 後續已授權：雙種類桶槽
+
+每點general／recycling兩個獨立State／Reading；回報事件唯一性包含種類，清運與工單證據依種類，地圖篩選與最近可用桶同步。新增0006，保留舊未分類歷史與原始CSV，不改前端。完整契約與維護部署要求見 [WASTE_STREAMS.md](WASTE_STREAMS.md)。本輪已部署Cloud Run 0006／binsoon-api-00008-v7k。
