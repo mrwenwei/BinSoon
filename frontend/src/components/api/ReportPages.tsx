@@ -25,13 +25,18 @@ import {
   type PointEntry,
   type Problem,
   type Report,
+  type WasteType,
 } from "../../data/api";
 import { useSession } from "./SessionContext";
+import { WastePicker, WasteTag } from "../WasteType";
+import { Mascot } from "../Mascot";
 import { LoadState } from "./LoadState";
 import { useApi, useCooldown } from "./useApi";
 
 type Draft = {
   type: Problem;
+  // 後端照片回報依 waste_type 指定是哪一槽，預設一般垃圾。
+  wasteType: WasteType;
   description: string;
   latitude: string;
   longitude: string;
@@ -42,8 +47,9 @@ type Draft = {
   ownerId?: string;
 };
 type DraftState = Record<string, Draft>;
-const emptyDraft = (): Draft => ({
+const emptyDraft = (wasteType: WasteType = "general"): Draft => ({
   type: "full",
+  wasteType,
   description: "",
   latitude: "",
   longitude: "",
@@ -72,7 +78,7 @@ export function ReportDraftProvider({ children }: { children: ReactNode }) {
         update: (id, patch) =>
           setDrafts((old) => ({
             ...old,
-            [id]: { ...(old[id] || emptyDraft()), ...patch },
+            [id]: { ...(old[id] || emptyDraft(patch.wasteType)), ...patch },
           })),
         clear: () => setDrafts({}),
         remove: (id) =>
@@ -113,7 +119,13 @@ export function RequireCitizen({
     );
   return <>{children}</>;
 }
-export function ReportForm({ id }: { id: string }) {
+export function ReportForm({
+  id,
+  wasteType: initialWaste = "general",
+}: {
+  id: string;
+  wasteType?: WasteType;
+}) {
   const { session, invalidate } = useSession();
   const { drafts, update, remove } = useReportDrafts();
   const cooldown = useCooldown();
@@ -121,7 +133,10 @@ export function ReportForm({ id }: { id: string }) {
   const draft =
     saved && (!saved.ownerId || saved.ownerId === session?.user.id)
       ? saved
-      : emptyDraft();
+      : emptyDraft(initialWaste);
+  // 每次寫入都帶上目前的種類，避免第一次編輯時遺失從導航帶進來的 waste_type。
+  const edit = (patch: Partial<Draft>) =>
+    update(id, { wasteType: draft.wasteType, ...patch });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -168,7 +183,7 @@ export function ReportForm({ id }: { id: string }) {
     const version = ++selection.current;
     const token = session?.access_token;
     setError("");
-    update(id, { file: undefined, mediaId: undefined });
+    edit({ file: undefined, mediaId: undefined });
     if (!file) return;
     setValidating(true);
     try {
@@ -178,7 +193,7 @@ export function ReportForm({ id }: { id: string }) {
         actor.current?.access_token === token &&
         version === selection.current
       )
-        update(id, { file });
+        edit({ file });
     } catch (e) {
       if (
         alive.current &&
@@ -234,12 +249,13 @@ export function ReportForm({ id }: { id: string }) {
           });
           if (!isCurrent()) return;
           mediaId = data.id;
-          update(id, { mediaId, ownerId: current.user.id });
+          edit({ mediaId, ownerId: current.user.id });
         }
         operation = command(
           "/reports",
           {
             bin_id: id,
+            waste_type: draft.wasteType,
             type: draft.type,
             description: draft.description,
             photo_ids: [mediaId],
@@ -248,7 +264,7 @@ export function ReportForm({ id }: { id: string }) {
           },
           current.user.id,
         );
-        update(id, { operation, ownerId: current.user.id });
+        edit({ operation, ownerId: current.user.id });
       }
       const { data } = await sendCommand<Report>(operation, current);
       if (!isCurrent()) return;
@@ -261,7 +277,7 @@ export function ReportForm({ id }: { id: string }) {
       if (e instanceof ApiError && e.status === 401)
         invalidate(current.access_token);
       else if (e instanceof ApiError && e.status < 500 && e.status !== 429) {
-        update(id, { operation: undefined });
+        edit({ operation: undefined });
         view.reload();
       }
     } finally {
@@ -294,13 +310,19 @@ export function ReportForm({ id }: { id: string }) {
           void submit();
         }}
       >
+        <WastePicker
+          name="report-waste-type"
+          value={draft.wasteType}
+          disabled={frozen}
+          onChange={(wasteType) => edit({ wasteType })}
+        />
         <fieldset disabled={frozen}>
           <legend>現場問題</legend>
           <label>
             問題類型
             <select
               value={draft.type}
-              onChange={(e) => update(id, { type: e.target.value as Problem })}
+              onChange={(e) => edit({ type: e.target.value as Problem })}
             >
               {Object.entries(problemLabels).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -315,7 +337,7 @@ export function ReportForm({ id }: { id: string }) {
               value={draft.description}
               maxLength={500}
               required={draft.type === "other"}
-              onChange={(e) => update(id, { description: e.target.value })}
+              onChange={(e) => edit({ description: e.target.value })}
             />
           </label>
           <label>
@@ -355,7 +377,7 @@ export function ReportForm({ id }: { id: string }) {
                     !lock.current &&
                     actor.current?.access_token === token
                   )
-                    update(id, {
+                    edit({
                       latitude: String(p.coords.latitude),
                       longitude: String(p.coords.longitude),
                       confirmed: false,
@@ -381,7 +403,7 @@ export function ReportForm({ id }: { id: string }) {
               max="90"
               value={draft.latitude}
               onChange={(e) =>
-                update(id, { latitude: e.target.value, confirmed: false })
+                edit({ latitude: e.target.value, confirmed: false })
               }
             />
           </label>
@@ -394,7 +416,7 @@ export function ReportForm({ id }: { id: string }) {
               max="180"
               value={draft.longitude}
               onChange={(e) =>
-                update(id, { longitude: e.target.value, confirmed: false })
+                edit({ longitude: e.target.value, confirmed: false })
               }
             />
           </label>
@@ -402,7 +424,7 @@ export function ReportForm({ id }: { id: string }) {
             <input
               type="checkbox"
               checked={draft.confirmed}
-              onChange={(e) => update(id, { confirmed: e.target.checked })}
+              onChange={(e) => edit({ confirmed: e.target.checked })}
             />
             確認這是我提供的現場位置
           </label>
@@ -502,8 +524,9 @@ export function PrivatePhoto({
 }
 export function ReportSummary({ report }: { report: Report }) {
   return (
-    <section className="card">
+    <section className="card report-summary-card">
       <h2>{problemLabels[report.type]}</h2>
+      <WasteTag type={report.waste_type || "general"} />
       <p>查證狀態：{reportLabels[report.status]}</p>
       <p>
         工單進度：
@@ -552,8 +575,14 @@ export function ReportDetail({
     true,
   );
   return (
-    <main className="page api-narrow">
+    <main className={`page api-narrow ${done ? "done-page" : ""}`}>
+      {done && (
+        <span className="login-mascot" aria-hidden="true">
+          <Mascot />
+        </span>
+      )}
       <h1>{done ? "謝謝你幫城市變乾淨！" : "回報進度"}</h1>
+      {done && <p>清潔隊收到後會到場查證；屬實才會入帳點數。</p>}
       <LoadState {...result} />
       {result.data && <ReportSummary report={result.data} />}
       <a className="button secondary" href="#reports">
@@ -596,21 +625,23 @@ export function ReportsList() {
           </li>
         ))}
       </ul>
-      <button
-        disabled={!offset}
-        onClick={() => setOffset((o) => Math.max(0, o - 20))}
-      >
-        上一頁
-      </button>
-      <button
-        disabled={
-          !result.data ||
-          offset + result.data.items.length >= result.data.page.total
-        }
-        onClick={() => setOffset((o) => o + 20)}
-      >
-        下一頁
-      </button>
+      <div className="pager">
+        <button
+          disabled={!offset}
+          onClick={() => setOffset((o) => Math.max(0, o - 20))}
+        >
+          上一頁
+        </button>
+        <button
+          disabled={
+            !result.data ||
+            offset + result.data.items.length >= result.data.page.total
+          }
+          onClick={() => setOffset((o) => o + 20)}
+        >
+          下一頁
+        </button>
+      </div>
     </main>
   );
 }
@@ -642,7 +673,7 @@ export function Member() {
       <h1>會員中心</h1>
       <LoadState {...membership} />
       {membership.data && (
-        <section className="card">
+        <section className="card member-summary">
           <h2>{membership.data.current_tier.name}</h2>
           <p>累積點數 {membership.data.cumulative_points}</p>
           <p>可用點數 {membership.data.available_points}</p>

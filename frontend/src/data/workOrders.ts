@@ -1,4 +1,5 @@
-import { binDemo } from "./binDemo";
+import { binDemo, readingKey } from "./binDemo";
+import type { WasteType } from "./binState";
 import { locations } from "./locations";
 import { reportIsFinal, type DemoReport, type ReportType } from "./reports";
 
@@ -23,6 +24,8 @@ export interface WorkOrder {
   id: string;
   locationId: string;
   type: ReportType;
+  // 依後端 waste_type 分開工單；舊資料沒有這欄時視為一般垃圾。
+  wasteType?: WasteType;
   source: "citizen" | "sensor" | "inspection";
   status: WorkStatus;
   createdAt: string;
@@ -81,6 +84,7 @@ export function submitCitizenReport<T extends OperationalState>(
         (r.reporter !== "fixture" &&
           r.locationId === report.locationId &&
           r.type === report.type &&
+          (r.wasteType || "general") === (report.wasteType || "general") &&
           reportEventOpen(state, r)),
     )
   )
@@ -89,8 +93,13 @@ export function submitCitizenReport<T extends OperationalState>(
     (p) => p.id === report.locationId && p.kind === "bin",
   );
   if (!bin) return state;
+  const wasteType = report.wasteType || "general";
   const open = state.tasks.find(
-    (t) => t.locationId === bin.id && t.type === report.type && !taskClosed(t),
+    (t) =>
+      t.locationId === bin.id &&
+      t.type === report.type &&
+      (t.wasteType || "general") === wasteType &&
+      !taskClosed(t),
   );
   const eventId = open?.id || `event-${report.id}`;
   const firstReporter = !state.reports.some((r) => r.eventId === eventId);
@@ -109,6 +118,7 @@ export function submitCitizenReport<T extends OperationalState>(
               id: eventId,
               locationId: bin.id,
               type: report.type,
+              wasteType,
               source: "citizen",
               status: "pending",
               createdAt: report.createdAt,
@@ -217,7 +227,8 @@ export function applyWorkAction<T extends OperationalState>(
     );
   }
   if (action.type === "clear") {
-    const previous = state.readings[task.locationId];
+    const key = readingKey(task.locationId, task.wasteType);
+    const previous = state.readings[key];
     if (
       task.clearReadingId ||
       !action.readingId ||
@@ -238,7 +249,7 @@ export function applyWorkAction<T extends OperationalState>(
     return completeIfReady(
       {
         ...state,
-        readings: { ...state.readings, [task.locationId]: reading },
+        readings: { ...state.readings, [key]: reading },
         tasks: state.tasks.map((t) =>
           t.id === task.id ? { ...t, clearReadingId: reading.id } : t,
         ),

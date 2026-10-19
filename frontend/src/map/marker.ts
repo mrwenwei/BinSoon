@@ -1,21 +1,25 @@
 import type { OperationalState } from "../data/workOrders";
 import L from "leaflet";
 import type { LocationKind, LocationRecord } from "../data/locations";
-import { binDemo, type BinState } from "../data/binDemo";
-
+import { binDemo } from "../data/binDemo";
+import type { BinState } from "../data/binState";
+import { apiStationState } from "../data/api";
 import { mascotSvg } from "../components/mascotSvg";
+import { stateVisual } from "../components/binVisual";
 
+// 一個點位只放一隻電子雞（不加 ♻ 或數字徽章），身體顏色是整個點的狀態。
 export function markerIcon(
   kind: LocationKind,
   selected: boolean,
-  state?: BinState,
+  state: BinState = "hungry",
   lifecycle?: "new" | "removed",
 ) {
+  const visual = kind === "bin" ? stateVisual[state].className : "place";
   return L.divIcon({
-    className: `pixel-marker ${kind} ${state || ""} ${selected ? "selected" : ""}`,
-    html: `${mascotSvg(kind)}${lifecycle ? `<span class="marker-lifecycle ${lifecycle}">${lifecycle === "new" ? "新" : "撤"}</span>` : ""}`,
-    iconSize: [40, 44],
-    iconAnchor: [20, 40],
+    className: `pixel-marker ${kind} ${visual} ${selected ? "selected" : ""}`,
+    html: `${selected ? '<span class="marker-crosshair" aria-hidden="true"></span>' : ""}<span class="marker-body">${mascotSvg(kind, state)}</span>${lifecycle ? `<span class="marker-lifecycle ${lifecycle}">${lifecycle === "new" ? "新" : "撤"}</span>` : ""}`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 40],
   });
 }
 
@@ -31,7 +35,7 @@ export function locationMarkerIcon(
     return markerIcon(
       location.kind,
       selected,
-      status?.fill_status || "unknown",
+      apiStationState(status, location.compartments),
       status?.operational_status === "removed"
         ? "removed"
         : status?.is_new

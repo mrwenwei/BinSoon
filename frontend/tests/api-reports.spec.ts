@@ -59,6 +59,9 @@ test("citizen uploads a real file and retries the same report command after lost
   await page.getByLabel("緯度", { exact: true }).fill("25.033");
   await page.getByLabel("經度", { exact: true }).fill("121.5358");
   await page.getByLabel("確認這是我提供的現場位置").check();
+  // 後端照片回報依 waste_type 指定哪一槽；預設一般垃圾，這裡改選資源回收。
+  await expect(page.getByRole("radio", { name: "一般垃圾" })).toBeChecked();
+  await page.getByRole("radio", { name: "資源回收" }).check();
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("連線未完成");
   await page.getByRole("button", { name: "重試原回報", exact: true }).click();
@@ -68,6 +71,7 @@ test("citizen uploads a real file and retries the same report command after lost
   expect(commands[1]).toEqual(commands[0]);
   expect(commands[0].body).toEqual({
     bin_id: binId,
+    waste_type: "recycling",
     type: "full",
     description: "",
     photo_ids: report.photo_ids,

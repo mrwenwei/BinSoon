@@ -111,8 +111,8 @@ export function NavigationPage({
           unavailable.length < 2
             ? "原目的桶已撤除，已改導另一個可用桶。"
             : unavailable.length < 2 &&
-                binDemo(original, removedIds, operations).state === "unknown"
-              ? "原目的桶狀態未知，已改導另一個可用桶。"
+                binDemo(original, removedIds, operations).state === "offline"
+              ? "原目的桶失聯，已改導另一個可用桶。"
               : "目的桶吃飽了，已改導另一個可用桶。"}
         </p>
       )}
@@ -143,7 +143,7 @@ export function NavigationPage({
                 <Mascot />
                 <h2 className="navigation-destination">{destination.label}</h2>
               </div>
-              <span className="status-pill hungry">
+              <span className="status-pill state-hungry">
                 {
                   stateLabels[
                     binDemo(destination, removedIds, operations).state

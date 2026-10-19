@@ -10,6 +10,7 @@ import {
   type ReportDraft,
 } from "../data/reports";
 import { Icon } from "./Icon";
+import { WastePicker } from "./WasteType";
 import { Mascot } from "./Mascot";
 import { binDemo } from "../data/binDemo";
 import { ReportHistory } from "./ReportHistory";
@@ -59,6 +60,7 @@ export function ReportPage({
     (report) =>
       report.locationId === location.id &&
       report.type === draft.type &&
+      (report.wasteType || "general") === draft.wasteType &&
       reportEventOpen(operations, report),
   );
   const ready = Boolean(
@@ -214,6 +216,11 @@ export function ReportPage({
             <h2>
               <span className="step-number">01</span>發生什麼事？
             </h2>
+            <WastePicker
+              name="legacy-waste-type"
+              value={draft.wasteType}
+              onChange={(wasteType) => set({ wasteType })}
+            />
             <div className="report-types" role="group" aria-label="問題類型">
               {reportTypes.map((item) => (
                 <button

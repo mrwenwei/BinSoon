@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { apiFixture, login } from "./api-fixtures";
+import {
+  apiFixture,
+  expectAccountName,
+  login,
+  logoutButton,
+  navLink,
+} from "./api-fixtures";
 
 test("citizen and staff tabs keep independent sessions and logout removes private data", async ({
   page,
@@ -12,18 +18,16 @@ test("citizen and staff tabs keep independent sessions and logout removes privat
   await apiFixture(crew);
   await login(crew, "staff", "staff/tasks");
   await page.bringToFront();
-  await expect(page.getByText("測試citizen", { exact: true })).toBeVisible();
+  await expectAccountName(page, "測試citizen");
   await expect(page.getByText("可用點數 0", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "登出", exact: true }).click();
+  await (await logoutButton(page)).click();
   await expect(page.getByText("可用點數 0", { exact: true })).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "請以市民身份登入" }),
   ).toBeVisible();
   await crew.bringToFront();
-  await expect(crew.getByText("測試staff", { exact: true })).toBeVisible();
-  await expect(
-    crew.getByRole("button", { name: "登出", exact: true }),
-  ).toBeVisible();
+  await expectAccountName(crew, "測試staff");
+  await expect(await logoutButton(crew)).toBeVisible();
   expect(await crew.evaluate(() => Object.keys(localStorage))).toEqual([]);
   expect(await crew.evaluate(() => Object.keys(sessionStorage))).toEqual([]);
 });
@@ -112,7 +116,7 @@ test("a late membership response after logout cannot restore private data", asyn
     }
   });
   await login(page, "citizen", "member");
-  await page.getByRole("button", { name: "登出", exact: true }).click();
+  await (await logoutButton(page)).click();
   release();
   await expect(
     page.getByRole("heading", { name: "請以市民身份登入" }),
@@ -127,12 +131,12 @@ test("admin login does not grant citizen or staff capabilities", async ({
 }) => {
   await apiFixture(page);
   await login(page, "admin", "admin");
-  await expect(page.getByText("測試admin", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "清潔隊工作台", exact: true }).click();
+  await expectAccountName(page, "測試admin");
+  await (await navLink(page, "清潔隊工作台")).click();
   await expect(
     page.getByRole("link", { name: "隊員登入", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "會員中心", exact: true }).click();
+  await (await navLink(page, "會員中心")).click();
   await expect(
     page.getByRole("heading", { name: "請以市民身份登入" }),
   ).toBeVisible();

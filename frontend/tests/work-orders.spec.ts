@@ -310,8 +310,15 @@ test("repair stays unavailable after zero capacity and a no-work closure require
     capacity: 0,
     repairing: true,
   });
+  // 維修只限制對應槽（後端 broken 修繕規則）：一般垃圾槽失聯不可用，回收槽不受影響。
+  expect(binDemo(bin, [], state).compartments[0]).toMatchObject({
+    wasteType: "general",
+    state: "offline",
+    repairing: true,
+  });
+  expect(binDemo(bin, [], state).compartments[1].repairing).toBe(false);
   expect(state.tasks[0].status).toBe("repair");
-  expect(isUsableBin(bin, state)).toBe(false);
+  expect(isUsableBin(bin, state, [], "general")).toBe(false);
   expect(
     applyWorkAction(
       state,
@@ -339,4 +346,57 @@ test("repair stays unavailable after zero capacity and a no-work closure require
   expect(state.tasks[0].status).toBe("dismissed");
   expect(staffStats(state, start).count).toBe(0);
   expect(latestCleanup(state, bin.id)).toBeUndefined();
+});
+
+test("each published bin has general and recycling demo compartments with separate events", () => {
+  const all = locations.filter((p) => p.kind === "bin");
+  // 811 筆位置紀錄、681 個公布桶位置不變；兩槽只是同一位置底下的示意子桶。
+  expect(locations).toHaveLength(811);
+  expect(all).toHaveLength(681);
+  for (const p of all.slice(0, 60)) {
+    const demo = binDemo(p);
+    expect(demo.compartments.map((c) => c.wasteType)).toEqual([
+      "general",
+      "recycling",
+    ]);
+    const states = demo.compartments.map((c) => c.state);
+    expect(demo.state).toBe(
+      states.includes("hungry")
+        ? "hungry"
+        : states.includes("full")
+          ? "full"
+          : "offline",
+    );
+    expect(["hungry", "full", "offline"]).toContain(demo.state);
+  }
+  const report = (id: string, wasteType: "general" | "recycling") => ({
+    id,
+    locationId: bin.id,
+    type: "full" as const,
+    wasteType,
+    description: "",
+    createdAt: start,
+    status: "pending" as const,
+    adopter: false,
+    firstReporter: true,
+  });
+  let state = submitCitizenReport(
+    { ...emptyOperations(), staffLoggedIn: true },
+    report("general-full", "general"),
+  );
+  state = submitCitizenReport(state, report("recycling-full", "recycling"));
+  // 同一位置、同一問題，但不同種類是不同事件與工單。
+  expect(state.tasks.map((t) => t.wasteType)).toEqual(["general", "recycling"]);
+  expect(state.reports.every((r) => r.firstReporter)).toBe(true);
+  const recycling = state.tasks[1].id;
+  for (const type of ["accept", "arrive"] as const)
+    state = applyWorkAction(state, { type, taskId: recycling }, start);
+  state = applyWorkAction(
+    state,
+    { type: "clear", taskId: recycling, readingId: "recycling-clear" },
+    "2026-10-18T08:01:00.000Z",
+  );
+  // 回收槽清空只更新回收槽讀值，不影響一般槽。
+  expect(binDemo(bin, [], state).compartments[1].capacity).toBe(0);
+  expect(state.readings[bin.id]).toBeUndefined();
 });

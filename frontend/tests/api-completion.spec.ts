@@ -59,10 +59,14 @@ test("staff attaches completion evidence before finishing and waits for administ
   ).toBeDisabled();
   expect(fixture.state.likeCount).toBe(1);
   await citizen.getByRole("link", { name: "導航過去", exact: true }).click();
+  // 原斷言在換頁前就可能命中桶詳情的 h1（競態）；改為確認導航頁與目的桶。
+  await expect(
+    citizen.getByRole("heading", { name: "步行導航", level: 1, exact: true }),
+  ).toBeVisible();
   await expect(
     citizen.getByRole("heading", {
       name: "滿桶流程測試桶",
-      level: 1,
+      level: 2,
       exact: true,
     }),
   ).toBeVisible();
