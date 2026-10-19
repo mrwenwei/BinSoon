@@ -87,6 +87,16 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 
 採用既有瀏覽器／HTTP 邊界 seam。已先確認原介面缺少非滿桶完成照、留待修繕、無需處理三個失敗案例，再逐段實作驗證。針對性桌面／Pixel 7 測試 20 項通過（28.3 秒）：各種非滿桶類型、修復後重讀、不實仍有工作、同桶其他工作保留、雙用途照片、重送、版本衝突／重讀失敗、角色／所有權／到場／空白原因、同帳號重登入。已檢視桌面 1440px 與手機 320px 的完整現場處理頁，無水平溢出、頁首不重疊，截圖在本機 .scratch/frontend-api-integration/work-resolution-*.png。
 
-完整驗證與兩軸 review 結果於交付前補記。
+### Standards
+
+獨立 reviewer 以 `git diff fd6c6d8...c3feec7` 檢查 AGENTS.md、frontend/AGENTS.md、GLOSSARY.md、專案背景與 smell baseline。查證、不實、待修繕、完成、無需處理語意各自獨立；WorkPhoto／ReasonAction 的共用範圍合理。未發現可操作的規範問題或 baseline smell。
+
+### Spec
+
+獨立 reviewer 核對 #10 與後端 work_command／requirements／可用性投影，未發現缺漏、範圍擴張或契約錯誤。非滿桶不造清空、修繕未自行解鎖、dismiss 使用 site／原因／全部查證且不冒充 completed。測試涵蓋權限、重送、衝突、同身份重登入與同桶其他工作。
+
+Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
+
+本票完整驗證：typecheck、data:check（681 桶＋130 場所、十二區）、build、Prettier 與 git diff --check 均通過。完整 test:e2e **166 項通過（4.1 分鐘）**，包含 80 項 API 流程與 86 項歷史展示回歸。新增的 22 項（桌面／手機）全部通過，含最後補入的修復一張 broken 工單後、0% 桶仍受另一損壞事件限制而不可導航的案例。正式 build 不含 localStorage／舊展示帳本；保留既有 MapLibre 大型 bundle 提示。
 
 未驗證：真實 Cloud Run 角色登入與操作、GCS 照片及實體手機相機／GPS。未取得或儲存帳密、未寫入雲端測試案件／證據／工單、未跑雲端 pytest、未清除／重設資料、未建立資源或部署。滿度仍 simulated；現場作業時間不與模擬歷史時鐘混用。
