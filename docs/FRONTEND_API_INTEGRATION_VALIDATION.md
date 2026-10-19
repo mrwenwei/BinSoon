@@ -104,7 +104,7 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 
 ## 雙種類 API 調整與 rebase
 
-2026-10-19，使用者要求 rebase 最新 origin/main 並適配一般垃圾／資源回收。已快取遠端、無衝突 rebase 至 7481ba5，保留第 5 票兩個提交及本機 .scratch 截圖。未改雲端資源、schema 或後端程式；本輪程式 review 基準為 rebase 後的 c2e97e7。
+2026-10-19，使用者要求 rebase 最新 origin/main 並適配一般垃圾／資源回收。已抓取遠端、無衝突 rebase 至 7481ba5，保留第 5 票兩個提交及本機 .scratch 截圖。未改雲端資源、schema 或後端程式；本輪程式 review 基準為 rebase 後的 c2e97e7。
 
 - DTO 接入 waste_type、classification_source、compartments；TaskReading 與 Reading 的舊未分類種類可 null，與位置 source_type／讀值 simulated 分開。沒有補造第二個地圖點、分攤滿度或複製歷史。
 - 找桶、最近桶、詳情、分頁歷史及導航把種類放入 query／cache identity；切換不保留另一槽快照。各類桶槽顯示各自滿度與可用性。歷史只查明確種類或 legacy_unknown，不混線；未分類不轉成 general。
@@ -115,6 +115,20 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 
 採用既有瀏覽器／HTTP seam，先確認缺選單、回報缺 waste_type、兩槽按讚命令互相阻擋、工單缺種類篩選等失敗，再逐段修正。新增 18 項桌面／Pixel 7 測試通過（14.6 秒）：95% 一般／20% 回收分別可用性、單一位置與完整分頁、種類深連結、回收回報重送與重登入、雙槽按讚重試、工單篩選／管理員單槽清空、null 舊歷史及分類來源、照片草稿、延遲讀取不沿用其他種類、清單及 320px 溢出。舊導航測試與一般回報 body 斷言更新為新契約。
 
-完整回歸、最後視覺確認與兩軸 review 於交付前補記。
+### Standards
+
+獨立 reviewer 以 `git diff c2e97e7...e134cec` 比對 AGENTS.md 新種類規則、frontend/AGENTS.md、GLOSSARY.md、專案背景與 smell baseline，未發現可操作問題。種類、查詢身份、草稿／待重試命令隔離與模組分工符合規範，未將雙槽展開成多個位置或複製歷史。
+
+### Spec
+
+獨立 reviewer 核對 WASTE_STREAMS.md、後端 schemas／投影與本輪 diff，未發現缺漏、範圍擴張或契約錯誤。回報及按讚命令不跨種類、清空依後端工單、舊 TaskReading 可 null，舊重播不冒充當前兩槽快照。
+
+Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
+
+已再次檢視完整回歸產生的桌面／320px 手機截圖：選單、兩槽狀態、分類依據及歷史分區清楚，地圖提示留在地圖內，沒有水平溢出或頁首遮擋。Cloud Run 公開唯讀 smoke：map/locations?waste_type=recycling 回 200 且 compartments 為 general／recycling；同一 Bin 的兩種 view 均 200、各自回正確 waste_type，來源分別為 legacy_assumed_general／demo_assumption、讀值 simulated，訪客 can_report=false；legacy_unknown 歷史 200，waste_type=null、classification_source=legacy_unclassified。CORS 為 http://127.0.0.1:5173。未做授權或業務寫入。
+
+完整驗證：typecheck、data:check（811＝681 桶＋130 場所，十二區）、build、Prettier 與 git diff --check 均通過。完整 test:e2e **184 項通過（4.5 分鐘）**，包含 98 項 API 流程與 86 項歷史展示回歸。新雙種類 18 項也在完整回歸中全數通過，含地圖提示位置檢查。build 保留既有 MapLibre 大型 bundle 提示。
+
+最後 fetch 確認 origin/main 仍為 7481ba5；range-diff 確認原第 5 票 c3feec7／05d34d8 與 rebase 後 8bd846d／c2e97e7 內容等價。本機截圖保留；本輪未推送、未 force push 或合併 main。
 
 限制：所有滿度仍 simulated，CSV 無桶槽分類／現勘證據。未取得真實帳密，未驗證 Cloud Run 角色完整操作、私有 GCS、實體手機相機／GPS／跨裝置 QR。未對雲端寫入案件、清空、按讚、重設模擬、執行 pytest 或部署；原始資料／歷史未改。未串接的道路站點、通知等仍依後續票單進行。
