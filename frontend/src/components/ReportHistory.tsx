@@ -7,6 +7,7 @@ import {
   type DemoReport,
 } from "../data/reports";
 export function ReportHistory({ reports }: { reports: DemoReport[] }) {
+  reports = reports.filter((report) => report.reporter !== "fixture");
   return (
     <section className="card report-history">
       <div className="section-heading">

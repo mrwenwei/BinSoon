@@ -1,9 +1,10 @@
+import { useDemoStore } from "../data/demoStore";
+import { reportEventOpen } from "../data/workOrders";
 import { useEffect, useState } from "react";
 import { useQrCode } from "./useQrCode";
 import type { LocationRecord } from "../data/locations";
 import {
   reportAward,
-  reportIsFinal,
   reportTypes,
   type DemoReport,
   type ReportDraft,
@@ -49,6 +50,7 @@ export function ReportPage({
   quick?: boolean;
   removed?: boolean;
 }) {
+  const { state: operations } = useDemoStore();
   const mobile = useMobileLayout();
   const reportUrl = `${window.location.origin}${window.location.pathname}#report/${location.id}`;
   const qr = useQrCode(reportUrl, 232);
@@ -57,7 +59,7 @@ export function ReportPage({
     (report) =>
       report.locationId === location.id &&
       report.type === draft.type &&
-      !reportIsFinal(report),
+      reportEventOpen(operations, report),
   );
   const ready = Boolean(
     loggedIn &&
@@ -333,21 +335,8 @@ export function ReportPage({
                   : "一般民眾 · 屬實首報 +1 點"}
               </p>
               <a href={`#adopt/${location.id}`}>查看認養申請與資格</a>
-              <label className="field-label" htmlFor="reporter-order">
-                示範回報順序
-              </label>
-              <select
-                id="reporter-order"
-                value={draft.firstReporter ? "first" : "later"}
-                onChange={(event) =>
-                  set({ firstReporter: event.target.value === "first" })
-                }
-              >
-                <option value="first">同事件第一位回報者</option>
-                <option value="later">同事件後續回報者 · 不重複獎勵</option>
-              </select>
               <p className="tiny">
-                回報順序為展示情境；認養資格由本機核准紀錄決定。
+                首報資格依同事件回報紀錄判定，不能自行指定。
               </p>
             </div>
           </section>
@@ -361,7 +350,7 @@ export function ReportPage({
             <p>
               清潔員確認屬實後才入帳。
               <br />
-              本次為展示，可在審核結果頁操作示意審核。
+              本次為展示，請切換清潔隊工作台進行查證。
             </p>
             {duplicate && (
               <p className="form-error" role="status">

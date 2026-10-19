@@ -1,3 +1,4 @@
+import { useDemoStore } from "../data/demoStore";
 import { useEffect, useRef, useState } from "react";
 import { locations } from "../data/locations";
 import { binDemo, stateLabels } from "../data/binDemo";
@@ -22,8 +23,12 @@ export function AdoptionPage({
   state: ParticipationState;
   loggedIn: boolean;
   id?: string;
-  act: (action: ParticipationAction, loggedIn: boolean) => string | null;
+  act: (
+    action: ParticipationAction,
+    loggedIn: boolean,
+  ) => Promise<string | null>;
 }) {
+  const { state: operations } = useDemoStore();
   const eligible = locations.filter(
     (p) => p.kind === "bin" && p.district === "大安區" && canApply(state, p.id),
   );
@@ -42,8 +47,8 @@ export function AdoptionPage({
   useEffect(() => {
     if (confirmation && !dialog.current?.open) dialog.current?.showModal();
   }, [confirmation]);
-  function perform(action: ParticipationAction) {
-    const error = act(action, loggedIn);
+  async function perform(action: ParticipationAction) {
+    const error = await act(action, loggedIn);
     setFeedback(error || "本機認養紀錄已更新；未傳送區清潔隊。");
     return !error;
   }
@@ -90,10 +95,10 @@ export function AdoptionPage({
         <section className="card" aria-label="認養申請表">
           <h2>認養這隻電子雞</h2>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                perform({
+                await perform({
                   type: "apply",
                   id: crypto.randomUUID(),
                   locationId: binId,
@@ -255,11 +260,12 @@ export function AdoptionPage({
                   <NotificationFields
                     value={a.preferences}
                     disabled={!loggedIn}
-                    onChange={(value) =>
+                    onChange={(value, changed) =>
                       perform({
                         type: "notifications",
                         id: a.id,
                         preferences: value,
+                        changed,
                       })
                     }
                   />
@@ -281,7 +287,12 @@ export function AdoptionPage({
                     </span>
                   </div>
                   <p className="tiny">
-                    現在{stateLabels[binDemo(bin).state]}
+                    現在
+                    {
+                      stateLabels[
+                        binDemo(bin, state.removedBinIds, operations).state
+                      ]
+                    }
                     ；月報為固定展示，不取自感測器或投入紀錄。
                   </p>
                 </>
@@ -371,9 +382,9 @@ export function AdoptionPage({
             </button>
             <button
               className="button primary"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  perform({
+                  await perform({
                     type: "adoption-status",
                     id: confirmation.id,
                     status: confirmation.status,
@@ -403,9 +414,14 @@ function NotificationFields({
   disabled = false,
 }: {
   value: NotificationPreferences;
-  onChange: (value: NotificationPreferences) => void;
+  onChange: (
+    value: NotificationPreferences,
+    changed: keyof NotificationPreferences,
+  ) => void;
   disabled?: boolean;
 }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
   return (
     <fieldset className="notification-fields">
       <legend>桶況通知（可全部關閉）</legend>
@@ -416,8 +432,12 @@ function NotificationFields({
           <input
             type="checkbox"
             disabled={disabled}
-            checked={value[key]}
-            onChange={(e) => onChange({ ...value, [key]: e.target.checked })}
+            checked={draft[key]}
+            onChange={(e) => {
+              const next = { ...draft, [key]: e.target.checked };
+              setDraft(next);
+              onChange(next, key);
+            }}
           />
           {notificationLabels[key]}
         </label>

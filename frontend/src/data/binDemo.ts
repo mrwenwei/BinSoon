@@ -1,3 +1,4 @@
+import type { OperationalState } from "./workOrders";
 import type { LocationRecord } from "./locations";
 
 export type BinState = "hungry" | "half" | "full" | "unknown";
@@ -16,19 +17,50 @@ export const binFilters: { id: BinFilter; label: string }[] = [
 ];
 
 // A separate presentation layer: never write simulated fields into the source snapshot.
-export function binDemo(location: LocationRecord, removedIds: string[] = []) {
+export function binDemo(
+  location: LocationRecord,
+  removedIds: string[] = [],
+  operations?: OperationalState,
+) {
   const seed = [...location.id].reduce(
     (sum, char) => sum + char.charCodeAt(0),
     0,
   );
   const removed = seed % 19 === 0 || removedIds.includes(location.id);
   const newAge = seed % 41;
-  const state = removed
-    ? "unknown"
-    : (["hungry", "half", "full", "unknown"] as const)[seed % 4];
+  const repairing = Boolean(
+    operations?.tasks.some(
+      (t) =>
+        t.locationId === location.id &&
+        t.type === "broken" &&
+        !["completed", "dismissed"].includes(t.status) &&
+        t.arrivedAt,
+    ),
+  );
+  const reading = operations?.readings[location.id];
+  const capacity = reading ? reading.capacity : undefined;
+  const state =
+    removed || repairing
+      ? "unknown"
+      : capacity !== undefined
+        ? capacity === null
+          ? "unknown"
+          : capacity >= 80
+            ? "full"
+            : capacity >= 50
+              ? "half"
+              : "hungry"
+        : (["hungry", "half", "full", "unknown"] as const)[seed % 4];
   return {
     state,
-    capacity: { hungry: 26, half: 62, full: 94, unknown: null }[state],
+    repairing,
+    reading,
+    capacity:
+      capacity !== undefined
+        ? capacity
+        : removed || repairing
+          ? null
+          : { hungry: 26, half: 62, full: 94, unknown: null }[state],
     removed,
     // Ages are frozen demo scenarios, not dates from the published inventory.
     removedAge: removed ? seed % 7 : null,
@@ -45,12 +77,14 @@ export function matchesBinFilter(
   location: LocationRecord,
   filter: BinFilter,
   removedIds: string[] = [],
+  operations?: OperationalState,
 ) {
   if (filter === "all") return true;
   if (location.kind !== "bin") return false;
-  const demo = binDemo(location, removedIds);
+  const demo = binDemo(location, removedIds, operations);
   if (filter === "new") return demo.isNew;
-  if (filter === "can-fit") return !demo.removed && isUsableBin(location);
+  if (filter === "can-fit")
+    return !demo.removed && isUsableBin(location, operations, removedIds);
   return !demo.removed && demo.state === "hungry";
 }
 
@@ -72,9 +106,13 @@ export function distanceLabel(meters: number) {
     : `${meters} 公尺`;
 }
 
-export function isUsableBin(location: LocationRecord) {
+export function isUsableBin(
+  location: LocationRecord,
+  operations?: OperationalState,
+  removedIds: string[] = [],
+) {
   if (location.kind !== "bin") return false;
-  const demo = binDemo(location);
+  const demo = binDemo(location, removedIds, operations);
   return !demo.removed && ["hungry", "half"].includes(demo.state);
 }
 export function walkingMinutes(location: LocationRecord) {

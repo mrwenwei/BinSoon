@@ -1,3 +1,6 @@
+import { useDemoStore } from "../data/demoStore";
+import { latestCleanup } from "../data/workOrders";
+import { formatDemoTime } from "../data/reports";
 import type { LocationRecord } from "../data/locations";
 import { useMemo, useState } from "react";
 import { binDemo, stateLabels, lifecycleLabel } from "../data/binDemo";
@@ -20,7 +23,9 @@ export function BinDetail({
   adopter: string | null;
   removedIds: string[];
 }) {
-  const demo = binDemo(location, removedIds);
+  const { state: operations } = useDemoStore();
+  const cleanup = latestCleanup(operations, location.id);
+  const demo = binDemo(location, removedIds, operations);
   const [showMap, setShowMap] = useState(false);
   const mapLocations = useMemo(() => [location], [location]);
   const history = [18, 24, 30, 48, 78, 94, 4, 22, demo.capacity];
@@ -56,7 +61,12 @@ export function BinDetail({
             <span className="buddy-shadow" />
           </div>
           <span className={`status-pill ${demo.state}`}>
-            {demo.removed ? "已撤除" : stateLabels[demo.state]}{" "}
+            {demo.removed
+              ? "已撤除"
+              : demo.repairing
+                ? "維修中"
+                : stateLabels[demo.state]}
+            {demo.capacity !== null ? " · " : ""}
             {demo.capacity !== null && `${demo.capacity}%`}
           </span>
           <h2>
@@ -99,7 +109,9 @@ export function BinDetail({
                 ? "目前讀值未知，不推估吃飽時間。"
                 : demo.state === "full"
                   ? "已吃飽，等待清運中。"
-                  : "預計 2 小時後吃飽 · 上次清運 3 小時前（示意）"}
+                  : cleanup
+                    ? `最近清運／清潔 ${formatDemoTime(cleanup.completedAt!)}（示範）`
+                    : "尚無可驗證清運完成紀錄。"}
             </p>
             <div
               className="capacity-chart"
@@ -116,14 +128,20 @@ export function BinDetail({
                 </div>
               ))}
             </div>
+            {demo.reading && (
+              <p className="tiny">
+                示範回傳 · 量測 {formatDemoTime(demo.reading.observedAt)} · 接收{" "}
+                {formatDemoTime(demo.reading.receivedAt)}
+              </p>
+            )}
             <p className="tiny chart-note">
-              12:00 清運後重新開始 · 展示時間固定為 16:00
+              歷史長條為固定示意，末筆反映本機桶況；非感測歷史
             </p>
           </section>
           <div className="action-row">
             <a className="button primary" href={`#nav/${location.id}`}>
               <Icon name="pin" />
-              {demo.removed || demo.state === "full"
+              {demo.removed || demo.repairing || demo.state === "full"
                 ? "尋找可用桶並導航"
                 : "導航過去"}
             </a>
@@ -140,9 +158,24 @@ export function BinDetail({
             </span>
             <div>
               <strong>替清潔隊留下一個讚</strong>
-              <p>3 小時前清乾淨了 · 本月 {128 + Number(liked)} 個讚（示意）</p>
+              <p>
+                {cleanup
+                  ? `清運／清潔完成 ${formatDemoTime(cleanup.completedAt!)}（示範）`
+                  : "尚無可驗證清運完成紀錄"}
+              </p>
+              <p className="tiny">
+                歷史按讚保留 · 本次感謝{" "}
+                {cleanup && operations.completionLikes.includes(cleanup.id)
+                  ? 1
+                  : 0}{" "}
+                讚
+              </p>
             </div>
-            <button className="button small" onClick={onLike} disabled={liked}>
+            <button
+              className="button small"
+              onClick={onLike}
+              disabled={liked || !cleanup}
+            >
               {liked ? "已按讚" : "按讚"}
             </button>
           </section>

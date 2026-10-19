@@ -1,3 +1,9 @@
+import { StaffApp, HonorPage } from "./components/staff/StaffApp";
+import {
+  latestCleanup,
+  submitCitizenReport,
+  reportEventOpen,
+} from "./data/workOrders";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   districts,
@@ -21,13 +27,12 @@ import {
 } from "./data/binDemo";
 import {
   availablePoints,
-  reviewReport,
   redeemReward,
   rewardStock,
   reportingSuspended,
   useDemoStore,
 } from "./data/demoStore";
-import { emptyDraft, reportIsFinal, type ReportDraft } from "./data/reports";
+import { emptyDraft, type ReportDraft } from "./data/reports";
 import { LocationMap } from "./map/LocationMap";
 import { Mascot } from "./components/Mascot";
 import { Icon } from "./components/Icon";
@@ -42,6 +47,7 @@ import { ReviewPage } from "./components/ReviewPage";
 import { RewardsPage } from "./components/RewardsPage";
 import {
   adopterName,
+  loadParticipationState,
   isAdopter,
   useParticipationStore,
 } from "./data/participation";
@@ -59,7 +65,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<LocationRecord | null>(null);
   const [notice, setNotice] = useState("");
-  const { state, setState, storageFailed } = useDemoStore();
+  const { state, setState, storageFailed, storageError } = useDemoStore();
   const participation = useParticipationStore();
   const [drafts, setDrafts] = useState<Record<string, ReportDraft>>({});
   const submitting = useRef(false);
@@ -88,17 +94,20 @@ export default function App() {
               location,
               filter,
               participation.state.removedBinIds,
+              state,
             ) &&
             `${location.label} ${location.district} ${location.address || ""}`.includes(
               query.trim(),
             ),
         )
         .sort((a, b) => demoDistance(a) - demoDistance(b)),
-    [district, kind, filter, query, participation.state.removedBinIds],
+    [district, kind, filter, query, participation.state.removedBinIds, state],
   );
   const nearest = visible
     .filter((item) => !participation.state.removedBinIds.includes(item.id))
-    .filter(isUsableBin)
+    .filter((item) =>
+      isUsableBin(item, state, participation.state.removedBinIds),
+    )
     .slice(0, 3);
   const [path, search] = route.split("?");
   const params = new URLSearchParams(search);
@@ -120,6 +129,10 @@ export default function App() {
     ...(drafts[id] || emptyDraft),
     adopter: Boolean(location && isAdopter(participation.state, location.id)),
   };
+  draft.firstReporter = !state.reports.some(
+    (r) =>
+      r.locationId === id && r.type === draft.type && reportEventOpen(state, r),
+  );
   const loginHref = `#login?next=${encodeURIComponent(route)}`;
   function login() {
     setState((prev) => ({ ...prev, loggedIn: true }));
@@ -166,7 +179,7 @@ export default function App() {
     if (
       submitting.current ||
       !location ||
-      binDemo(location, participation.state.removedBinIds).removed ||
+      binDemo(location, participation.state.removedBinIds, state).removed ||
       !state.loggedIn ||
       reportingSuspended(state) ||
       (requestedPage === "quick-report" &&
@@ -179,7 +192,8 @@ export default function App() {
         (item) =>
           item.locationId === location.id &&
           item.type === draft.type &&
-          !reportIsFinal(item),
+          item.reporter !== "fixture" &&
+          reportEventOpen(state, item),
       )
     )
       return;
@@ -194,15 +208,41 @@ export default function App() {
       adopter: isAdopter(participation.state, location.id),
       eventId: crypto.randomUUID(),
       quick: requestedPage === "quick-report",
-      firstReporter: draft.firstReporter,
+      firstReporter: true,
+      photo: true,
     };
-    setState((prev) => ({
-      ...prev,
-      reports: [...prev.reports, record],
-    }));
-    setDrafts((prev) => ({ ...prev, [location.id]: { ...emptyDraft } }));
-    window.location.hash = `report-done/${record.id}`;
+    let savedId: string | undefined;
+    void setState((prev) => {
+      const latestParticipation = loadParticipationState();
+      const adopter = isAdopter(latestParticipation, location.id);
+      const next =
+        prev.loggedIn &&
+        !reportingSuspended(prev) &&
+        !latestParticipation.removedBinIds.includes(location.id) &&
+        (!record.quick || adopter)
+          ? submitCitizenReport(prev, { ...record, adopter })
+          : prev;
+      savedId =
+        next.reports.find((r) => r.id === record.id)?.id ||
+        next.reports.find(
+          (r) =>
+            r.reporter !== "fixture" &&
+            r.locationId === location.id &&
+            r.type === record.type &&
+            reportEventOpen(next, r),
+        )?.id;
+      return next;
+    }).then((saved) => {
+      if (saved && savedId) {
+        setDrafts((prev) => ({ ...prev, [location.id]: { ...emptyDraft } }));
+        window.location.hash = `report-done/${savedId}`;
+      } else {
+        submitting.current = false;
+        setNotice("回報未儲存，請查看儲存提示或重新確認登入資格。");
+      }
+    });
   }
+
   function redeem(reward: Reward) {
     if (
       !state.loggedIn ||
@@ -216,9 +256,18 @@ export default function App() {
       cost: reward.cost,
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => redeemReward(prev, order));
-    window.location.hash = `rewards?receipt=${order.id}`;
+    let redeemed = false;
+    void setState((prev) => {
+      const next = redeemReward(prev, order);
+      redeemed = next !== prev;
+      return next;
+    }).then((saved) => {
+      if (saved && redeemed)
+        window.location.hash = `rewards?receipt=${order.id}`;
+      else setNotice("兌換未完成，請重新確認可用點數、庫存或儲存提示。");
+    });
   }
+
   const select = useCallback((item: LocationRecord) => {
     if (item.kind === "bin") window.location.hash = `bin/${item.id}`;
     else setSelected(item);
@@ -228,9 +277,12 @@ export default function App() {
     setFilter("all");
     setSelected(null);
   }
-  function unavailable(label: string) {
-    setNotice(`${label}屬於其他 flow，本次先體驗找桶、回報與會員集點。`);
-  }
+  if (requestedPage === "staff") return <StaffApp route={path} />;
+  const memberState = {
+    ...state,
+    reports: state.reports.filter((r) => r.reporter !== "fixture"),
+  };
+  const cleanup = location && latestCleanup(state, location.id);
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -249,11 +301,9 @@ export default function App() {
           </a>
           <a href="#vote">這裡需要桶</a>
           <a href="#adopt">認養電子雞</a>
-          <button onClick={() => unavailable("清潔隊榮譽榜")}>
-            清潔隊榮譽榜
-          </button>
+          <a href="#honor">清潔隊榮譽榜</a>
         </nav>
-        <span className="prototype">A + B FLOW · 展示模式</span>
+        <span className="prototype">A + B + D · 展示模式</span>
         <a className="account-link" href="#member">
           <Icon name="star" />
           <span>{availablePoints(state)} 點</span>
@@ -268,7 +318,7 @@ export default function App() {
       </header>
       {(storageFailed || participation.storageFailed) && (
         <p className="storage-warning" role="status">
-          瀏覽器無法儲存資料，重新整理後可能無法保留本次紀錄。
+          瀏覽器無法儲存資料，重新整理後可能無法保留本次紀錄。{storageError}
         </p>
       )}
       {notice && (
@@ -391,7 +441,8 @@ export default function App() {
                   visible.filter(
                     (item) =>
                       item.kind === "bin" &&
-                      binDemo(item, participation.state.removedBinIds).isNew,
+                      binDemo(item, participation.state.removedBinIds, state)
+                        .isNew,
                   ).length
                 }{" "}
                 桶（示意）
@@ -415,7 +466,7 @@ export default function App() {
                 {visible.map((item) => {
                   const demo =
                     item.kind === "bin"
-                      ? binDemo(item, participation.state.removedBinIds)
+                      ? binDemo(item, participation.state.removedBinIds, state)
                       : null;
                   return (
                     <button
@@ -527,12 +578,19 @@ export default function App() {
         ) : page === "bin" && location ? (
           <BinDetail
             location={location}
-            liked={state.likes.includes(location.id)}
+            liked={Boolean(
+              cleanup && state.completionLikes.includes(cleanup.id),
+            )}
             onLike={() =>
-              setState((prev) => ({
-                ...prev,
-                likes: [...new Set([...prev.likes, location.id])],
-              }))
+              setState((prev) => {
+                const latest = latestCleanup(prev, location.id);
+                return !latest || prev.completionLikes.includes(latest.id)
+                  ? prev
+                  : {
+                      ...prev,
+                      completionLikes: [...prev.completionLikes, latest.id],
+                    };
+              })
             }
             adopter={adopterName(participation.state, location.id)}
             removedIds={participation.state.removedBinIds}
@@ -558,21 +616,21 @@ export default function App() {
               setDrafts((prev) => ({ ...prev, [id]: value }))
             }
             onSubmit={submitReport}
-            reports={state.reports}
+            reports={memberState.reports}
             loginHref={loginHref}
             suspended={reportingSuspended(state)}
           />
         ) : page === "report-done" && report && reportLocation ? (
-          <ReportDone report={report} location={reportLocation} state={state} />
+          <ReportDone
+            report={report}
+            location={reportLocation}
+            state={memberState}
+          />
         ) : page === "review" && report && reportLocation ? (
           <ReviewPage
             report={report}
             location={reportLocation}
-            state={state}
-            loginHref={loginHref}
-            onReview={(status) =>
-              setState((prev) => reviewReport(prev, report.id, status))
-            }
+            state={memberState}
           />
         ) : page === "login" ? (
           <LoginPage
@@ -585,12 +643,16 @@ export default function App() {
           />
         ) : page === "rewards" ? (
           <RewardsPage
-            state={state}
+            state={memberState}
             receiptId={params.get("receipt")}
             onRedeem={redeem}
           />
+        ) : page === "honor" ? (
+          <main className="page">
+            <HonorPage state={state} citizen />
+          </main>
         ) : page === "member" ? (
-          <MemberPage state={state} />
+          <MemberPage state={memberState} />
         ) : (
           <main className="page not-found">
             <Mascot />
@@ -601,6 +663,11 @@ export default function App() {
             </a>
           </main>
         )}
+      </div>
+      <div className="demo-switch">
+        <span>展示身份切換</span>
+        <a href="#staff/tasks">進入清潔隊工作台 →</a>
+        <a href="#honor">清潔隊整體成果</a>
       </div>
       <nav className="mobile-nav" aria-label="手機主選單">
         <a

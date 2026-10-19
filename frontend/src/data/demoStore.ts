@@ -1,23 +1,25 @@
-import { useEffect, useState } from "react";
+import { usePersistentState } from "./persistentStore";
+import { emptyOperations, type OperationalState } from "./workOrders";
 import { locations } from "./locations";
 import {
   reportAward,
   reportIsFinal,
   reportTypes,
   type DemoReport,
-  type ReportStatus,
 } from "./reports";
 import { findReward, type Redemption, type Reward } from "./rewards";
 
 // v1 remains untouched: its stamp album and 230-point rules are not this ledger.
-export const demoStorageKey = "binsoon-a-flow-1018-v2";
-export interface DemoState {
+export const legacyDemoStorageKey = "binsoon-a-flow-1018-v2";
+export const demoStorageKey = "binsoon-demo-1019-v3";
+export interface DemoState extends OperationalState {
   loggedIn: boolean;
   likes: string[];
   reports: DemoReport[];
   redemptions: Redemption[];
 }
-const initialState: DemoState = {
+export const initialState: DemoState = {
+  ...emptyOperations(),
   loggedIn: false,
   likes: [],
   reports: [],
@@ -45,6 +47,12 @@ function isReport(value: unknown): value is DemoReport {
     ) &&
     typeof item.adopter === "boolean" &&
     typeof item.firstReporter === "boolean" &&
+    (item.photo === undefined || typeof item.photo === "boolean") &&
+    (item.reporter === undefined ||
+      ["member", "fixture"].includes(String(item.reporter))) &&
+    (item.rejectionReason === undefined ||
+      (typeof item.rejectionReason === "string" &&
+        item.rejectionReason.length <= 500)) &&
     (item.eventId === undefined ||
       (typeof item.eventId === "string" && item.eventId.length > 0)) &&
     (item.quick === undefined || typeof item.quick === "boolean") &&
@@ -67,9 +75,11 @@ function isRedemption(value: unknown): value is Redemption {
     validDate(item.createdAt)
   );
 }
-function readState(): DemoState {
+function readLegacyState(): DemoState {
   try {
-    const value = JSON.parse(localStorage.getItem(demoStorageKey) || "null");
+    const value = JSON.parse(
+      localStorage.getItem(legacyDemoStorageKey) || "null",
+    );
     if (
       value &&
       typeof value.loggedIn === "boolean" &&
@@ -83,6 +93,7 @@ function readState(): DemoState {
       value.redemptions.every(isRedemption)
     ) {
       const state: DemoState = {
+        ...emptyOperations(),
         loggedIn: value.loggedIn,
         likes: [...new Set<string>(value.likes)],
         reports: value.reports.map((report: DemoReport) => ({
@@ -112,25 +123,136 @@ function readState(): DemoState {
   } catch {
     /* Blocked or stale storage must not prevent browsing. */
   }
+  if (localStorage.getItem(legacyDemoStorageKey) !== null)
+    throw new Error("舊帳本格式無法載入；來源已保留，未覆寫。");
   return initialState;
 }
+export function loadDemoState(): DemoState {
+  const raw = localStorage.getItem(demoStorageKey);
+  if (raw !== null) {
+    const value = JSON.parse(raw) as DemoState;
+    if (
+      !value ||
+      !Array.isArray(value.tasks) ||
+      !Array.isArray(value.reports) ||
+      !value.reports.every(isReport) ||
+      !Array.isArray(value.redemptions) ||
+      !value.redemptions.every(isRedemption) ||
+      !Array.isArray(value.likes) ||
+      !Array.isArray(value.completionLikes) ||
+      typeof value.staffLoggedIn !== "boolean" ||
+      typeof value.initialized !== "boolean" ||
+      !value.readings ||
+      typeof value.loggedIn !== "boolean"
+    )
+      throw new Error("本機紀錄版本無法載入；來源已保留。");
+    const validTasks = value.tasks.every(
+      (t) =>
+        t &&
+        binIds.has(t.locationId) &&
+        locations.find((p) => p.id === t.locationId)?.district === "大安區" &&
+        typeof t.id === "string" &&
+        t.id.length > 0 &&
+        reportTypes.some((type) => type.id === t.type) &&
+        ["citizen", "sensor", "inspection"].includes(t.source) &&
+        [
+          "pending",
+          "processing",
+          "arrived",
+          "waiting_sensor",
+          "repair",
+          "completed",
+          "dismissed",
+        ].includes(t.status) &&
+        validDate(t.createdAt) &&
+        [
+          t.acceptedAt,
+          t.arrivedAt,
+          t.photoAt,
+          t.submittedAt,
+          t.completedAt,
+        ].every((date) => date === undefined || validDate(date)) &&
+        (!["completed", "dismissed"].includes(t.status) ||
+          (validDate(t.completedAt) && validDate(t.photoAt))) &&
+        (t.reason === undefined ||
+          (typeof t.reason === "string" && t.reason.length <= 500)),
+    );
+    const validReadings =
+      !Array.isArray(value.readings) &&
+      Object.entries(value.readings).every(
+        ([id, r]) =>
+          binIds.has(id) &&
+          r &&
+          typeof r.id === "string" &&
+          r.source === "demo" &&
+          validDate(r.observedAt) &&
+          validDate(r.receivedAt) &&
+          (r.capacity === null ||
+            (Number.isFinite(r.capacity) &&
+              r.capacity >= 0 &&
+              r.capacity <= 100)) &&
+          value.tasks.some((t) => t.id === r.taskId && t.locationId === id),
+      );
+    if (
+      !validTasks ||
+      !validReadings ||
+      !value.likes.every((id) => binIds.has(id)) ||
+      !value.completionLikes.every((id) =>
+        value.tasks.some((t) => t.id === id && t.status === "completed"),
+      ) ||
+      new Set(value.tasks.map((t) => t.id)).size !== value.tasks.length ||
+      new Set(value.reports.map((r) => r.id)).size !== value.reports.length ||
+      new Set(value.redemptions.map((r) => r.id)).size !==
+        value.redemptions.length ||
+      new Set(value.completionLikes).size !== value.completionLikes.length ||
+      availablePoints(value) < 0 ||
+      value.redemptions.some(
+        (item) => rewardStock(value, findReward(item.rewardId)!) < 0,
+      )
+    )
+      throw new Error("本機事件紀錄無法驗證；來源已保留。");
+    return value;
+  }
+  const legacy = readLegacyState();
+  return {
+    ...legacy,
+    tasks: legacy.reports
+      .filter(
+        (r) =>
+          !reportIsFinal(r) &&
+          locations.find((p) => p.id === r.locationId)?.district === "大安區",
+      )
+      .map((r) => ({
+        id: r.eventId || r.id,
+        locationId: r.locationId,
+        type: r.type,
+        source: "citizen" as const,
+        status:
+          r.status === "processing"
+            ? ("processing" as const)
+            : ("pending" as const),
+        createdAt: r.createdAt,
+        acceptedAt: r.acceptedAt,
+      })),
+  };
+}
 export function useDemoStore() {
-  const [state, setState] = useState(readState);
-  const [storageFailed, setStorageFailed] = useState(false);
-  useEffect(() => {
-    try {
-      localStorage.setItem(demoStorageKey, JSON.stringify(state));
-    } catch {
-      setStorageFailed(true);
-    }
-  }, [state]);
-  return { state, setState, storageFailed };
+  const store = usePersistentState(demoStorageKey, loadDemoState);
+  return {
+    state: store.state || initialState,
+    setState: store.setState,
+    storageFailed: Boolean(store.failure),
+    storageError: store.failure,
+  };
 }
 export function cumulativePoints(state: DemoState) {
   return (
     63 +
     state.reports
-      .filter((report) => report.status === "approved")
+      .filter(
+        (report) =>
+          report.status === "approved" && report.reporter !== "fixture",
+      )
       .reduce((sum, report) => sum + reportAward(report), 0)
   );
 }
@@ -141,7 +263,9 @@ export function availablePoints(state: DemoState) {
   );
 }
 export function rejectedCount(state: DemoState) {
-  return state.reports.filter((report) => report.status === "rejected").length;
+  return state.reports.filter(
+    (report) => report.status === "rejected" && report.reporter !== "fixture",
+  ).length;
 }
 export function reportingSuspended(state: DemoState) {
   return rejectedCount(state) >= 3;
@@ -151,30 +275,6 @@ export function rewardStock(state: DemoState, reward: Reward) {
     reward.stock -
     state.redemptions.filter((item) => item.rewardId === reward.id).length
   );
-}
-export function reviewReport(
-  state: DemoState,
-  id: string,
-  status: ReportStatus,
-): DemoState {
-  if (!state.loggedIn) return state;
-  return {
-    ...state,
-    reports: state.reports.map((report) => {
-      if (report.id !== id || reportIsFinal(report)) return report;
-      const now = new Date().toISOString();
-      return {
-        ...report,
-        status,
-        ...(status !== "pending"
-          ? { acceptedAt: report.acceptedAt || now }
-          : {}),
-        ...(status === "approved" || status === "rejected"
-          ? { reviewedAt: now }
-          : {}),
-      };
-    }),
-  };
 }
 export function redeemReward(state: DemoState, item: Redemption): DemoState {
   const reward = findReward(item.rewardId);

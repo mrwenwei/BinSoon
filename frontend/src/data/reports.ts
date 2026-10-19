@@ -38,6 +38,9 @@ export interface DemoReport {
   reviewedAt?: string;
   eventId?: string;
   quick?: boolean;
+  photo?: boolean;
+  reporter?: "member" | "fixture";
+  rejectionReason?: string;
 }
 export interface ReportDraft {
   type: ReportType | null;
@@ -66,7 +69,9 @@ export function reportAward(
 export function pendingPoints(reports: DemoReport[]) {
   return reports
     .filter(
-      (report) => report.status === "pending" || report.status === "processing",
+      (report) =>
+        (report.status === "pending" || report.status === "processing") &&
+        report.reporter !== "fixture",
     )
     .reduce((sum, report) => sum + reportAward(report), 0);
 }

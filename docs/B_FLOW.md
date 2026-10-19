@@ -2,6 +2,15 @@
 
 2026-10-18 使用者分三輪確認16項產品決策。**規格已確認，前端本機展示及本次驗證已完成。** 原文差異、程式查核與逐題答覆的依據見 [討論紀錄](B_FLOW_OPEN_QUESTIONS.md)。本文件整理本次實作範圍，不代表100天真實試辦已具備對應能力。
 
+## D接合（2026-10-19）
+
+2026-10-19確認[D flow規格](D_FLOW.md)。原B驗證紀錄屬接合前的實作；以下共同契約已實作，最新驗證見 [D flow 驗證紀錄](D_FLOW_VALIDATION.md)。
+
+- B快捷通報與A共用事件及D工單，查證屬實即一次入帳；不因尚未結案期間已入帳就建立新事件，首報不實仍不遞補。
+- B繼續擁有認養、提案與示範移除資料，送出回報時固化認養資格。認養核准、設桶評估、命名審查維持B展示控制，不交給每位現場隊員。
+- 認養頁等桶況讀共用作業狀態；維修與移除限制不能因清空解除。缺桶判斷仍看既有桶存在性，滿桶／未知不能當無桶。
+- 同源分頁支援A／B／D狀態更新及重整保存，仍不跨裝置同步；舊B帳本、認養與歷史完整保留。IoT本次僅示範回傳，不新增真實推播或硬體接收服務。
+
 ## 來源與交付範圍
 
 依 [PRD 1018](https://claude.ai/artifact/2K68x1RzGGiqZCFeXEK2i2) 的 F6／F7，對照 [Web flow](https://claude.ai/artifact/KB6pHmz23RY1EmUNYCtfk4#page-d63f1065a6ff)、[手機 Web](https://claude.ai/artifact/KB6pHmz23RY1EmUNYCtfk4#page-ed25c7b30423) 的 P10–P16 與 [User Flow](https://claude.ai/artifact/KB6pHmz23RY1EmUNYCtfk4#page-227cd962ddd2) 的 Story 3。來源已透過登入瀏覽器讀取，未驗證匿名存取。

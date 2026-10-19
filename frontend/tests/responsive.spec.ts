@@ -1,3 +1,4 @@
+import { reviewAsStaff } from "./staff-helpers";
 import { test, expect } from "@playwright/test";
 
 test("P1-P9 fit desktop and phone viewports including 320px", async ({
@@ -50,6 +51,7 @@ test("P1-P9 fit desktop and phone viewports including 320px", async ({
     .fill("路旁垃圾桶需要協助，這是示範說明。".repeat(5));
   await capture("report", /回報這個桶/);
   await page.getByRole("button", { name: "送出示範回報" }).click();
+  await expect(page).toHaveURL(/#report-done\//);
   const doneUrl = page.url();
   await capture("report-done", /謝謝你幫城市變乾淨/);
   await page
@@ -57,7 +59,7 @@ test("P1-P9 fit desktop and phone viewports including 320px", async ({
     .first()
     .click();
   const reviewUrl = page.url();
-  await page.getByLabel("示範案件狀態").selectOption("approved");
+  await reviewAsStaff(page, "approved");
   await capture("review", /回報審核結果/);
   await page.getByRole("link", { name: "前往會員中心", exact: true }).click();
   await capture("member", /會員中心/);
@@ -122,8 +124,18 @@ test("v1 storage is preserved, invalid v2 recovers, and unavailable storage stay
     page.getByText("瀏覽器無法儲存資料，重新整理後可能無法保留本次紀錄。"),
   ).toBeVisible();
   await page.locator(".location-row").first().click();
-  await page.getByRole("button", { name: "按讚", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "已按讚", exact: true }),
+    page.getByRole("button", { name: "按讚", exact: true }),
   ).toBeDisabled();
+  await expect(
+    page.getByText("尚無可驗證清運完成紀錄", { exact: true }),
+  ).toBeVisible();
+  await page.goto("/#login");
+  await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "瀏覽器無法儲存資料" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => localStorage.getItem("binsoon-demo-1019-v3")),
+  ).toBeNull();
 });
