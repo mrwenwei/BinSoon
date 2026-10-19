@@ -31,7 +31,7 @@ docker compose -f backend/compose.yaml --env-file backend/.env up --build
 
 台北市智慧垃圾桶 MVP，地圖預設大安區，資料支援十二行政區。後端已有資料初始化、點位查詢、新增 Bin、滿度／清運歷史及可重現模擬。前端 A／B／D 為獨立本機展示，尚未串接後端；無 IoT 硬體通訊、選址最佳化或正式派工。
 
-2026-10-19 使用者確認後端擴充並完成實作與Cloud Run部署：新增身分／媒體、回報／事件／工單、會員／點數兌換、提案／投票／認養、通知／成果與統計，migration head=0005、線上revision=binsoon-api-00005-kcw。frontend未修改，pytest只在本機；雲端已驗證三角色、私有GCS及明示回報到結案閉環。完整範圍見 [後端計畫](../backend/docs/BACKEND_ROADMAP.md)，前端請讀 [串接指南](../backend/docs/FRONTEND_INTEGRATION.md)、[逐項API參考](../backend/docs/API_REFERENCE.md) 與 [API 契約](../backend/docs/API_CONTRACT.md)。部署紀錄見 [DEPLOYMENT_STATUS](../backend/docs/DEPLOYMENT_STATUS.md)。既有與新增 Bin 繼續使用同一 ID；市民提案關聯 proposed Bin，不表示已實際設置。新功能需由前端負責人另行串接。
+2026-10-19 使用者確認後端擴充並完成實作與Cloud Run部署：新增身分／媒體、回報／事件／工單、會員／點數兌換、提案／投票／認養、通知／成果與統計，migration head=0005、線上revision=binsoon-api-00006-n96。frontend未修改，pytest只在本機；雲端已驗證三角色、私有GCS及明示回報到結案閉環。完整範圍見 [後端計畫](../backend/docs/BACKEND_ROADMAP.md)，前端請讀 [串接指南](../backend/docs/FRONTEND_INTEGRATION.md)、[逐項API參考](../backend/docs/API_REFERENCE.md) 與 [API 契約](../backend/docs/API_CONTRACT.md)。部署紀錄見 [DEPLOYMENT_STATUS](../backend/docs/DEPLOYMENT_STATUS.md)。既有與新增 Bin 繼續使用同一 ID；市民提案關聯 proposed Bin，不表示已實際設置。新功能需由前端負責人另行串接。
 
 使用者最新要求：新增的 candidate 等同 Bin，統一模型與查詢。這不表示已實際設置；`bin_type=proposed`、`placement_status=proposed`、`feasibility_status=pending_review` 保留其待現勘意義。Hotspot 仍不是 bin。
 

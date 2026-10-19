@@ -15,7 +15,7 @@ Python 3.12、FastAPI、SQLAlchemy 2、PostgreSQL 16 / PostGIS、Alembic。
 - [API 全覽與舊入口整理：保留、維運與淘汰建議](docs/API_INVENTORY.md)
 - [初始化、A→D 手動驗收、HTTP smoke 及 Cloud Run 準備](docs/PRODUCT_OPERATIONS.md)
 
-本機與雲端 migration head 均為 0005；線上 revision 為 binsoon-api-00005-kcw。展示登入程式預設關閉；既有 BinSoon 雲端展示環境已明確啟用並初始化三個角色與獎品，沒有初始贈點。CSV 初始化不會自動建立帳號。連線、測試與資源見 [部署紀錄](docs/DEPLOYMENT_STATUS.md)。
+本機與雲端 migration head 均為 0005；線上 revision 為 binsoon-api-00006-n96。展示登入程式預設關閉；既有 BinSoon 雲端展示環境已明確啟用並初始化三個角色與獎品，沒有初始贈點。CSV 初始化不會自動建立帳號。連線、測試與資源見 [部署紀錄](docs/DEPLOYMENT_STATUS.md)。
 
 ## 本機啟動
 

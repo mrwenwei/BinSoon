@@ -27,13 +27,13 @@
 | 項目 | 結果 |
 | --- | --- |
 | GCP 專案／區域 | binsoon／asia-east1 |
-| 正式 revision | binsoon-api-00005-kcw，100% 流量 |
+| 正式 revision | binsoon-api-00006-n96，100% 流量 |
 | 資料庫 schema | Alembic 0005 |
 | 部署驗收時 Bin | 692：既有 681、新增 11（十個推薦點及一筆既存驗收點） |
 | 景點聚合 | 全市 130／大安區 18 |
 | 既有清潔箱 | 全市 681／大安區 47，需 bin_type=existing 篩選 |
 | 遷移前 Cloud SQL 備份 | 1792389532929，SUCCESSFUL |
-| 初始化 execution | binsoon-api-initialize-kw4l4，成功 |
+| 初始化 execution | binsoon-api-initialize-r8fqh，成功 |
 | 展示帳號 execution | binsoon-api-product-seed-2sgbz，成功；0初始贈點 |
 
 0003切換曾採維護入口與資料保留比對；最新0004／0005為相容新增表／欄位，先備份與初始化Job，再切新revision流量。本機最新74項測試通過，線上完成登入、GCS及明示回報／查證／結案驗收。完整映像digest、Cloud Build、來源快照與驗收證據見 [部署紀錄](../backend/docs/DEPLOYMENT_STATUS.md) 最新章節。

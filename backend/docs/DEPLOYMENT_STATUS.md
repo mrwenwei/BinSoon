@@ -198,3 +198,34 @@ gcloud run services update-traffic binsoon-api --project=binsoon --region=asia-e
 不要每次建置重新建立bucket、密碼或贈點；新環境需先配置資源／IAM。展示seed需明確執行既有 `binsoon-api-product-seed` Job，其映像應隨版本更新；不掛冷啟動。
 
 0004／0005與上一版程式相容，緊急可將流量切回00004以恢復舊Bin功能（新產品功能會消失，但資料表保留），不downgrade或刪除新產品表；DB還原需另規劃。舊版不得繼續用於已啟用真實感測／營運資料的環境。
+
+## API入口清理：2026-10-19 已部署
+
+依使用者確認，僅移除已deprecated的GET／POST `/api/v1/candidates`，現在均回404。市民新增點使用POST `/proposals`，維運直接建立使用POST `/bins`；其他六個舊資料／維運入口保留，詳見 [API全覽](API_INVENTORY.md)。同時刪除CandidateRead及專用距離／序列化helper，不刪任何Bin、來源、歷史或migration。
+
+| 項目 | 結果 |
+| --- | --- |
+| 程式commit | `02520dfdadd09eefe8b906fd20be1d73aea1cea6` |
+| 正式revision／流量 | `binsoon-api-00006-n96`／100% |
+| 上一版 | `binsoon-api-00005-kcw` |
+| Cloud Build | `5735c793-6add-4878-bc53-3ac6bca99e68`，SUCCESS |
+| 映像digest | `sha256:273003d199aa141534654cef6ea5571908f100c95316828329d0ca7ddafc76a0` |
+| 初始化execution | `binsoon-api-initialize-r8fqh`，成功；與HTTP使用同一digest |
+| Schema | 維持0005，無新migration |
+| 契約 | 68 paths／70 operations／87 schemas |
+| 本機完整測試 | 74 passed／61 warnings／187.11秒 |
+
+完整來源、映像與驗收metadata見 [release manifest](../deploy/releases/api-cleanup-20261019-02520df.json)。程式及前端交接文件已包含在上述commit，部署結果文件於線上驗收後另行commit。未push遠端。
+
+部署沿用既有Cloud SQL、Secret references、三角色帳號、私有媒體bucket、CORS及1 vCPU／512 MiB／min=0／max=2規格；沒有重新seed帳號、建立資源、輪替密碼、推進／reset模擬、清空桶或新增案件。初始化Job仍冪等upsert CSV，updated_at可能刷新。
+
+線上實際驗收：
+
+- 匿名及admin session呼叫已移除GET／POST路由皆404，OpenAPI無candidates／CandidateRead，且與本分支快照完全一致。
+- 部署前後692個Bin的ID集合、名稱、座標、行政區、類型、來源、設置狀態、推薦識別／排名／分數及current_usage逐筆一致；模擬時鐘完全一致，history可讀。
+- 舊唯讀驗收腳本已更新並實際通過：官方全市bins／hotspots=681／130、大安區=47／18；預設不建立測試點。
+- 三角色登入、me、會員／回報／認養／通知／提案／獎品、隊員工單／站點／統計、管理員認養清單正常；登出撤銷與市民不可讀staff檢查通過。
+- 本機兩個origin的CORS preflight正常；重用前次明示照片驗證GCS短效下載200及匿名物件拒絕，沒有新增照片。
+- 線上只新增並撤銷短效登入session及更新登入節流紀錄，沒有業務寫入；未對Cloud SQL跑pytest。前端完全未修改，實體手機與前端對接仍待驗證。
+
+目前唯一的滿度歷史仍為 `/bins/{id}/history`；沒有另加demo history。所有滿度依舊為simulated，不代表實測IoT。緊急回復可切流量回00005（會暫時恢復舊candidates入口），不需downgrade DB。

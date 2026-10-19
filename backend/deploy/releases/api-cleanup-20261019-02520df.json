@@ -1,0 +1,52 @@
+{
+  "revision": "binsoon-api-00006-n96",
+  "previous_revision": "binsoon-api-00005-kcw",
+  "image": "asia-east1-docker.pkg.dev/binsoon/binsoon/binsoon-api@sha256:273003d199aa141534654cef6ea5571908f100c95316828329d0ca7ddafc76a0",
+  "traffic": [
+    {
+      "percent": 100,
+      "revisionName": "binsoon-api-00006-n96"
+    }
+  ],
+  "service_url": "https://binsoon-api-887203439341.asia-east1.run.app",
+  "source_commit": "02520dfdadd09eefe8b906fd20be1d73aea1cea6",
+  "release": "api-cleanup-20261019-02520df",
+  "build_id": "5735c793-6add-4878-bc53-3ac6bca99e68",
+  "source_archive": "gs://binsoon_cloudbuild/source/1792391463.440292-90f38161e2aa480bb114f9010731bd32.tgz",
+  "initialization_execution": "binsoon-api-initialize-r8fqh",
+  "initialization_succeeded": true,
+  "migration_head": "0005",
+  "new_migration": false,
+  "seed_accounts_executed": false,
+  "business_writes": false,
+  "frontend_changed": false,
+  "removed_operations": [
+    "GET /api/v1/candidates",
+    "POST /api/v1/candidates"
+  ],
+  "cloud_checks": {
+    "paths": 68,
+    "operations": 70,
+    "schemas": 87,
+    "bins_preserved": 692,
+    "existing_bins": 681,
+    "bin_ids_coordinates_sources_usage_preserved": true,
+    "simulation_clock_preserved": true,
+    "candidates_get_post_404": true,
+    "three_roles_login_logout": true,
+    "cors": true,
+    "private_gcs_signed_download": true,
+    "business_writes": false
+  },
+  "local_pytest": {
+    "passed": 74,
+    "warnings": 61,
+    "seconds": 187.11
+  },
+  "configuration": "backend/deploy/binsoon-product.env.example",
+  "notes": [
+    "Existing Secret references, Cloud SQL, private media bucket and CORS retained.",
+    "CSV initialization may refresh updated_at; UUIDs, coordinates, provenance and current usage were verified unchanged.",
+    "Deployment record documentation is committed separately after deployment; runtime image uses source_commit."
+  ]
+}

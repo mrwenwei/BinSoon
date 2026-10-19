@@ -1,6 +1,6 @@
 # BinSoon 手動部署操作手冊
 
-> 最新 A／B／D 已於2026-10-19部署，schema=0005、revision=binsoon-api-00005-kcw。日常重部署請 source `backend/deploy/binsoon-product.env.example`，保留登入密碼Secret references、私有媒體及CORS；舊 `binsoon.env.example` 預設關閉展示登入。詳見 [部署紀錄](DEPLOYMENT_STATUS.md) 最新章節。照片bucket與三個Secret已存在，不需重建。預設初始化Job只跑migration／CSV；獨立seed Job為 `binsoon-api-product-seed`。
+> 最新 A／B／D 已於2026-10-19部署，schema=0005、revision=binsoon-api-00006-n96。日常重部署請 source `backend/deploy/binsoon-product.env.example`，保留登入密碼Secret references、私有媒體及CORS；舊 `binsoon.env.example` 預設關閉展示登入。詳見 [部署紀錄](DEPLOYMENT_STATUS.md) 最新章節。照片bucket與三個Secret已存在，不需重建。預設初始化Job只跑migration／CSV；獨立seed Job為 `binsoon-api-product-seed`。
 
 > 統一 Bin（0003）已於 2026-10-19 完成備份、維護與雲端切換，版本見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。0003 整併表結構，需備份、停止舊寫入並協調程式切換；不能直接以原流程宣稱無停機升級，也不能只回滾舊映像。新 API、權限、官方筆數篩選與歷史行為見 [BINS.md](BINS.md)。
 

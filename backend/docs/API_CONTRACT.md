@@ -2,7 +2,7 @@
 
 前端工程師請先讀 [串接指南](FRONTEND_INTEGRATION.md)：內含線上 URL、TypeScript fetch、登入／上傳範例、P1–P22 呼叫順序與錯誤處理。逐一查詢 endpoint 的參數及完整欄位限制請看 [API Reference](API_REFERENCE.md)；本文件說明業務語意及權限。
 
-日期：2026-10-19。**以下契約已部署至 Cloud Run，revision=binsoon-api-00005-kcw；frontend未修改、尚未串接。** 實作順序見 [BACKEND_ROADMAP.md](BACKEND_ROADMAP.md)，初始化／HTTP驗收見 [PRODUCT_OPERATIONS.md](PRODUCT_OPERATIONS.md)，驗證見 [PRODUCT_VALIDATION.md](PRODUCT_VALIDATION.md)。執行中的 `/openapi.json` 列出實際schema及必要headers；線上快照已比對一致。
+日期：2026-10-19。**以下契約已部署至 Cloud Run，revision=binsoon-api-00006-n96；frontend未修改、尚未串接。** 實作順序見 [BACKEND_ROADMAP.md](BACKEND_ROADMAP.md)，初始化／HTTP驗收見 [PRODUCT_OPERATIONS.md](PRODUCT_OPERATIONS.md)，驗證見 [PRODUCT_VALIDATION.md](PRODUCT_VALIDATION.md)。執行中的 `/openapi.json` 列出實際schema及必要headers；線上快照已比對一致。
 
 提供可供前端型別產生器使用的 [OpenAPI JSON快照](openapi.json)。在backend/執行 `python -m scripts.export_openapi` 更新；契約測試比對快照與實際回應。雲端目前已是新版，可由線上 OpenAPI 產生型別。
 
@@ -60,7 +60,7 @@ fields 為 `{field:string, code:string, message:string}[]`，無欄位錯誤時�
 
 舊 API 保持目前 FastAPI detail／422 格式，不以全域 handler 改掉既有契約。
 
-## 2. 既有 API：保留原狀
+## 2. 既有 API 與已移除入口
 
 | Method／path | Response／注意 |
 | --- | --- |

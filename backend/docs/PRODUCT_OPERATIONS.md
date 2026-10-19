@@ -1,6 +1,6 @@
 # A／B／D 後端初始化、驗收及交接
 
-2026-10-19。持久化展示 API 已部署 Cloud Run，schema=0005、revision=binsoon-api-00005-kcw；frontend 完全未修改。私有 GCS 與 Secret references 已配置，三角色已初始化。線上只做明示 HTTP 展示驗收，未對 Cloud SQL 執行 pytest。完整紀錄見 [部署紀錄](DEPLOYMENT_STATUS.md)。
+2026-10-19。持久化展示 API 已部署 Cloud Run，schema=0005、revision=binsoon-api-00006-n96；frontend 完全未修改。私有 GCS 與 Secret references 已配置，三角色已初始化。線上只做明示 HTTP 展示驗收，未對 Cloud SQL 執行 pytest。完整紀錄見 [部署紀錄](DEPLOYMENT_STATUS.md)。
 
 前端先看 [串接指南](FRONTEND_INTEGRATION.md)，全部欄位、權限、錯誤、P1–P22 對照見 [API 契約](API_CONTRACT.md) 與 [逐項參考](API_REFERENCE.md)。Swagger `/docs` 與 `/openapi.json` 以目前啟動版本為準，線上已更新新版。
 
