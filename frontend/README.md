@@ -14,6 +14,16 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 市民：桶詳情只呈現後端有效完成紀錄；對最新 completion.id 感謝一次，顯示後端 like_count／liked_by_me，不增加點數或排名。桶況、歷史、最近桶、導航及案件持續重新讀取後端，容量歸零本身不代表完工。
 - 道路站點、兌換、成果統計、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
 
+## 一般垃圾／資源回收
+
+- 找桶、詳情、導航與回報可選一般垃圾（general）或資源回收（recycling）；預設一般垃圾。同一 Bin UUID 仍是一個位置，兩槽不增加公布桶位置數。
+- 地圖、最近桶、詳情與歷史查詢帶 waste_type，切換後重新讀取，不沿用另一槽的滿度或維修限制。詳情列出後端 compartments，未知仍為未知，不平均、累加或複製滿度。
+- 導航、回報與 QR 深連結保留所選種類。回報 body 明確送 waste_type，照片／草稿按 bin_id 與種類隔離；未知結果及同帳號重登入沿用原 key／body，不改成另一槽重送。
+- 歷史預設只查所選槽；「歷史種類」可選舊未分類（legacy_unknown），保留 waste_type=null，不混成一般垃圾。classification_source 與 simulated 讀值來源分開顯示；CSV 沒有分類證據，兩槽是展示假設。
+- 回報清單與隊員工單可篩種類，案件、工作證據及完成紀錄顯示後端種類。管理員清空依 work_order_id 的種類，不讓前端覆寫；最新完成與按讚待重試命令按種類分開，會員點數不乘二。
+
+新契約與資料限制見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。道路站點／通知等尚未串接的票單仍待後續實作。
+
 ## API 設定與身份
 
 `frontend/.env.example` 提供公開 `VITE_API_BASE_URL`，未設定時使用已部署的 Cloud Run `/api/v1`。可改成本機 API；變更後重啟 dev 或重新 build。這是公開 URL，密碼／token 絕不放入 VITE_* 或 Git。

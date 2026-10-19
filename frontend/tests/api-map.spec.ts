@@ -247,7 +247,7 @@ test("history reads full bare-array pagination and navigation respects server us
   await expect(page.locator(".demo-route")).toHaveCount(1);
   await expect(page.getByRole("link", { name: "抵達後回報" })).toHaveAttribute(
     "href",
-    "#report/10000000-0000-4000-8000-000000000003",
+    "#report/10000000-0000-4000-8000-000000000003?waste_type=general",
   );
 });
 

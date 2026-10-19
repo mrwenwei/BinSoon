@@ -100,3 +100,21 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 本票完整驗證：typecheck、data:check（681 桶＋130 場所、十二區）、build、Prettier 與 git diff --check 均通過。完整 test:e2e **166 項通過（4.1 分鐘）**，包含 80 項 API 流程與 86 項歷史展示回歸。新增的 22 項（桌面／手機）全部通過，含最後補入的修復一張 broken 工單後、0% 桶仍受另一損壞事件限制而不可導航的案例。正式 build 不含 localStorage／舊展示帳本；保留既有 MapLibre 大型 bundle 提示。
 
 未驗證：真實 Cloud Run 角色登入與操作、GCS 照片及實體手機相機／GPS。未取得或儲存帳密、未寫入雲端測試案件／證據／工單、未跑雲端 pytest、未清除／重設資料、未建立資源或部署。滿度仍 simulated；現場作業時間不與模擬歷史時鐘混用。
+
+
+## 雙種類 API 調整與 rebase
+
+2026-10-19，使用者要求 rebase 最新 origin/main 並適配一般垃圾／資源回收。已快取遠端、無衝突 rebase 至 7481ba5，保留第 5 票兩個提交及本機 .scratch 截圖。未改雲端資源、schema 或後端程式；本輪程式 review 基準為 rebase 後的 c2e97e7。
+
+- DTO 接入 waste_type、classification_source、compartments；TaskReading 與 Reading 的舊未分類種類可 null，與位置 source_type／讀值 simulated 分開。沒有補造第二個地圖點、分攤滿度或複製歷史。
+- 找桶、最近桶、詳情、分頁歷史及導航把種類放入 query／cache identity；切換不保留另一槽快照。各類桶槽顯示各自滿度與可用性。歷史只查明確種類或 legacy_unknown，不混線；未分類不轉成 general。
+- 深連結及 QR 保留種類；回報明確送 waste_type。記憶體照片草稿依 bin_id／種類隔離，同帳號重登入與未知結果重試不改原 body／key。路由切換以目前 hash 為準，避免快速操作套回舊路由。
+- 隊員／市民清單可篩種類，工單、查證、完成、無需處理及清空證據標示各自種類與分類根據；不自行解除另一槽維修限制。管理員 demo-clear body 維持 reading_id，不接受 client 種類覆寫。
+- 最新有效成果依 BinView 的所選種類讀取，感謝命令按種類隔離；一般槽未知結果不阻擋或改讚回收成果。點數與會員摘要仍讀原後端彙總，不乘二。
+- 視覺：種類選單符合窄螢幕，已檢視桌面 1440px／手機 320px 桶詳情；另修正地圖提示的定位，避免浮到桶況區，測試檢查提示留在地圖內。截圖在 .scratch/frontend-api-integration/waste-compartments-*.png。
+
+採用既有瀏覽器／HTTP seam，先確認缺選單、回報缺 waste_type、兩槽按讚命令互相阻擋、工單缺種類篩選等失敗，再逐段修正。新增 18 項桌面／Pixel 7 測試通過（14.6 秒）：95% 一般／20% 回收分別可用性、單一位置與完整分頁、種類深連結、回收回報重送與重登入、雙槽按讚重試、工單篩選／管理員單槽清空、null 舊歷史及分類來源、照片草稿、延遲讀取不沿用其他種類、清單及 320px 溢出。舊導航測試與一般回報 body 斷言更新為新契約。
+
+完整回歸、最後視覺確認與兩軸 review 於交付前補記。
+
+限制：所有滿度仍 simulated，CSV 無桶槽分類／現勘證據。未取得真實帳密，未驗證 Cloud Run 角色完整操作、私有 GCS、實體手機相機／GPS／跨裝置 QR。未對雲端寫入案件、清空、按讚、重設模擬、執行 pytest 或部署；原始資料／歷史未改。未串接的道路站點、通知等仍依後續票單進行。

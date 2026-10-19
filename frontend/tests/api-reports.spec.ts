@@ -68,6 +68,7 @@ test("citizen uploads a real file and retries the same report command after lost
   expect(commands[1]).toEqual(commands[0]);
   expect(commands[0].body).toEqual({
     bin_id: binId,
+    waste_type: "general",
     type: "full",
     description: "",
     photo_ids: report.photo_ids,

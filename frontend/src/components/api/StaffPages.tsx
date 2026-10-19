@@ -1,3 +1,5 @@
+import { type WasteType } from "../../data/waste";
+import { WasteInfo, WasteSelect, Compartments } from "./Waste";
 import { useState } from "react";
 import {
   problemLabels,
@@ -59,11 +61,13 @@ function WorkList() {
     [offset, setOffset] = useState(0);
   const [type, setType] = useState(""),
     [source, setSource] = useState("");
+  const [wasteFilter, setWasteFilter] = useState<WasteType | "">("");
   const [district, setDistrict] = useState(session?.user.districts[0] || "");
   const path = query("/staff/work-orders", {
     bucket,
     offset,
     limit: 20,
+    ...(wasteFilter ? { waste_type: wasteFilter } : {}),
     ...(district ? { district } : {}),
     ...(type ? { type } : {}),
     ...(source ? { source } : {}),
@@ -88,6 +92,14 @@ function WorkList() {
         <a href="#staff/route">道路指引（尚未開放）</a>
       </div>
       <div className="api-work-filters">
+        <WasteSelect
+          value={wasteFilter}
+          all
+          onChange={(value) => {
+            setWasteFilter(value);
+            setOffset(0);
+          }}
+        />
         <label>
           工單分類
           <select
@@ -164,6 +176,7 @@ function WorkList() {
             <span className={`staff-status ${w.status}`}>
               {workLabels[w.status]}
             </span>
+            <WasteInfo value={w} />
             <h2>
               {problemLabels[w.type]} · {w.district}
             </h2>
@@ -295,6 +308,8 @@ function WorkPage({ id }: { id: string }) {
         <>
           <section className="card">
             <h2>{problemLabels[work.type]}</h2>
+            <WasteInfo value={work} />
+            <Compartments items={result.data?.location.compartments} />
             <p>工單狀態：{workLabels[work.status]}</p>
             <p>工單版本 v{work.version}</p>
             <p>

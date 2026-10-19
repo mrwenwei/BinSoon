@@ -4850,3 +4850,34 @@ a {
 .api-thanks p {
   margin: 12px 0;
 }
+
+/* The public selector describes a stream, not an additional map location. */
+.api-waste-select {
+  display: grid;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px 0;
+}
+.api-waste-select select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.api-compartments {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: left;
+  margin: 16px 0;
+}
+.api-compartments small {
+  display: block;
+}
+.api-app .api-detail-map {
+  position: relative;
+}

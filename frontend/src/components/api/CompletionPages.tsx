@@ -1,3 +1,5 @@
+import { wasteHref, type WasteType } from "../../data/waste";
+import { WasteInfo, Compartments } from "./Waste";
 import { useEffect, useRef, useState } from "react";
 import {
   ApiError,
@@ -212,6 +214,7 @@ export function WorkEvidence({ detail }: { detail: WorkDetail }) {
   return (
     <section className="card" aria-label="工單證據">
       <h2>工單證據</h2>
+      <WasteInfo value={detail.work_order} />
       {detail.evidence.length ? (
         detail.evidence.map((e) => (
           <div key={e.id}>
@@ -225,6 +228,7 @@ export function WorkEvidence({ detail }: { detail: WorkDetail }) {
       {detail.latest_reading && (
         <div>
           <h3>本次清空證據</h3>
+          <WasteInfo value={detail.latest_reading} />
           <p>
             桶內滿度 {detail.latest_reading.fill_level_pct}% ·{" "}
             {detail.latest_reading.source_type}
@@ -247,6 +251,7 @@ export function DismissalRecord({ detail }: { detail: WorkDetail }) {
   return (
     <section className="card">
       <h2>已確認無需處理</h2>
+      <WasteInfo value={work} />
       <p>結案時間：{time(work.completed_at)}</p>
       <p>原因：{work.reason || "未提供"}</p>
       <p>
@@ -265,6 +270,7 @@ export function CompletionRecord({ detail }: { detail: WorkDetail }) {
     <section className="card" aria-label="工單完成紀錄">
       <span className="demo-tag">有證據的工作成果</span>
       <h2>工作已完成</h2>
+      <WasteInfo value={work} />
       <p>完成紀錄 {work.completion_id}</p>
       <p>完成時間：{time(work.completed_at)}</p>
       <p>查證與點數結算是獨立結果，不會再次發點。</p>
@@ -359,6 +365,8 @@ function AdminWork({ id }: { id: string }) {
             <h2>{detail.data.location.label}</h2>
             <p>工單狀態：{workLabels[work!.status]}</p>
             <p>工單版本 v{work!.version}</p>
+            <WasteInfo value={work!} />
+            <Compartments items={detail.data.location.compartments} />
             <p>工單 ID：{id}</p>
             <p>
               桶內滿度：
@@ -415,18 +423,20 @@ function AdminWork({ id }: { id: string }) {
 export function CompletionThanks({
   cleanup,
   binId,
+  wasteType,
   ready,
   refresh,
 }: {
   cleanup: Cleanup | null;
   binId: string;
+  wasteType: WasteType;
   ready: boolean;
   refresh: () => void;
 }) {
   const { session } = useSession();
   const citizen = Boolean(session?.user.roles.includes("citizen"));
   const action = useCommand<Cleanup>({
-    scope: `/bins/${binId}/thanks`,
+    scope: `/bins/${binId}/thanks/${wasteType}`,
     authorized: citizen,
     ready,
     refresh,
@@ -441,6 +451,7 @@ export function CompletionThanks({
       {cleanup ? (
         <>
           <h3>最近一次清運／清潔完成</h3>
+          <WasteInfo value={cleanup} />
           <p>
             {time(cleanup.completed_at)} · {cleanup.like_count} 個感謝
           </p>
@@ -466,7 +477,9 @@ export function CompletionThanks({
             {cleanup.liked_by_me ? "已感謝" : "謝謝清潔隊"}
           </button>
           {!citizen && (
-            <a href={`#login?next=${encodeURIComponent(`bin/${binId}`)}`}>
+            <a
+              href={`#login?next=${encodeURIComponent(wasteHref(`bin/${binId}`, wasteType).slice(1))}`}
+            >
               市民登入後感謝
             </a>
           )}

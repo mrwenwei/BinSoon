@@ -1,3 +1,4 @@
+import { isWasteType, wasteHref, type WasteType } from "./data/waste";
 import { useEffect, useRef, useState } from "react";
 import { Mascot } from "./components/Mascot";
 import {
@@ -46,6 +47,20 @@ function AppContent() {
   const [path, search] = route.split("?");
   const [page, id, workId] = path.split("/");
   const params = new URLSearchParams(search);
+  const [lastWaste, setLastWaste] = useState<WasteType>("general");
+  const routeWaste = params.get("waste_type");
+  const wasteType = isWasteType(routeWaste) ? routeWaste : lastWaste;
+  useEffect(() => {
+    if (isWasteType(routeWaste)) setLastWaste(routeWaste);
+  }, [routeWaste]);
+  const onWasteChange = (value: WasteType) => {
+    setLastWaste(value);
+    window.location.hash = wasteHref(
+      window.location.hash.slice(1) || "map",
+      value,
+    ).slice(1);
+  };
+  const wasteControls = { wasteType, onWasteChange };
   const role =
     page === "staff" ? "staff" : page === "admin" ? "admin" : "citizen";
   const loginRoute = role === "citizen" ? "login" : `${role}/login`;
@@ -54,14 +69,14 @@ function AppContent() {
   return (
     <div className="app-shell api-app">
       <header className="topbar">
-        <a className="brand" href="#map">
+        <a className="brand" href={wasteHref("map", wasteType)}>
           <Mascot />
           <span>
             BinSoon<span className="brand-sub">台北丟垃圾變順</span>
           </span>
         </a>
         <nav className="desktop-nav" aria-label="主選單">
-          <a href="#map">找垃圾桶</a>
+          <a href={wasteHref("map", wasteType)}>找垃圾桶</a>
           <a href="#reports">我的回報</a>
           <a href="#member">會員中心</a>
           <a href="#staff/tasks">清潔隊工作台</a>
@@ -110,13 +125,18 @@ function AppContent() {
             id={id === "work-orders" ? workId : undefined}
           />
         ) : page === "map" ? (
-          <MapPage />
+          <MapPage {...wasteControls} />
         ) : (page === "bin" || page === "nav") && id ? (
-          <BinPage key={`${page}/${id}`} id={id} navigation={page === "nav"} />
+          <BinPage
+            key={`${page}/${id}/${wasteType}`}
+            id={id}
+            navigation={page === "nav"}
+            {...wasteControls}
+          />
         ) : page === "staff" && id === "tasks" ? (
           <StaffPage key={workId || "list"} id={workId} />
         ) : page === "report" && id ? (
-          <ReportForm key={id} id={id} />
+          <ReportForm key={`${id}/${wasteType}`} id={id} {...wasteControls} />
         ) : ["review", "report-done"].includes(page) && id ? (
           <RequireCitizen next={route}>
             <ReportDetail key={id} id={id} done={page === "report-done"} />
@@ -138,7 +158,7 @@ function AppContent() {
                 {role === "staff" ? "隊員登入" : "管理員登入"}
               </a>
             )}
-            <a className="back-link" href="#map">
+            <a className="back-link" href={wasteHref("map", wasteType)}>
               返回地圖
             </a>
           </main>

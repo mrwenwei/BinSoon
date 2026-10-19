@@ -5,6 +5,8 @@ export const reportId = "20000000-0000-4000-8000-000000000001";
 export const workId = "30000000-0000-4000-8000-000000000001";
 export const eventId = "40000000-0000-4000-8000-000000000001";
 export const status = {
+  waste_type: "general",
+  classification_source: "legacy_assumed_general",
   fill_level_pct: null,
   fill_status: "unknown",
   is_usable: false,
@@ -41,6 +43,14 @@ export const location = {
   distance_m: 20,
   walking_estimate_seconds: 30,
   bin_status: status,
+  compartments: [
+    status,
+    {
+      ...status,
+      waste_type: "recycling",
+      classification_source: "demo_assumption",
+    },
+  ],
 };
 export function envelope(items: unknown[], offset = 0, total = items.length) {
   return { items, page: { limit: 100, offset, total } };
@@ -146,6 +156,8 @@ export async function login(page: Page, role = "citizen", next = "map") {
 }
 
 export const report = {
+  waste_type: "general",
+  classification_source: "legacy_assumed_general",
   id: reportId,
   bin_id: binId,
   event_id: eventId,
@@ -170,6 +182,8 @@ export const report = {
 };
 
 export const arrivedWork = {
+  waste_type: "general",
+  classification_source: "legacy_assumed_general",
   id: workId,
   bin_id: binId,
   event_id: eventId,
