@@ -19,6 +19,8 @@ import {
   Member,
 } from "./components/api/ReportPages";
 
+import { RoutePage } from "./components/api/RoutePage";
+import { type CrewVehicle } from "./data/crewRouting";
 import { StaffPage } from "./components/api/StaffPages";
 import {
   WorkCommandProvider,
@@ -47,6 +49,7 @@ function AppContent() {
   const [path, search] = route.split("?");
   const [page, id, workId] = path.split("/");
   const params = new URLSearchParams(search);
+  const [vehicle, setVehicle] = useState<CrewVehicle>("scooter");
   const [lastWaste, setLastWaste] = useState<WasteType>("general");
   const routeWaste = params.get("waste_type");
   const wasteType = isWasteType(routeWaste) ? routeWaste : lastWaste;
@@ -133,6 +136,8 @@ function AppContent() {
             navigation={page === "nav"}
             {...wasteControls}
           />
+        ) : page === "staff" && id === "route" ? (
+          <RoutePage vehicle={vehicle} onVehicleChange={setVehicle} />
         ) : page === "staff" && id === "tasks" ? (
           <StaffPage key={workId || "list"} id={workId} />
         ) : page === "report" && id ? (

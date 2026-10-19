@@ -41,14 +41,14 @@ export function StaffPage({ id }: { id?: string }) {
   if (id && id !== "tasks") return <WorkPage id={id} />;
   return session?.user.roles.includes("staff") ? <WorkList /> : <StaffLogin />;
 }
-function StaffLogin({ id }: { id?: string }) {
+export function StaffLogin({ id, next }: { id?: string; next?: string }) {
   return (
     <main className="page api-narrow">
       <h1>清潔隊工作台</h1>
       <p>請以責任區隊員身份登入。</p>
       <a
         className="button primary"
-        href={`#staff/login?next=${encodeURIComponent(id ? `staff/tasks/${id}` : "staff/tasks")}`}
+        href={`#staff/login?next=${encodeURIComponent(next || (id ? `staff/tasks/${id}` : "staff/tasks"))}`}
       >
         隊員登入
       </a>
@@ -89,7 +89,7 @@ function WorkList() {
           <h1>清潔隊工作台</h1>
           <p>責任區：{session?.user.districts.join("、")}</p>
         </div>
-        <a href="#staff/route">道路指引（尚未開放）</a>
+        <a href="#staff/route">道路指引</a>
       </div>
       <div className="api-work-filters">
         <WasteSelect
@@ -301,6 +301,9 @@ function WorkPage({ id }: { id: string }) {
     <main className="page api-narrow">
       <a className="back-link" href="#staff/tasks">
         ← 返回派工清單
+      </a>
+      <a className="back-link" href="#staff/route">
+        清運路線
       </a>
       <h1>{result.data?.location.label || "工單詳情"}</h1>
       <LoadState {...result} />

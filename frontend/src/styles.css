@@ -5142,3 +5142,37 @@ a {
     transform: none;
   }
 }
+
+.api-route-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.api-route-refresh > div {
+  text-align: right;
+}
+.api-route-refresh .tiny {
+  margin-top: 0;
+}
+.api-route-page .crew-route-map-panel {
+  top: 16px;
+}
+.crew-route-origin small {
+  display: block;
+  font-size: 11px;
+}
+@media (max-width: 760px) {
+  .api-route-refresh {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .api-route-refresh > div {
+    text-align: left;
+  }
+  .api-route-refresh .api-waste-select {
+    width: 100%;
+  }
+}

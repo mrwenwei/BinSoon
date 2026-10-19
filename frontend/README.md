@@ -1,6 +1,6 @@
 # BinSoon 前端：API 地圖、回報、查證與現場處理
 
-React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)。
+React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)。
 
 ## 目前可操作範圍
 
@@ -12,7 +12,8 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 無需處理：到場後上傳 purpose=site 的獨立現況照、掛 evidence、完成全部查證、填原因後 dismiss；與完成照草稿分開。顯示無需處理的原因與證據，不計 completed、不產生本次可讚成果。回報不實仍可有現場工作，不自行結案或關閉其他工單。
 - 管理員：`/#admin` 輸入工單 UUID，或使用隊員工單提供的另開分頁連結；以獨立 admin session 讀版本、確認「非真實 IoT」後送出 demo-clear。清空先到仍須完成照、全部查證與明確 finish 才能結案。每次保留 reading_id 與命令識別供未知結果重試。
 - 市民：桶詳情只呈現後端有效完成紀錄；對最新 completion.id 感謝一次，顯示後端 like_count／liked_by_me，不增加點數或排名。桶況、歷史、最近桶、導航及案件持續重新讀取後端，容量歸零本身不代表完工。
-- 道路站點、兌換、成果統計、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
+- 隊員道路指引：`#staff/route` 讀後端 origin 與有序站點，同桶合站、工單 UUID 各自保留；可篩一般／回收並選機車／汽車，手動請求既有 Valhalla 道路幾何與逐段指引。前景每 10 秒重讀站點、背景停止；工單／站點／車種變動取消舊指引，不以直線替代。起點固定示範，沒有即時 GPS、交通或順序最佳化。
+- 兌換、成果統計、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
 
 ## 一般垃圾／資源回收
 
@@ -22,7 +23,7 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 歷史預設只查所選槽；「歷史種類」可選舊未分類（legacy_unknown），保留 waste_type=null，不混成一般垃圾。classification_source 與 simulated 讀值來源分開顯示；CSV 沒有分類證據，兩槽是展示假設。
 - 回報清單與隊員工單可篩種類，案件、工作證據及完成紀錄顯示後端種類。管理員清空依 work_order_id 的種類，不讓前端覆寫；最新完成與按讚待重試命令按種類分開，會員點數不乘二。
 
-新契約與資料限制見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。道路站點／通知等尚未串接的票單仍待後續實作。
+新契約與資料限制見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。通知等尚未串接的票單仍待後續實作。
 
 ## API 設定與身份
 

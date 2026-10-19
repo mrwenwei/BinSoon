@@ -142,3 +142,13 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 擴充既有雙種類瀏覽器案例，驗證卡片鍵盤與指標選取、aria-pressed、對應種類的導航連結與 320px 無水平溢出。截圖使用攔截 API 資料（一般 95%、回收 20%），不代表雲端當前桶況；底圖依測試環境可用性顯示。調整前後桌面／手機截圖保留於 .scratch/frontend-api-integration/waste-compartments-*.png，preview 為首屏。
 
 本輪驗證：typecheck、data:check、build、Prettier、git diff --check 通過；完整 test:e2e **184 項通過（4.5 分鐘）**。已檢視 1440px 桌面及 320px 手機模擬截圖。保留既有大型 bundle 與底圖供應端警告；未驗證實體手機與真實角色操作。未寫入雲端業務資料、未部署或推送。
+
+## 第 6 票：後端站點與道路指引（GitHub #11）
+
+依 `/staff/route-stops` 的 origin、有序 stops、waste_types 及 work_order_ids 建立正式 `#staff/route`。不查舊展示帳本、不自行派序／合併案件、不按市民可投垃圾條件過濾；全部／general／recycling 篩選送回後端。同桶每張工單皆有獨立連結，從工單可回清運路線。
+
+將既有 Valhalla UI 與請求共用為 CrewRoutePlanner，舊展示只保留 adapter。起點改為必填並驗證有效座標；對外 payload 僅含公開起點、有序桶位、車種設定，不含 session、案件 UUID、照片或說明。路線標記稱「清運站點」，不冒充 CSV 公布來源；滿度未知，不造桶況。沿用兩車種成本、polyline6、中文轉彎與來源署名，無 GPS／即時路況／順序最佳化。
+
+前景每 10 秒重讀，背景停止、離頁 abort；資料與角色 session 隔離，401 連回原入口登入，403 不借用管理員或市民權限。站點座標／順序／起點／工單集合／車種變更取消舊請求並移除結果，generated_at 單獨變更不清指引。重讀失敗仍可看先前站點與工單，但標為過期、停用計算並清道路；恢復後須手動規劃，不復活舊路線。路線服務失敗／429／20 秒逾時不畫直線替代。
+
+先以 API 瀏覽器案例確認正式入口未開放，再實作首個有序合站與雙車種流程，接續驗證延遲回應、同桶工單變動、空站點、種類篩選、失敗與恢復、403／401／角色隔離、背景／離頁停止及跨隊員分頁實際 finish 後站點移除。新案例在桌面與手機皆已通過；既有道路指引回歸通過。已檢視桌面 1440px 與手機 320px 截圖 `.scratch/frontend-api-integration/api-route-*.png`，保留完整底圖署名及清單替代入口。測試採 HTTP 攔截，不代表真實 Cloud Run／Valhalla 整合或現場行駛驗收。

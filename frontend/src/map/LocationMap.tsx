@@ -13,6 +13,7 @@ setWorkerUrl(workerUrl);
 
 interface Props {
   operations?: OperationalState;
+  binMarkerLabel?: string;
   locations: LocationRecord[];
   selected: LocationRecord | null;
   onSelect: (location: LocationRecord) => void;
@@ -49,6 +50,7 @@ export function LocationMap({
   selectionBounds,
   removedIds,
   operations,
+  binMarkerLabel,
 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
@@ -105,8 +107,8 @@ export function LocationMap({
     for (const location of locations) {
       const marker = L.marker([location.latitude, location.longitude], {
         icon: locationMarkerIcon(location, false, removedIds, operations),
-        title: `${kindLabel[location.kind]}：${location.label}`,
-        alt: `${kindLabel[location.kind]}：${location.label}`,
+        title: `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`,
+        alt: `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`,
         riseOnHover: true,
       })
         .on("click", () => onSelect(location))
@@ -115,7 +117,7 @@ export function LocationMap({
         .getElement()
         ?.setAttribute(
           "aria-label",
-          `${kindLabel[location.kind]}：${location.label}`,
+          `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`,
         );
       markerRecords.current.push({ marker, location });
     }
@@ -124,7 +126,7 @@ export function LocationMap({
         L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
         { padding: [45, 50], maxZoom: 15, animate: false },
       );
-  }, [locations, onSelect, removedIds, selectionBounds]);
+  }, [locations, onSelect, removedIds, selectionBounds, binMarkerLabel]);
   useEffect(() => {
     for (const { marker, location } of markerRecords.current) {
       marker.setIcon(

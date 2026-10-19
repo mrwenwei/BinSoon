@@ -94,6 +94,17 @@ export type PageData<T> = {
   items: T[];
   page: { limit: number; offset: number; total: number };
 };
+export type RouteStops = {
+  origin: Position & { source: "demo_fixed" };
+  stops: (Position & {
+    bin_id: string;
+    label: string;
+    work_order_ids: string[];
+    waste_types: WasteType[];
+    priority: string;
+  })[];
+  generated_at: string;
+};
 export type Problem = "full" | "dirty" | "dumping" | "broken" | "other";
 export type WorkStatus =
   | "pending"
