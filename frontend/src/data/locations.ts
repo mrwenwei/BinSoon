@@ -10,10 +10,11 @@ export interface LocationRecord {
   latitude: number;
   note: string;
   source_type: string;
-  source_row: number;
-  source_file: string;
-  location_precision: "point_as_published" | "representative_point_only";
+  source_row: number | null;
+  source_file: string | null;
+  location_precision: "point_as_published" | "representative_point_only" | null;
   reported_count: number | null;
+  bin_status?: import("./api").BinStatus | null;
 }
 export const locations = snapshot as LocationRecord[];
 export const districts = [

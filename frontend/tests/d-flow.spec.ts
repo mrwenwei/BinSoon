@@ -3,7 +3,7 @@ test("citizen report is verified and completed by staff while both tabs stay syn
   page,
   context,
 }, testInfo) => {
-  await page.goto("/#login");
+  await page.goto("/tests/legacy/index.html#login");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page.locator(".location-row").first().click();
   const binUrl = page.url();
@@ -25,7 +25,7 @@ test("citizen report is verified and completed by staff while both tabs stay syn
     .getByRole("link", { name: "切換隊員查看此工單" })
     .getAttribute("href");
   const crew = await context.newPage();
-  await crew.goto("/" + staffHref);
+  await crew.goto("/tests/legacy/index.html" + staffHref);
   await crew.getByRole("button", { name: "使用大安區示範隊員" }).click();
   await crew.getByRole("button", { name: "接單", exact: true }).click();
   await crew.getByRole("button", { name: "示範已到場" }).click();
@@ -51,7 +51,7 @@ test("citizen report is verified and completed by staff while both tabs stay syn
   await expect(
     page.getByRole("button", { name: "已按讚", exact: true }),
   ).toBeDisabled();
-  await page.goto("/#map");
+  await page.goto("/tests/legacy/index.html#map");
   await page.locator(".location-row").nth(1).click();
   await expect(page.getByText(/本次感謝 0 讚/)).toBeVisible();
 });
@@ -87,11 +87,11 @@ test("legacy data survives migration and incompatible ledgers are never overwrit
     (value) => localStorage.setItem("binsoon-a-flow-1018-v2", value),
     legacy,
   );
-  await page.goto("/#member");
+  await page.goto("/tests/legacy/index.html#member");
   await expect(page.getByText("可用點數 65", { exact: true })).toBeVisible();
-  await page.goto("/#staff/tasks");
+  await page.goto("/tests/legacy/index.html#staff/tasks");
   await page.getByRole("button", { name: "使用大安區示範隊員" }).click();
-  await page.goto("/#member");
+  await page.goto("/tests/legacy/index.html#member");
   await expect(page.getByText("可用點數 65", { exact: true })).toBeVisible();
   expect(
     await page.evaluate(() => localStorage.getItem("binsoon-a-flow-1018-v2")),
@@ -111,7 +111,7 @@ test("legacy data survives migration and incompatible ledgers are never overwrit
 test("staff workspace has no citizen chrome and remains usable at narrow widths", async ({
   page,
 }, testInfo) => {
-  await page.goto("/#staff/tasks");
+  await page.goto("/tests/legacy/index.html#staff/tasks");
   await page.getByRole("button", { name: "使用大安區示範隊員" }).click();
   await expect(
     page.getByRole("heading", { name: "今日派工", exact: true }),
@@ -130,7 +130,7 @@ test("staff workspace has no citizen chrome and remains usable at narrow widths"
     "#staff/route",
     "#staff/honor",
   ]) {
-    await page.goto("/" + route);
+    await page.goto("/tests/legacy/index.html" + route);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth,
     );
@@ -146,10 +146,10 @@ test("two tabs redeem against the same latest balance without overspending", asy
   page,
   context,
 }) => {
-  await page.goto("/#login?next=rewards");
+  await page.goto("/tests/legacy/index.html#login?next=rewards");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   const other = await context.newPage();
-  await other.goto("/#rewards");
+  await other.goto("/tests/legacy/index.html#rewards");
   for (const tab of [page, other])
     await tab
       .getByRole("article", { name: "全家 50 元兌換券" })
@@ -162,16 +162,16 @@ test("two tabs redeem against the same latest balance without overspending", asy
         .click({ timeout: 2000 }),
     ),
   );
-  await page.goto("/#member");
+  await page.goto("/tests/legacy/index.html#member");
   await expect(page.getByText("可用點數 13", { exact: true })).toBeVisible();
-  await other.goto("/#member");
+  await other.goto("/tests/legacy/index.html#member");
   await expect(other.getByText("可用點數 13", { exact: true })).toBeVisible();
 });
 
 test("a member joins a fixture event as a later reporter without gaining another award", async ({
   page,
 }) => {
-  await page.goto("/#staff/tasks");
+  await page.goto("/tests/legacy/index.html#staff/tasks");
   await page.getByRole("button", { name: "使用大安區示範隊員" }).click();
   await page
     .locator(".staff-task-card")
@@ -181,7 +181,7 @@ test("a member joins a fixture event as a later reporter without gaining another
   const crewUrl = page.url();
   await page.getByRole("link", { name: "切回市民桶詳情" }).click();
   const binUrl = page.url();
-  await page.goto("/#login?next=" + encodeURIComponent(binUrl.split("#")[1]));
+  await page.goto("/tests/legacy/index.html#login?next=" + encodeURIComponent(binUrl.split("#")[1]));
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page.goto(binUrl.replace("#bin/", "#report/") + "?demo=1");
   await page.getByRole("button", { name: "桶旁有堆放", exact: false }).click();
@@ -196,7 +196,7 @@ test("a member joins a fixture event as a later reporter without gaining another
     .getByRole("article", { name: /回報證據：/ })
     .filter({ hasText: "本機示範市民" });
   await own.getByRole("button", { name: "確認屬實", exact: true }).click();
-  await page.goto("/#member");
+  await page.goto("/tests/legacy/index.html#member");
   await expect(page.getByText("可用點數 63", { exact: true })).toBeVisible();
   await expect(page.locator(".report-history li")).toHaveCount(1);
 });
@@ -204,7 +204,7 @@ test("a member joins a fixture event as a later reporter without gaining another
 test("submission rechecks persisted adoption even when the displayed form has not received its update", async ({
   page,
 }) => {
-  await page.goto("/#login?next=adopt");
+  await page.goto("/tests/legacy/index.html#login?next=adopt");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page.getByLabel("認養者公開名稱").fill("提交資格測試");
   await page.getByRole("button", { name: "送出認養申請", exact: true }).click();

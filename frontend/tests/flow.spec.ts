@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test("find a bin, inspect its demo status and preserve source distinctions", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await page.getByRole("searchbox", { name: "搜尋地點" }).fill("找不到的地點");
   await expect(page.getByText("沒有符合的地點")).toBeVisible();
   await page.getByRole("searchbox", { name: "搜尋地點" }).fill("");
@@ -41,7 +41,7 @@ test("report requires photo, proximity and login, then keeps a pending report wi
   page,
   isMobile,
 }) => {
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await page.locator(".location-row").first().click();
   await page.getByRole("link", { name: "回報問題", exact: true }).click();
   if (!isMobile) {
@@ -106,7 +106,7 @@ test("report requires photo, proximity and login, then keeps a pending report wi
 test("P2 lifecycle filters show usable bins and keep removed bins out of reporting", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await page.getByRole("button", { name: "新設的桶", exact: true }).click();
   const rows = page.locator(".location-row");
   expect(await rows.count()).toBeGreaterThan(0);

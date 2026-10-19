@@ -5,7 +5,7 @@ test.use({ actionTimeout: 10000 });
 test("P11 votes count people, support changes and withdrawal survive reload", async ({
   page,
 }) => {
-  await page.goto("/#login?next=vote");
+  await page.goto("/tests/legacy/index.html#login?next=vote");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await expect(
     page.getByRole("heading", { name: "這裡需要桶", exact: true }),
@@ -43,7 +43,7 @@ test("P11 votes count people, support changes and withdrawal survive reload", as
 test("a newly created proposal can demonstrate qualifying community votes through installation", async ({
   page,
 }) => {
-  await page.goto("/#login?next=vote");
+  await page.goto("/tests/legacy/index.html#login?next=vote");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page.getByRole("button", { name: "標一個新的點", exact: true }).click();
   await page.getByLabel("提案位置名稱").fill("新提案完整流程");
@@ -67,7 +67,7 @@ test("a newly created proposal can demonstrate qualifying community votes throug
 test("a final report allows a new event and retains both awards across reload", async ({
   page,
 }) => {
-  await page.goto("/#login");
+  await page.goto("/tests/legacy/index.html#login");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page.locator(".location-row").first().click();
   const binUrl = page.url();
@@ -89,7 +89,7 @@ test("a final report allows a new event and retains both awards across reload", 
       page.getByText(`可用點數 ${64 + index}`, { exact: true }),
     ).toBeVisible();
   }
-  await page.goto("/#member");
+  await page.goto("/tests/legacy/index.html#member");
   await expect(page.locator(".report-history li")).toHaveCount(2);
 });
 
@@ -97,7 +97,7 @@ test("a new event requires a fresh photo and proximity check without reloading t
   page,
   isMobile,
 }) => {
-  await page.goto("/#login");
+  await page.goto("/tests/legacy/index.html#login");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page.locator(".location-row").first().click();
   await page.getByRole("link", { name: "回報問題", exact: true }).click();
@@ -129,7 +129,7 @@ test("a new event requires a fresh photo and proximity check without reloading t
 test("P14 approval grants A/B adopter rewards and ending adoption preserves submitted eligibility", async ({
   page,
 }) => {
-  await page.goto("/#login?next=adopt");
+  await page.goto("/tests/legacy/index.html#login?next=adopt");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await expect(
     page.getByRole("heading", { name: "我的電子雞", exact: true }),
@@ -149,7 +149,7 @@ test("P14 approval grants A/B adopter rewards and ending adoption preserves subm
   await expect(
     page.getByText("認養：巷口日常小隊", { exact: true }),
   ).toBeVisible();
-  await page.goto("/#adopt");
+  await page.goto("/tests/legacy/index.html#adopt");
   await application
     .getByRole("link", { name: "一鍵通報附近清潔隊", exact: true })
     .click();
@@ -166,7 +166,7 @@ test("P14 approval grants A/B adopter rewards and ending adoption preserves subm
   await expect(page.locator(".done-points")).toHaveText("+2");
   await expect(page).toHaveURL(/#report-done\//);
   const doneUrl = page.url();
-  await page.goto("/#adopt");
+  await page.goto("/tests/legacy/index.html#adopt");
   await application
     .getByRole("button", { name: "結束認養", exact: true })
     .click();
@@ -186,7 +186,7 @@ test("P14 approval grants A/B adopter rewards and ending adoption preserves subm
 test("P13 freezes a qualifying vote and advances review, survey and naming without creating real bins", async ({
   page,
 }) => {
-  await page.goto("/#login?next=vote");
+  await page.goto("/tests/legacy/index.html#login?next=vote");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   const proposal = page.getByRole("button", {
     name: "查看提案：和平東路示範提案",
@@ -211,7 +211,7 @@ test("P13 freezes a qualifying vote and advances review, survey and naming witho
   await expect(detail).toContainText("已核准桶名：巷口順順");
   await page.reload();
   await expect(detail).toContainText("已核准桶名：巷口順順");
-  await page.goto("/#map");
+  await page.goto("/tests/legacy/index.html#map");
   await expect(page.locator(".location-row")).toHaveCount(47);
   await expect(
     page.getByText("681 公布桶位置 ＋ 130 場所代表點", { exact: false }),
@@ -222,7 +222,7 @@ test("P11 creates a proposal with its first vote, warns about nearby points and 
   page,
 }) => {
   await page.clock.install({ time: new Date("2026-10-31T15:59:00.000Z") });
-  await page.goto("/#login?next=vote");
+  await page.goto("/tests/legacy/index.html#login?next=vote");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   for (let index = 0; index < 3; index++) {
     await page
@@ -269,7 +269,7 @@ test("P11 creates a proposal with its first vote, warns about nearby points and 
 test("P10 uses existing bins and rejects invalid points while retaining a non-map input", async ({
   page,
 }) => {
-  await page.goto("/#nearby");
+  await page.goto("/tests/legacy/index.html#nearby");
   const { default: snapshot } = await import("../src/data/locations.json", {
     with: { type: "json" },
   });
@@ -296,7 +296,7 @@ test("P10 uses existing bins and rejects invalid points while retaining a non-ma
 test("proposal selection highlights its marker and choosing coordinates preserves zoom", async ({
   page,
 }) => {
-  await page.goto("/#login?next=vote");
+  await page.goto("/tests/legacy/index.html#login?next=vote");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page
     .getByRole("button", { name: "查看提案：和平東路示範提案" })
@@ -316,7 +316,7 @@ test("proposal selection highlights its marker and choosing coordinates preserve
 test("P13 low support requires village confirmation and declining requires a reason", async ({
   page,
 }) => {
-  await page.goto("/#login?next=vote");
+  await page.goto("/tests/legacy/index.html#login?next=vote");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page
     .getByRole("button", { name: "查看提案：市民大道示範提案" })
@@ -343,7 +343,7 @@ test("P13 low support requires village confirmation and declining requires a rea
 test("P15 withdrawal, rejection and removal preserve history and do not grant adoption early", async ({
   page,
 }) => {
-  await page.goto("/#login?next=adopt");
+  await page.goto("/tests/legacy/index.html#login?next=adopt");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   const chosen = await page.getByLabel("要認養的桶").inputValue();
   async function apply() {
@@ -399,7 +399,7 @@ test("P15 withdrawal, rejection and removal preserve history and do not grant ad
   await expect(records.first()).toContainText("桶已移除（示範）");
   await page.reload();
   await expect(records).toHaveCount(3);
-  await page.goto(`/#quick-report/${chosen}`);
+  await page.goto(`/tests/legacy/index.html#quick-report/${chosen}`);
   await expect(
     page.getByRole("heading", { name: "這個桶已撤除（示意）" }),
   ).toBeVisible();

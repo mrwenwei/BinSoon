@@ -7,7 +7,7 @@ import { binDemo, stateLabels, lifecycleLabel } from "../data/binDemo";
 import { Icon } from "./Icon";
 import { Mascot } from "./Mascot";
 import { LocationDetails } from "./LocationDetails";
-import { LocationMap } from "../map/LocationMap";
+import { DemoLocationMap as LocationMap } from "../map/DemoLocationMap";
 const ignoreSelect = () => {};
 
 export function BinDetail({

@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 test("P8 separates cumulative and available points and replaces the old stamp album", async ({
   page,
 }) => {
-  await page.goto("/#member");
+  await page.goto("/tests/legacy/index.html#member");
   await expect(
     page.getByRole("heading", { name: "會員中心", exact: true }),
   ).toBeVisible();
@@ -29,7 +29,7 @@ test("P5 to P7 credits an approved report once and keeps its result after reload
   page,
   isMobile,
 }) => {
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await page.locator(".location-row").first().click();
   await page.getByRole("link", { name: "回報問題", exact: true }).click();
   if (!isMobile)
@@ -68,7 +68,7 @@ test("P5 to P7 credits an approved report once and keeps its result after reload
 test("P9 redemption spends available points, preserves level and stores its receipt", async ({
   page,
 }) => {
-  await page.goto("/#login?next=rewards");
+  await page.goto("/tests/legacy/index.html#login?next=rewards");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await expect(
     page.getByRole("heading", { name: "兌換獎品", exact: true }),
@@ -104,7 +104,7 @@ test("P9 redemption spends available points, preserves level and stores its rece
 test("P4 reroutes a full destination and reports the replacement bin", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await expect(
     page.getByRole("list", { name: "最近三個可用桶" }).getByRole("link"),
   ).toHaveCount(3);
@@ -146,9 +146,9 @@ test("adopters earn two points, later reporters earn none, and three false repor
   page,
   isMobile,
 }) => {
-  await page.goto("/#login");
+  await page.goto("/tests/legacy/index.html#login");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
-  await page.goto("/#adopt");
+  await page.goto("/tests/legacy/index.html#adopt");
   await page.getByLabel("認養者公開名稱").fill("A/B 接合示範認養者");
   await page.getByRole("button", { name: "送出認養申請", exact: true }).click();
   const adoption = page.getByRole("article", { name: /認養申請：/ }).first();
@@ -199,7 +199,7 @@ test("adopters earn two points, later reporters earn none, and three false repor
   await submit("桶旁有堆放", true, true, "approved");
   await expect(page.getByText("審核通過 +2 點", { exact: true })).toBeVisible();
   await expect(page.getByText("可用點數 65", { exact: true })).toBeVisible();
-  await page.goto("/#adopt");
+  await page.goto("/tests/legacy/index.html#adopt");
   await adoption.getByRole("button", { name: "結束認養", exact: true }).click();
   await page.getByRole("button", { name: "確認結束認養", exact: true }).click();
   await submit("很髒", false, true, "rejected");
@@ -209,7 +209,7 @@ test("adopters earn two points, later reporters earn none, and three false repor
   await page.reload();
   await page.getByRole("link", { name: "前往會員中心", exact: true }).click();
   await expect(page.getByText("可用點數 65", { exact: true })).toBeVisible();
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await page.locator(".location-row").nth(1).click();
   await page.getByRole("link", { name: "回報問題", exact: true }).click();
   if (!isMobile)
@@ -265,10 +265,10 @@ test("crossing 150 upgrades membership and redemption preserves the new level", 
       },
     },
   );
-  await page.goto("/#member");
+  await page.goto("/tests/legacy/index.html#member");
   await expect(page.getByText("累積點數 149", { exact: true })).toBeVisible();
   await expect(page.getByText("再 1 點升到「高手」")).toBeVisible();
-  await page.goto("/#review/threshold-case");
+  await page.goto("/tests/legacy/index.html#review/threshold-case");
   await reviewAsStaff(page, "approved");
   await expect(
     page.getByRole("heading", { name: "高手", exact: true }),
