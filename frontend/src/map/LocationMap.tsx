@@ -8,6 +8,7 @@ import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { kindLabel, type LocationRecord } from "../data/locations";
 import { locationMarkerIcon } from "./marker";
+import { binsoonBasemapStyle, token } from "./basemapStyle";
 import type { Point } from "../data/participation";
 setWorkerUrl(workerUrl);
 
@@ -76,15 +77,27 @@ export function LocationMap({
     const timeout = window.setTimeout(failure, 15000);
     try {
       basemap = maplibreGL({
-        style: "https://tiles.openfreemap.org/styles/liberty",
+        // 自訂灰綠底圖：OpenFreeMap openmaptiles 圖磚＋色票 token。
+        style: binsoonBasemapStyle(),
         attributionControl: false,
       }).addTo(instance);
       const gl = basemap.getMaplibreMap();
-      gl.on("load", () => {
-        window.clearTimeout(timeout);
-        setBasemapFailed(false);
+      // 樣式是內嵌的，所以「載入成功」改以 OpenFreeMap 圖磚來源的 TileJSON
+      // 成功讀到為準；任何來源錯誤都顯示提示，之後不自動清除。
+      let failed = false;
+      gl.on("data", (event) => {
+        if (
+          !failed &&
+          event.dataType === "source" &&
+          "sourceDataType" in event &&
+          event.sourceDataType === "metadata"
+        )
+          window.clearTimeout(timeout);
       });
-      gl.on("error", failure);
+      gl.on("error", () => {
+        failed = true;
+        failure();
+      });
     } catch {
       failure();
     }
@@ -150,9 +163,9 @@ export function LocationMap({
     const instance = map.current;
     const line = points?.length
       ? L.polyline(points, {
-          color: "#305a48",
-          weight: 6,
-          dashArray: roadRoute ? undefined : "10 9",
+          color: token("text-on-light"),
+          weight: 4,
+          dashArray: roadRoute ? undefined : "8 7",
           className: roadRoute ? "road-route" : "demo-route",
         }).addTo(instance)
       : undefined;
@@ -160,7 +173,7 @@ export function LocationMap({
       icon: L.divIcon({
         className: "demo-origin",
         html: "<span>起</span>",
-        iconSize: [28, 28],
+        iconSize: [44, 44],
       }),
       title: "大安森林公園示意起點",
     }).addTo(instance);
@@ -188,7 +201,7 @@ export function LocationMap({
       [selectionBounds.north, selectionBounds.east],
     ];
     const outline = L.rectangle(bounds, {
-      color: "#9a6c3a",
+      color: token("signal-on-light"),
       weight: 2,
       fillOpacity: 0.03,
       interactive: false,

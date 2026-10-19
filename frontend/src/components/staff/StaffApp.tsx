@@ -13,7 +13,13 @@ import {
   type WorkOrder,
 } from "../../data/workOrders";
 import { locations } from "../../data/locations";
-import { binDemo, demoDistance, distanceLabel } from "../../data/binDemo";
+import {
+  binDemo,
+  demoDistance,
+  distanceLabel,
+  readingKey,
+} from "../../data/binDemo";
+import { WasteTag } from "../WasteType";
 import {
   formatDemoTime,
   reportAward,
@@ -120,7 +126,7 @@ function TaskDetail({
   const reports = state.reports.filter((r) => r.eventId === task.id);
   const allReviewed = reports.every(reportIsFinal);
   const closed = taskClosed(task);
-  const reading = state.readings[task.locationId];
+  const reading = state.readings[readingKey(task.locationId, task.wasteType)];
   const bin = binFor(task);
   const next = orderedTasks(state).find(
     (t) =>
@@ -138,6 +144,7 @@ function TaskDetail({
         <div>
           <span className="eyebrow">ONE TASK, EVERY DETAIL.</span>
           <h1>{bin.label}</h1>
+          <WasteTag type={task.wasteType || "general"} />
           <p>
             {reportInfo(task.type).label} · {bin.district} ·{" "}
             {task.fixture ? "種子情境" : "市民回報"}
@@ -586,6 +593,7 @@ export function StaffApp({ route }: { route: string }) {
                     {workLabels[t.status]}
                   </span>
                   <h2>{binFor(t).label}</h2>
+                  <WasteTag type={t.wasteType || "general"} />
                   <p>
                     {reportInfo(t.type).label} · {formatDemoTime(t.createdAt)}
                   </p>
@@ -676,6 +684,7 @@ export function StaffApp({ route }: { route: string }) {
                       </span>
                     </div>
                     <h2>{binFor(t).label}</h2>
+                    <WasteTag type={t.wasteType || "general"} />
                     <p>
                       {reportInfo(t.type).label} ·{" "}
                       {t.source === "sensor"

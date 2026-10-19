@@ -35,6 +35,9 @@ import {
 import { emptyDraft, type ReportDraft } from "../../src/data/reports";
 import { DemoLocationMap as LocationMap } from "../../src/map/DemoLocationMap";
 import { Mascot } from "../../src/components/Mascot";
+import { AppNav } from "../../src/components/AppNav";
+import { MapLegend } from "../../src/components/api/MapPages";
+import { stateVisual } from "../../src/components/binVisual";
 import { Icon } from "../../src/components/Icon";
 import { LocationDetails } from "../../src/components/LocationDetails";
 import { NavigationPage } from "../../src/components/NavigationPage";
@@ -131,7 +134,10 @@ export default function App() {
   };
   draft.firstReporter = !state.reports.some(
     (r) =>
-      r.locationId === id && r.type === draft.type && reportEventOpen(state, r),
+      r.locationId === id &&
+      r.type === draft.type &&
+      (r.wasteType || "general") === draft.wasteType &&
+      reportEventOpen(state, r),
   );
   const loginHref = `#login?next=${encodeURIComponent(route)}`;
   function login() {
@@ -192,6 +198,7 @@ export default function App() {
         (item) =>
           item.locationId === location.id &&
           item.type === draft.type &&
+          (item.wasteType || "general") === draft.wasteType &&
           item.reporter !== "fixture" &&
           reportEventOpen(state, item),
       )
@@ -202,6 +209,7 @@ export default function App() {
       id: crypto.randomUUID(),
       locationId: location.id,
       type: draft.type,
+      wasteType: draft.wasteType,
       description: draft.description.trim(),
       createdAt: new Date().toISOString(),
       status: "pending" as const,
@@ -285,37 +293,75 @@ export default function App() {
   const cleanup = location && latestCleanup(state, location.id);
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#map" aria-label="BinSoon 首頁">
-          <Mascot />
-          <span>
-            BinSoon<span className="brand-sub">台北丟垃圾變順</span>
-          </span>
-        </a>
-        <nav className="desktop-nav" aria-label="主選單">
-          <a
-            className={page === "map" || page === "bin" ? "active" : ""}
-            href="#map"
-          >
-            找垃圾桶
-          </a>
-          <a href="#vote">這裡需要桶</a>
-          <a href="#adopt">認養電子雞</a>
-          <a href="#honor">清潔隊榮譽榜</a>
-        </nav>
-        <span className="prototype">A + B + D · 展示模式</span>
-        <a className="account-link" href="#member">
-          <Icon name="star" />
-          <span>{availablePoints(state)} 點</span>
-          <strong>會員中心</strong>
-        </a>
-        <a
-          className="login-link"
-          href={page === "login" ? `#${route}` : loginHref}
-        >
-          {state.loggedIn ? "示範市民" : "登入"}
-        </a>
-      </header>
+      <AppNav
+        tabs={[
+          {
+            href: "#map",
+            label: "地圖",
+            current: page === "map" || page === "bin",
+          },
+          { href: "#vote", label: "要桶投票", current: page === "vote" },
+        ]}
+        desktopLinks={[
+          {
+            href: "#map",
+            label: "找垃圾桶",
+            current: page === "map" || page === "bin",
+          },
+          { href: "#vote", label: "這裡需要桶", current: page === "vote" },
+          { href: "#adopt", label: "認養電子雞", current: page === "adopt" },
+          { href: "#honor", label: "清潔隊榮譽榜", current: page === "honor" },
+        ]}
+        sections={[
+          {
+            title: "CITIZEN · 市民",
+            links: [
+              { href: "#map", label: "找垃圾桶" },
+              { href: "#vote", label: "要桶投票" },
+              { href: "#adopt", label: "認養電子雞" },
+              { href: "#member", label: "會員中心" },
+              { href: "#stamps", label: "集章與等級" },
+              { href: "#rewards", label: "兌換獎勵" },
+            ],
+          },
+          {
+            title: "CREW · 清潔隊（展示身份切換）",
+            links: [
+              { href: "#staff/tasks", label: "進入清潔隊工作台" },
+              { href: "#staff/route", label: "小車道路指引" },
+              { href: "#honor", label: "清潔隊整體成果" },
+            ],
+          },
+          {
+            title: "ACCOUNT · 帳號",
+            links: [
+              {
+                href: page === "login" ? `#${route}` : loginHref,
+                label: state.loggedIn ? "示範市民（帳號與登出）" : "登入",
+              },
+            ],
+          },
+        ]}
+        right={
+          state.loggedIn ? (
+            <a
+              className="points-button"
+              href="#member"
+              aria-label={`會員中心，目前 ${availablePoints(state)} 點`}
+            >
+              <strong>{availablePoints(state)}</strong>PTS
+            </a>
+          ) : (
+            <a
+              className="points-button"
+              href={page === "login" ? `#${route}` : loginHref}
+            >
+              登入
+            </a>
+          )
+        }
+        account={<span className="prototype">A + B + D · 展示模式</span>}
+      />
       {(storageFailed || participation.storageFailed) && (
         <p className="storage-warning" role="status">
           瀏覽器無法儲存資料，重新整理後可能無法保留本次紀錄。{storageError}
@@ -475,8 +521,10 @@ export default function App() {
                       onClick={() => select(item)}
                       aria-pressed={selected?.id === item.id}
                     >
-                      <span className={`row-buddy ${demo?.state || "place"}`}>
-                        <Mascot kind={item.kind} />
+                      <span
+                        className={`row-buddy ${demo ? stateVisual[demo.state].className : "place"}`}
+                      >
+                        <Mascot kind={item.kind} state={demo?.state} />
                       </span>
                       <span className="row-copy">
                         <strong>{item.label}</strong>
@@ -484,7 +532,9 @@ export default function App() {
                           {item.district} · {distanceLabel(demoDistance(item))}{" "}
                           · 直線
                         </small>
-                        <span className={`row-state ${demo?.state || "place"}`}>
+                        <span
+                          className={`row-state ${demo ? stateVisual[demo.state].className : "place"}`}
+                        >
                           {demo
                             ? `● ${demo.removed ? "已撤除（示意）" : stateLabels[demo.state]}`
                             : "✦ 場所代表點"}
@@ -527,29 +577,7 @@ export default function App() {
                 <span className="live-dot" />
                 用一點小順手，讓台北更乾淨<span>TAIPEI, TOGETHER.</span>
               </div>
-              <div className="legend">
-                <span>
-                  <i className="legend-dot hungry" />
-                  餓了 0–49%
-                </span>
-                <span>
-                  <i className="legend-dot half" />
-                  半飽 50–79%
-                </span>
-                <span>
-                  <i className="legend-dot full" />
-                  吃飽了 80%+
-                </span>
-                <span>
-                  <i className="legend-dot unknown" />
-                  未知
-                </span>
-                <span>
-                  <i className="legend-dot place" />
-                  場所代表點
-                </span>
-                <small>桶況皆為示意</small>
-              </div>
+              <MapLegend />
               {selected && (
                 <LocationDetails
                   location={selected}
@@ -664,31 +692,6 @@ export default function App() {
           </main>
         )}
       </div>
-      <div className="demo-switch">
-        <span>展示身份切換</span>
-        <a href="#staff/tasks">進入清潔隊工作台 →</a>
-        <a href="#honor">清潔隊整體成果</a>
-      </div>
-      <nav className="mobile-nav" aria-label="手機主選單">
-        <a
-          className={page === "map" || page === "bin" ? "active" : ""}
-          href="#map"
-        >
-          <Icon name="map" />
-          地圖
-        </a>
-        <a href="#vote">
-          <Icon name="pin" />
-          要桶投票
-        </a>
-        <a
-          className={page === "member" || page === "rewards" ? "active" : ""}
-          href="#member"
-        >
-          <Icon name="star" />
-          我的
-        </a>
-      </nav>
     </div>
   );
 }

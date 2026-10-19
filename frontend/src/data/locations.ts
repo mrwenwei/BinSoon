@@ -15,6 +15,7 @@ export interface LocationRecord {
   location_precision: "point_as_published" | "representative_point_only" | null;
   reported_count: number | null;
   bin_status?: import("./api").BinStatus | null;
+  compartments?: import("./api").BinStatus[];
 }
 export const locations = snapshot as LocationRecord[];
 export const districts = [

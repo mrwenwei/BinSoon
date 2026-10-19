@@ -196,7 +196,7 @@ export function AdoptionPage({
             >
               <div className="section-heading">
                 <h3>{bin.label}</h3>
-                <span className="status-pill half">
+                <span className="status-pill neutral">
                   {adoptionStatusLabels[a.status]}
                 </span>
               </div>
