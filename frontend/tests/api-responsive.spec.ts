@@ -49,3 +49,54 @@ test("API map, details, login and report stay usable on desktop and narrow phone
     fullPage: true,
   });
 });
+
+test("hamburger drawer reaches every entry, traps focus and closes with Esc or the scrim", async ({
+  page,
+}) => {
+  await apiFixture(page);
+  await page.goto("/#map");
+  const menu = page.getByRole("button", { name: "開啟選單", exact: true });
+  // 手機頂欄：地圖｜要桶投票兩個分頁（桌面版改顯示原主選單）。
+  await expect(page.locator(".primary-tabs a")).toHaveText([
+    "地圖",
+    "要桶投票",
+  ]);
+  await menu.click();
+  const drawer = page.getByRole("dialog");
+  await expect(drawer).toBeVisible();
+  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  for (const name of [
+    "找垃圾桶",
+    "要桶投票（尚未開放）",
+    "我的回報",
+    "會員中心",
+    "集章與等級",
+    "兌換獎勵（尚未開放）",
+    "認養電子雞（尚未開放）",
+    "清潔隊工作台",
+    "小車道路指引（尚未開放）",
+    "管理員",
+    "市民登入",
+    "隊員登入",
+    "管理員登入",
+  ])
+    await expect(drawer.getByRole("link", { name, exact: true })).toBeVisible();
+  // 焦點鎖在側邊欄：從最後一個項目按 Tab 回到第一個。
+  await drawer.getByRole("link", { name: "管理員登入", exact: true }).focus();
+  await page.keyboard.press("Tab");
+  await expect(drawer.getByRole("button", { name: "關閉選單" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(menu).toBeFocused();
+  await menu.click();
+  await page
+    .locator(".drawer-scrim")
+    .click({ position: { x: 380, y: 400 }, force: true });
+  await expect(drawer).toBeHidden();
+  await menu.click();
+  await drawer.getByRole("link", { name: "清潔隊工作台", exact: true }).click();
+  await expect(drawer).toBeHidden();
+  await expect(page).toHaveURL(/#staff\/tasks$/);
+  // 手機版沒有底部導覽列。
+  await expect(page.locator(".mobile-nav")).toHaveCount(0);
+});

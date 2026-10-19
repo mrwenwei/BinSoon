@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   allPages,
+  apiBinState,
+  apiCompartments,
+  apiStationState,
   query,
   request,
   time,
@@ -8,7 +11,11 @@ import {
   type BinStatus,
   type BinView,
   type Reading,
+  type WasteType,
 } from "../../data/api";
+import { stateLabels, usableCount, wasteLabels } from "../../data/binState";
+import { stateVisual } from "../binVisual";
+import { StationCard, type CardCompartment } from "../StationCard";
 import {
   districts,
   kindLabel,
@@ -33,24 +40,32 @@ const reasonLabels: Record<string, string> = {
   login_required: "需登入",
   suspended: "回報資格暫停",
 };
-const fillLabels = {
-  hungry: "餓了",
-  half: "半飽",
-  full: "吃飽了",
-  unknown: "未知",
-};
+// 列上的狀態文字：三態標籤（API 四態在 apiBinState 轉成三態）＋滿度。
+export function statusText(status: BinStatus | null) {
+  return status?.operational_status === "removed"
+    ? "已撤除"
+    : status?.operational_status === "repair"
+      ? "維修中"
+      : status?.fill_level_pct == null
+        ? stateLabels.offline
+        : `${stateLabels[apiBinState(status)]} · ${status.fill_level_pct}%`;
+}
 export function Status({ status }: { status: BinStatus | null }) {
   return (
-    <span className={`status-pill ${status?.fill_status || "unknown"}`}>
-      {status?.operational_status === "removed"
-        ? "已撤除"
-        : status?.operational_status === "repair"
-          ? "維修中"
-          : status?.fill_level_pct == null
-            ? "滿度未知"
-            : `${fillLabels[status.fill_status]} · ${status.fill_level_pct}%`}
+    <span
+      className={`status-pill ${stateVisual[apiBinState(status)].className}`}
+    >
+      {statusText(status)}
     </span>
   );
+}
+function toCard(list: ReturnType<typeof apiCompartments>): CardCompartment[] {
+  return list.map((c) => ({
+    wasteType: c.waste_type,
+    state: apiBinState(c),
+    pct: c.operational_status === "removed" ? null : c.fill_level_pct,
+    statusText: statusText(c),
+  }));
 }
 export function MapPage() {
   const { session } = useSession();
@@ -60,10 +75,12 @@ export function MapPage() {
     [q, setQ] = useState("");
   const [proposed, setProposed] = useState(false);
   const [selected, setSelected] = useState<LocationRecord | null>(null);
+  // 「餓了的桶」＝至少一桶還能丟（兩桶規則），在前端依 compartments 篩選；
+  // 新設的桶仍交給後端篩選。
   const path = query("/map/locations", {
     district,
     kind,
-    filter,
+    filter: filter === "new" ? "new" : "all",
     q,
     include_proposed: proposed,
     ...ORIGIN,
@@ -79,6 +96,17 @@ export function MapPage() {
       replayed: false,
     }),
     true,
+  );
+  const shown = useMemo(
+    () =>
+      filter === "hungry"
+        ? list.data?.filter(
+            (item) =>
+              item.kind === "bin" &&
+              apiStationState(item.bin_status, item.compartments) === "hungry",
+          )
+        : list.data,
+    [list.data, filter],
   );
   const nearPath = query("/map/nearest-usable", {
     district,
@@ -110,10 +138,11 @@ export function MapPage() {
         </div>
         <div className="filters">
           <label className="search-field">
-            搜尋地點
+            <span className="visually-hidden">搜尋地點</span>
             <input
               type="search"
               aria-label="搜尋地點"
+              placeholder="搜尋路名、地點⋯"
               maxLength={200}
               value={q}
               onChange={(e) => {
@@ -156,7 +185,6 @@ export function MapPage() {
             {[
               ["all", "全部桶況"],
               ["hungry", "餓了的桶"],
-              ["can_fit", "還能裝的桶"],
               ["new", "新設的桶"],
             ].map(([v, label]) => (
               <button
@@ -171,7 +199,7 @@ export function MapPage() {
               </button>
             ))}
           </div>
-          <label>
+          <label className="check-field">
             <input
               type="checkbox"
               checked={proposed}
@@ -181,16 +209,40 @@ export function MapPage() {
           </label>
         </div>
         <section className="nearest-card">
-          <h2>最近的可用小夥伴</h2>
-          <p className="tiny">固定大安森林公園示意起點 · 非目前定位</p>
+          <div className="panel-heading">
+            <h2>最近的可用小夥伴</h2>
+            <span className="label">FROM 大安森林公園</span>
+          </div>
+          <p className="tiny">
+            固定大安森林公園示意起點 · 非目前定位 · 依一般垃圾槽判斷
+          </p>
           <LoadState {...nearest} />
           <ol aria-label="最近三個可用桶">
-            {nearest.data?.items.map((item) => (
+            {nearest.data?.items.map((item, index) => (
               <li key={item.id}>
-                <a href={`#bin/${item.id}`}>{item.label}</a> ·{" "}
-                {item.distance_m === null
-                  ? "距離未知"
-                  : `${Math.round(item.distance_m)} 公尺`}
+                <span className="nearest-index" aria-hidden="true">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="nearest-copy">
+                  <a href={`#bin/${item.id}`}>{item.label}</a>
+                  <small>
+                    {" · "}
+                    {item.distance_m === null
+                      ? "距離未知"
+                      : `${Math.round(item.distance_m)} 公尺`}
+                  </small>
+                </span>
+                {item.walking_estimate_seconds != null && (
+                  <span className="nearest-minutes" aria-hidden="true">
+                    {String(
+                      Math.max(
+                        1,
+                        Math.round(item.walking_estimate_seconds / 60),
+                      ),
+                    ).padStart(2, "0")}
+                    <small>MIN</small>
+                  </span>
+                )}
               </li>
             ))}
           </ol>
@@ -199,71 +251,120 @@ export function MapPage() {
         <LoadState {...list} />
         <div className="results-heading">
           <strong>位置清單</strong>
-          <span>{list.data?.length ?? "—"} 筆位置紀錄</span>
+          <span>{shown?.length ?? "—"} 筆位置紀錄</span>
         </div>
         <div className="location-list" aria-label="位置清單">
-          {list.data?.length === 0 && <p>沒有符合的地點</p>}
-          {list.data?.map((item) => (
-            <button
-              className="location-row"
-              key={item.id}
-              onClick={() => select(item)}
-            >
-              <span
-                className={`row-buddy ${item.bin_status?.fill_status || "place"}`}
+          {shown?.length === 0 && <p>沒有符合的地點</p>}
+          {shown?.map((item) => {
+            const state = apiStationState(item.bin_status, item.compartments);
+            const parts = apiCompartments(item.bin_status, item.compartments);
+            return (
+              <button
+                className="location-row"
+                key={item.id}
+                onClick={() => select(item)}
               >
-                <Mascot kind={item.kind} />
-              </span>
-              <span className="row-copy">
-                <strong>{item.label}</strong>
-                <small>
-                  {item.district} ·{" "}
-                  {item.distance_m == null
-                    ? "距離未知"
-                    : `${Math.round(item.distance_m)} 公尺`}
-                </small>
-                {item.kind === "bin" ? (
-                  <>
-                    <Status status={item.bin_status} />
-                    {item.placement_status === "proposed" && (
-                      <small>建議點／待現勘，尚未設置</small>
-                    )}
-                  </>
-                ) : (
+                <span
+                  className={`row-buddy ${item.kind === "bin" ? stateVisual[state].className : "place"}`}
+                >
+                  <Mascot kind={item.kind} state={state} />
+                </span>
+                <span className="row-copy">
+                  <strong>{item.label}</strong>
                   <small>
-                    場所代表點 · 周邊 {item.reported_count} 處（統計）
+                    {item.district} ·{" "}
+                    {item.distance_m == null
+                      ? "距離未知"
+                      : `${Math.round(item.distance_m)} 公尺`}
                   </small>
-                )}
-              </span>
-            </button>
-          ))}
+                  {item.kind === "bin" ? (
+                    <>
+                      {parts.length > 1 ? (
+                        <span
+                          className={`status-pill ${stateVisual[state].className}`}
+                        >
+                          {stateLabels[state]} ·{" "}
+                          {usableCount(
+                            parts.map((c) => ({ state: apiBinState(c) })),
+                          )}
+                          /{parts.length} 桶能丟
+                        </span>
+                      ) : (
+                        <Status status={item.bin_status} />
+                      )}
+                      {item.placement_status === "proposed" && (
+                        <small>建議點／待現勘，尚未設置</small>
+                      )}
+                    </>
+                  ) : (
+                    <small>
+                      場所代表點 · 周邊 {item.reported_count} 處（統計）
+                    </small>
+                  )}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </aside>
       <section className="map-section">
+        <span className="map-district" aria-hidden="true">
+          {district === "all" ? "全台北市" : district}
+        </span>
         <LocationMap
-          locations={list.data || []}
+          locations={shown || []}
           selected={selected}
           onSelect={select}
         />
-        {selected && list.data?.some((p) => p.id === selected.id) && (
+        {selected && shown?.some((p) => p.id === selected.id) && (
           <LocationDetails
             location={selected}
             onClose={() => setSelected(null)}
           />
         )}
+        <MapLegend />
       </section>
     </main>
+  );
+}
+// 圖例：桶況三態＋場所代表點（失聯一定有虛線外框）。
+export function MapLegend() {
+  return (
+    <div className="map-legend" aria-label="圖例">
+      <span className="label">STATUS</span>
+      <span>
+        <i className="legend-swatch state-hungry" />
+        {stateLabels.hungry}
+        <small>0–79%</small>
+      </span>
+      <span>
+        <i className="legend-swatch state-full" />
+        {stateLabels.full}
+        <small>80%+</small>
+      </span>
+      <span>
+        <i className="legend-swatch state-offline" />
+        {stateLabels.offline}
+      </span>
+      <span>
+        <i className="legend-swatch place" />
+        場所代表點
+      </span>
+    </div>
   );
 }
 export function BinPage({
   id,
   navigation = false,
+  wasteType,
 }: {
   id: string;
   navigation?: boolean;
+  wasteType?: WasteType;
 }) {
   const { session } = useSession();
-  const viewPath = `/bins/${encodeURIComponent(id)}/view`;
+  // 導航時可指定要丟的種類（只有回收槽能丟時）；預設沿用後端一般垃圾語意。
+  const viewPath = `/bins/${encodeURIComponent(id)}/view${wasteType === "recycling" ? "?waste_type=recycling" : ""}`;
   const view = useApi(
     viewPath,
     (signal) =>
@@ -315,9 +416,38 @@ export function BinPage({
         <p>桶況尚未更新，請先重新載入確認可用性。</p>
       </main>
     ) : (
-      <Navigation view={view.data} />
+      <Navigation view={view.data} wasteType={wasteType} />
     );
   const { location: item, status, can_report } = view.data;
+  const parts = apiCompartments(status, view.data.compartments);
+  const usable = parts.filter((c) => c.is_usable);
+  const twoBins = parts.length > 1;
+  // 主按鈕永遠是青綠：兩桶能丟或一般能丟→導航過去；只有回收能丟→導航過去丟回收。
+  const recyclingOnly =
+    twoBins && usable.length === 1 && usable[0].waste_type === "recycling";
+  const canGo = twoBins ? usable.length > 0 : status.is_usable;
+  const reasons = (list: BinStatus[]) =>
+    [...new Set(list.flatMap((c) => c.unavailable_reasons))]
+      .map((r) => reasonLabels[r] || r)
+      .join("、");
+  const note =
+    item.placement_status === "proposed"
+      ? "建議點／待現勘，尚未設置"
+      : !twoBins
+        ? status.is_usable
+          ? "只收隨手小垃圾，請依現場狀況使用。"
+          : `目前不可用：${reasons([status])}`
+        : usable.length === parts.length
+          ? "兩桶都還能丟，只收隨手小垃圾，請依現場狀況使用。"
+          : usable.length === 1
+            ? `${wasteLabels[usable[0].waste_type]}還能丟；${parts
+                .filter((c) => !c.is_usable)
+                .map(
+                  (c) =>
+                    `${wasteLabels[c.waste_type]}目前不可用：${reasons([c])}`,
+                )
+                .join("；")}。`
+            : `目前不可用：${reasons(parts)}`;
   return (
     <main className="page detail-page">
       <a className="back-link" href="#map">
@@ -327,7 +457,7 @@ export function BinPage({
         <div>
           <h1>{item.label}</h1>
           <p>
-            {item.district} ·{" "}
+            {item.district} · {twoBins ? "一般垃圾＋資源回收（示意） · " : ""}
             {item.placement_status === "proposed"
               ? "建議點／待現勘"
               : item.placement_status === "installed"
@@ -341,35 +471,41 @@ export function BinPage({
       </div>
       <LoadState {...view} />
       <div className="detail-grid">
-        <section className="buddy-card">
-          <div className="buddy-portrait">
-            <Mascot />
-          </div>
-          <Status status={status} />
-          <p>
-            {item.placement_status === "proposed"
-              ? "建議點／待現勘，尚未設置"
-              : status.is_usable
-                ? "只收隨手小垃圾，請依現場狀況使用。"
-                : `目前不可用：${status.unavailable_reasons.map((r) => reasonLabels[r] || r).join("、")}`}
-          </p>
-          <p>認養：{view.data.adopter?.display_name || "尚無認養者"}</p>
-          {!view.error &&
-            (status.is_usable ? (
-              <a className="button primary" href={`#nav/${id}`}>
-                導航過去
+        <div className="detail-main">
+          <StationCard
+            compartments={toCard(parts)}
+            note={
+              <>
+                <p>{note}</p>
+                <p className="tiny">
+                  {twoBins
+                    ? "兩槽為後端示範假設（demo_assumption），不是現場盤點。"
+                    : "後端未提供分槽資料，暫以一般垃圾槽顯示。"}
+                </p>
+              </>
+            }
+          >
+            {!view.error && (
+              <a
+                className="button primary"
+                href={`#nav/${id}${recyclingOnly ? "?waste_type=recycling" : ""}`}
+              >
+                {canGo
+                  ? recyclingOnly
+                    ? "導航過去丟回收"
+                    : "導航過去"
+                  : "尋找可用桶並導航"}
+                <span aria-hidden="true">→</span>
               </a>
-            ) : (
-              <a className="button secondary" href={`#nav/${id}`}>
-                尋找可用桶並導航
+            )}
+            {can_report && !view.error && (
+              <a className="button secondary" href={`#report/${id}`}>
+                回報問題
               </a>
-            ))}
-          {can_report && !view.error ? (
-            <a className="button secondary" href={`#report/${id}`}>
-              回報問題
-            </a>
-          ) : (
-            <p>
+            )}
+          </StationCard>
+          {!(can_report && !view.error) && (
+            <p className="card-note">
               {view.error ? (
                 "桶況更新失敗，請重新載入後操作。"
               ) : view.data.report_block_reason === "login_required" ? (
@@ -387,8 +523,14 @@ export function BinPage({
             ready={!view.loading && !view.error}
             refresh={view.reload}
           />
-          <p>認養操作尚未開放。</p>
-        </section>
+          <section className="card adopt-card">
+            <h2>認養</h2>
+            <p>認養：{view.data.adopter?.display_name || "尚無認養者"}</p>
+            <p className="tiny">
+              認養以點位為單位，涵蓋兩槽。認養操作尚未開放。
+            </p>
+          </section>
+        </div>
         <section className="card">
           <h2>今天的飽足度</h2>
           <p>
@@ -428,7 +570,13 @@ export function BinPage({
       />
       <div className="api-detail-map">
         <LocationMap
-          locations={[{ ...item, bin_status: status }]}
+          locations={[
+            {
+              ...item,
+              bin_status: status,
+              compartments: view.data.compartments,
+            },
+          ]}
           selected={item}
           onSelect={ignoreSelect}
         />
@@ -436,12 +584,19 @@ export function BinPage({
     </main>
   );
 }
-function Navigation({ view }: { view: BinView }) {
+function Navigation({
+  view,
+  wasteType,
+}: {
+  view: BinView;
+  wasteType?: WasteType;
+}) {
   const available = view.status.is_usable;
   const nextPath = query("/map/nearest-usable", {
     district: "all",
     ...ORIGIN,
     limit: 3,
+    ...(wasteType === "recycling" ? { waste_type: "recycling" } : {}),
   });
   const alternatives = useApi(
     available ? null : nextPath,
@@ -485,6 +640,9 @@ function Navigation({ view }: { view: BinView }) {
       </a>
       <h1>步行導航</h1>
       <p>大安森林公園固定示意起點 · 非即時 GPS，非實際道路指引。</p>
+      {wasteType === "recycling" && (
+        <p className="tiny">本次要丟：資源回收。</p>
+      )}
       {!available && (
         <p role="status">原目的桶目前不可用，依後端結果尋找替代桶。</p>
       )}
@@ -501,7 +659,10 @@ function Navigation({ view }: { view: BinView }) {
               demoRoute={path}
             />
           </div>
-          <a className="button primary" href={`#report/${destination.id}`}>
+          <a
+            className="button primary"
+            href={`#report/${destination.id}${wasteType === "recycling" ? "?waste_type=recycling" : ""}`}
+          >
             抵達後回報
           </a>
           {qr && (

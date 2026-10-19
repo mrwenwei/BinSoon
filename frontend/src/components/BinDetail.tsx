@@ -5,7 +5,7 @@ import type { LocationRecord } from "../data/locations";
 import { useMemo, useState } from "react";
 import { binDemo, stateLabels, lifecycleLabel } from "../data/binDemo";
 import { Icon } from "./Icon";
-import { Mascot } from "./Mascot";
+import { StationCard } from "./StationCard";
 import { LocationDetails } from "./LocationDetails";
 import { DemoLocationMap as LocationMap } from "../map/DemoLocationMap";
 const ignoreSelect = () => {};
@@ -46,45 +46,41 @@ export function BinDetail({
         <span className="demo-tag">桶況與設撤狀態為示意資料</span>
       </div>
       <div className="detail-grid">
-        <section
-          className={`buddy-card state-${demo.state}`}
-          aria-label="電子雞桶況"
-        >
-          <div className="buddy-top">
-            <span>你的城市小夥伴</span>
-            <span>↗ {demo.code}</span>
-          </div>
-          <div className="buddy-portrait">
-            <span className="spark s1">✦</span>
-            <Mascot />
-            <span className="spark s2">✧</span>
-            <span className="buddy-shadow" />
-          </div>
-          <span className={`status-pill ${demo.state}`}>
-            {demo.removed
-              ? "已撤除"
-              : demo.repairing
-                ? "維修中"
-                : stateLabels[demo.state]}
-            {demo.capacity !== null ? " · " : ""}
-            {demo.capacity !== null && `${demo.capacity}%`}
-          </span>
-          <h2>
-            {demo.state === "full"
-              ? "肚子滿滿，晚點再餵我！"
-              : demo.state === "unknown"
-                ? "暫時聯絡不上小夥伴"
-                : "謝謝你，讓垃圾有個家。"}
-          </h2>
-          <p>
-            {demo.removed
-              ? "此桶為撤除示意，請改用其他可用桶。"
-              : demo.state === "unknown"
-                ? "沒有可用桶況，請到場確認。"
-                : demo.state === "full"
-                  ? "建議回地圖找其他還餓著的桶。"
-                  : "隨手的小垃圾，就交給我吧！"}
-          </p>
+        <div className="detail-main">
+          <StationCard
+            compartments={demo.compartments.map((c) => ({
+              wasteType: c.wasteType,
+              state: c.state,
+              pct: demo.removed ? null : c.capacity,
+              statusText: demo.removed
+                ? "已撤除"
+                : c.repairing
+                  ? "維修中"
+                  : c.capacity === null
+                    ? stateLabels.offline
+                    : `${stateLabels[c.state]} · ${c.capacity}%`,
+            }))}
+            note={
+              <>
+                <h2 className="station-message">
+                  {demo.state === "full"
+                    ? "肚子滿滿，晚點再餵我！"
+                    : demo.state === "offline"
+                      ? "暫時聯絡不上小夥伴"
+                      : "謝謝你，讓垃圾有個家。"}
+                </h2>
+                <p>
+                  {demo.removed
+                    ? "此桶為撤除示意，請改用其他可用桶。"
+                    : demo.state === "offline"
+                      ? "沒有可用桶況，請到場確認。"
+                      : demo.state === "full"
+                        ? "建議回地圖找其他還餓著的桶。"
+                        : "隨手的小垃圾，就交給我吧！"}
+                </p>
+              </>
+            }
+          />
           <div className="buddy-tags">
             <span>認養：{adopter || "還沒有認養者"}</span>
             {lifecycleLabel(location, removedIds) && (
@@ -96,8 +92,10 @@ export function BinDetail({
               成為這個桶的認養者
             </a>
           )}
-          <span className="tiny">認養、開口與設撤狀態均為展示設定</span>
-        </section>
+          <span className="tiny">
+            認養以點位為單位、涵蓋兩槽；兩槽、開口與設撤狀態均為展示設定
+          </span>
+        </div>
         <div className="detail-stack">
           <section className="card capacity-card">
             <div className="section-heading">

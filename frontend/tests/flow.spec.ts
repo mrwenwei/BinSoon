@@ -111,10 +111,12 @@ test("P2 lifecycle filters show usable bins and keep removed bins out of reporti
   const rows = page.locator(".location-row");
   expect(await rows.count()).toBeGreaterThan(0);
   for (const row of await rows.all()) await expect(row).toContainText("新設");
-  await page.getByRole("button", { name: "還能裝的桶", exact: true }).click();
+  // 三態下「只看餓了的」＝至少一桶還能丟；吃飽了、失聯與撤除都不列入。
+  await page.getByRole("button", { name: "只看餓了的", exact: true }).click();
+  expect(await rows.count()).toBeGreaterThan(0);
   for (const row of await rows.all()) {
-    await expect(row).toContainText(/餓了|半飽/);
-    await expect(row).not.toContainText(/已撤除|吃飽了/);
+    await expect(row).toContainText("餓了");
+    await expect(row).not.toContainText(/已撤除|吃飽了|失聯/);
   }
   await page.getByRole("button", { name: "全部桶況", exact: true }).click();
   await rows.filter({ hasText: "已撤除" }).first().click();

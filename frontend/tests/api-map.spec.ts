@@ -59,7 +59,8 @@ test("map reads every page, keeps unknown status and opens server history", asyn
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "API 未知桶",
   );
-  await expect(page.getByText("滿度未知", { exact: true })).toBeVisible();
+  // 後端 unknown 在前端三態顯示為「失聯」。
+  await expect(page.getByText("失聯", { exact: true })).toBeVisible();
   await expect(page.getByText("42% · measurement · simulated")).toBeVisible();
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
@@ -304,4 +305,87 @@ test("a refresh failure preserves the last complete map and marks it stale", asy
       exact: true,
     }),
   ).toHaveCount(0);
+});
+
+test("two waste compartments map to three states, recycling-only navigation and the hungry filter", async ({
+  page,
+}) => {
+  const slot = (
+    waste_type: "general" | "recycling",
+    fill_level_pct: number | null,
+    fill_status: string,
+  ) => ({
+    ...location.bin_status,
+    waste_type,
+    classification_source: "demo_assumption",
+    fill_level_pct,
+    fill_status,
+    is_usable: fill_status === "hungry" || fill_status === "half",
+    unavailable_reasons:
+      fill_status === "full"
+        ? ["full"]
+        : fill_status === "unknown"
+          ? ["unknown"]
+          : [],
+  });
+  const oneLeft = {
+    ...location,
+    label: "一般滿回收餓",
+    bin_status: slot("general", 92, "full"),
+    compartments: [slot("general", 92, "full"), slot("recycling", 60, "half")],
+  };
+  const bothFull = {
+    ...location,
+    id: "10000000-0000-4000-8000-000000000009",
+    label: "兩桶都滿",
+    bin_status: slot("general", 95, "full"),
+    compartments: [slot("general", 95, "full"), slot("recycling", 88, "full")],
+  };
+  const views: string[] = [];
+  await apiFixture(page, async (route, path) => {
+    if (path === "/map/locations") {
+      await route.fulfill({ json: envelope([oneLeft, bothFull]) });
+      return true;
+    }
+    if (path === `/bins/${binId}/view`) {
+      views.push(new URL(route.request().url()).search);
+      await route.fulfill({
+        json: {
+          location: oneLeft,
+          status: oneLeft.bin_status,
+          compartments: oneLeft.compartments,
+          adopter: null,
+          latest_cleanup: null,
+          my_adoption_id: null,
+          can_apply_adoption: false,
+          can_report: false,
+          report_block_reason: "login_required",
+        },
+      });
+      return true;
+    }
+  });
+  await page.goto("/");
+  const rows = page.locator(".location-row");
+  await expect(rows).toHaveCount(2);
+  // 後端 half 在前端是「餓了」；只要一桶能丟，點位整體就是餓了。
+  await expect(rows.first()).toContainText("餓了 · 1/2 桶能丟");
+  await expect(rows.nth(1)).toContainText("吃飽了 · 0/2 桶能丟");
+  await page.getByRole("button", { name: "餓了的桶", exact: true }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("一般滿回收餓");
+  await rows.first().click();
+  await expect(page.getByText("資源回收還能丟", { exact: true })).toBeVisible();
+  await expect(page.getByText("吃飽了 · 92%", { exact: true })).toBeVisible();
+  await expect(page.getByText("餓了 · 60%", { exact: true })).toBeVisible();
+  const go = page.getByRole("link", { name: "導航過去丟回收", exact: true });
+  await expect(go).toHaveAttribute(
+    "href",
+    `#nav/${binId}?waste_type=recycling`,
+  );
+  await go.click();
+  await expect(
+    page.getByText("本次要丟：資源回收。", { exact: true }),
+  ).toBeVisible();
+  expect(views.at(-1)).toBe("?waste_type=recycling");
 });

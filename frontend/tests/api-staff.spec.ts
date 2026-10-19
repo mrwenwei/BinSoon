@@ -10,6 +10,7 @@ import {
   report,
   envelope,
   login,
+  navLink,
 } from "./api-fixtures";
 
 test("staff uses latest ETags and explicitly confirms after a conflict before reviewing", async ({
@@ -393,7 +394,7 @@ test("a rejected first report never promotes later reporters and suspension only
   await login(page, "citizen", "member");
   await expect(page.getByText("可用點數 0", { exact: true })).toBeVisible();
   await expect(page.getByRole("status")).toContainText("回報資格暫停");
-  await page.getByRole("link", { name: "找垃圾桶", exact: true }).click();
+  await (await navLink(page, "找垃圾桶")).click();
   await expect(page.locator(".location-row")).toHaveCount(1);
   await page.evaluate((id) => {
     window.location.hash = `report/${id}`;
