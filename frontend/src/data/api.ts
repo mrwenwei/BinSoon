@@ -47,15 +47,30 @@ export type ApiLocation = Position & {
   walking_estimate_seconds: number | null;
   bin_status: BinStatus | null;
 };
+export type Cleanup = {
+  id: string;
+  bin_id: string;
+  work_order_id: string;
+  completed_at: string;
+  like_count: number;
+  liked_by_me: boolean;
+  can_like: boolean;
+};
+export type TaskReading = {
+  id: string;
+  bin_id: string;
+  work_order_id: string;
+  fill_level_pct: number;
+  observed_at: string;
+  received_at: string;
+  source_type: "simulated" | "iot_sensor";
+  event_type: "collection";
+};
 export type BinView = {
   location: ApiLocation;
   status: BinStatus;
   adopter: { display_name: string } | null;
-  latest_cleanup: {
-    id: string;
-    completed_at: string;
-    like_count: number;
-  } | null;
+  latest_cleanup: Cleanup | null;
   my_adoption_id: string | null;
   can_apply_adoption: boolean;
   can_report: boolean;
@@ -142,13 +157,26 @@ export type WorkOrder = {
   is_overdue: boolean;
   reason: string | null;
   blocked_by_removed_bin: boolean;
+  photo_at: string | null;
+  submitted_at: string | null;
+  completed_at: string | null;
+  clear_reading_id: string | null;
+  completion_id: string | null;
 };
 export type WorkDetail = {
   work_order: WorkOrder;
   location: ApiLocation;
   reports: Report[];
   evidence: { id: string; media_id: string; purpose: string }[];
-  completion_requirements: { missing: string[] };
+  latest_reading: TaskReading | null;
+  completion_requirements: {
+    arrived: boolean;
+    reports_reviewed: boolean;
+    completion_photo: boolean;
+    work_submitted: boolean;
+    fresh_clear_reading: boolean;
+    missing: string[];
+  };
 };
 export type Result<T> = { data: T; etag: string | null; replayed: boolean };
 

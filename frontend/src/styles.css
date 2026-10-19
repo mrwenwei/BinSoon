@@ -4821,3 +4821,32 @@ a {
     min-height: 32px;
   }
 }
+.api-completion-photo,
+.api-command,
+.api-thanks {
+  margin: 24px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: left;
+}
+.api-completion-photo h3,
+.api-thanks h3 {
+  margin-top: 0;
+}
+.api-command button {
+  margin: 6px 10px 6px 0;
+}
+.api-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 18px 0;
+}
+.api-check input {
+  margin-top: 5px;
+  flex: none;
+}
+.api-thanks p {
+  margin: 12px 0;
+}

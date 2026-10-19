@@ -18,6 +18,8 @@ import { LocationMap } from "../../map/LocationMap";
 import { LocationDetails } from "../LocationDetails";
 import { Mascot } from "../Mascot";
 import { useQrCode } from "../useQrCode";
+import { LoadState } from "./LoadState";
+import { CompletionThanks } from "./CompletionPages";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
 const ORIGIN = { latitude: 25.033, longitude: 121.5358 };
@@ -48,44 +50,6 @@ export function Status({ status }: { status: BinStatus | null }) {
             ? "滿度未知"
             : `${fillLabels[status.fill_status]} · ${status.fill_level_pct}%`}
     </span>
-  );
-}
-export function LoadState({
-  loading,
-  error,
-  reload,
-  retryAt = 0,
-  stale = false,
-}: {
-  loading: boolean;
-  error?: string;
-  reload: () => void;
-  retryAt?: number;
-  stale?: boolean;
-}) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    if (retryAt <= Date.now()) return;
-    const timer = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(timer);
-  }, [retryAt]);
-  return (
-    <>
-      {loading && <p role="status">載入中…</p>}
-      {stale && <p role="status">先前讀取的資料可能已過期，請重新載入確認。</p>}
-      {error && (
-        <div role="alert">
-          <p>{error}</p>
-          <button
-            className="button secondary"
-            onClick={reload}
-            disabled={now < retryAt}
-          >
-            {now < retryAt ? "稍候再載入" : "重新載入"}
-          </button>
-        </div>
-      )}
-    </>
   );
 }
 export function MapPage() {
@@ -417,7 +381,13 @@ export function BinPage({
               )}
             </p>
           )}
-          <p>按讚及認養操作尚未開放。</p>
+          <CompletionThanks
+            cleanup={view.data.latest_cleanup}
+            binId={id}
+            ready={!view.loading && !view.error}
+            refresh={view.reload}
+          />
+          <p>認養操作尚未開放。</p>
         </section>
         <section className="card">
           <h2>今天的飽足度</h2>

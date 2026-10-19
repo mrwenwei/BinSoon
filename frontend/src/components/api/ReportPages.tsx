@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { validatePhoto } from "../../data/media";
 import {
   allPages,
   ApiError,
@@ -26,7 +27,7 @@ import {
   type Report,
 } from "../../data/api";
 import { useSession } from "./SessionContext";
-import { LoadState } from "./MapPages";
+import { LoadState } from "./LoadState";
 import { useApi, useCooldown } from "./useApi";
 
 type Draft = {
@@ -169,32 +170,22 @@ export function ReportForm({ id }: { id: string }) {
     setError("");
     update(id, { file: undefined, mediaId: undefined });
     if (!file) return;
-    if (
-      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
-      file.size > 5 * 1024 * 1024
-    ) {
-      setError("請選 JPEG、PNG 或 WebP，大小最多 5 MiB。");
-      return;
-    }
     setValidating(true);
     try {
-      const bitmap = await createImageBitmap(file);
-      const pixels = bitmap.width * bitmap.height;
-      bitmap.close();
-      if (pixels > 20000000) throw new Error("照片最多 2000 萬像素。");
+      await validatePhoto(file);
       if (
         alive.current &&
         actor.current?.access_token === token &&
         version === selection.current
       )
         update(id, { file });
-    } catch {
+    } catch (e) {
       if (
         alive.current &&
         actor.current?.access_token === token &&
         version === selection.current
       )
-        setError("照片無法解碼或超過 2000 萬像素，請重新選擇。");
+        setError(e instanceof Error ? e.message : "照片無法使用，請重新選擇。");
     } finally {
       if (
         alive.current &&
@@ -454,7 +445,13 @@ export function ReportForm({ id }: { id: string }) {
     </main>
   );
 }
-export function PrivatePhoto({ id }: { id: string }) {
+export function PrivatePhoto({
+  id,
+  alt = "案件現場照片",
+}: {
+  id: string;
+  alt?: string;
+}) {
   const { session } = useSession();
   const path = `/media/${encodeURIComponent(id)}/access`;
   const access = useApi(session ? path : null, (signal) =>
@@ -483,7 +480,7 @@ export function PrivatePhoto({ id }: { id: string }) {
         <img
           className="api-photo"
           src={url}
-          alt="案件現場照片"
+          alt={alt}
           onError={() => setFailed(true)}
         />
       )}

@@ -1,13 +1,16 @@
-# BinSoon 前端：API 地圖、回報與查證
+# BinSoon 前端：API 地圖、回報、查證與滿桶完工
 
-React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)。
+React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)。
 
 ## 目前可操作範圍
 
 - 訪客地圖：十二區、搜尋、來源／桶況篩選、全部分頁、最近可用桶、桶詳情、分頁歷史與示意步行導航。未知維持 null，導航依後端 is_usable。
 - 市民：帳號密碼登入、照片檔案／相機入口、定位或明確輸入現場座標、五類回報、案件進度、會員摘要與點數台帳。
 - 隊員：責任區工單分類／篩選、接單、到場、逐筆查證。工單每步讀最新版本，衝突重讀後再次確認；查證入帳與完工分開。
-- 管理員有獨立登入入口；完工／示範清空、按讚、道路站點、兌換、成果、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
+- 隊員滿桶完工：到場後上傳 purpose=completion 照片、掛 evidence，再提交 finish。缺查證時不能提交；未收到清空回傳時為 waiting_sensor，不能視為結案。
+- 管理員：`/#admin` 輸入工單 UUID，或使用隊員工單提供的另開分頁連結；以獨立 admin session 讀版本、確認「非真實 IoT」後送出 demo-clear。清空先到仍須完成照、全部查證與明確 finish 才能結案。每次保留 reading_id 與命令識別供未知結果重試。
+- 市民：桶詳情只呈現後端有效完成紀錄；對最新 completion.id 感謝一次，顯示後端 like_count／liked_by_me，不增加點數或排名。桶況、歷史、最近桶、導航及案件持續重新讀取後端，容量歸零本身不代表完工。
+- 道路站點、兌換、成果統計、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
 
 ## API 設定與身份
 

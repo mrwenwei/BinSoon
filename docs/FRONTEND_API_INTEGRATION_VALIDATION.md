@@ -1,6 +1,6 @@
-# 前端 API 串接驗證：第 1–3 票
+# 前端 API 串接驗證：第 1–4 票
 
-日期：2026-10-19。範圍為 GitHub #6、#7、#8，起始基準 38b67b8，分支 feat/frontend-v0。後端契約、資料庫 migration 與雲端部署未修改。
+第 1–3 票紀錄（第 4 票見文末）：日期 2026-10-19，範圍為 GitHub #6、#7、#8，起始基準 38b67b8，分支 feat/frontend-v0。後端契約、資料庫 migration 與雲端部署未修改。
 
 ## 交付範圍
 
@@ -45,3 +45,21 @@ Review 結果：Standards 0 項必修／1 項可選觀察；Spec 2 項原始 P2 
 - Session、草稿及待重試命令只存在本分頁記憶體，整頁重新整理後須重登入，未完成命令應先讀後端結果再決定下一步。換帳號不沿用他人的照片資產／命令。
 - 所有滿度仍為 simulated；原始桶位未現勘、場所不是個別桶，proposed 尚待現勘。歷史模擬時間不與真實回報／查證時間混比。
 - 未部署 Vercel、未建立資源或改雲端 CORS。非 5173 的 origin（包含 preview）需後端明確允許；密碼不可加入 VITE_*。
+
+## 第 4 票：滿桶完工、管理員示範清空、市民感謝
+
+2026-10-19，GitHub [#9](https://github.com/mrwenwei/BinSoon/issues/9)，基準 03f456d。前 1–3 票已正常推送至 origin/feat/frontend-v0；本票延續目前分支，不改後端契約、資料庫或部署。
+
+- 隊員到場後選可解碼的 JPEG／PNG／WebP（5 MiB、2000 萬像素內），先上傳 purpose=completion 取得 media.id，再掛 evidence；此時不自行 finish。掛照、提交完成各為獨立命令，每步讀最新 ETag。
+- 完成條件依後端 missing 顯示；全部查證與完成照具備才開放提交。照片先到、finish 後未清空為 waiting_sensor；清空先到容量可以歸零，但未 finish 或缺查證仍不可顯示完成紀錄。
+- `#admin`／`#admin/work-orders/{work_order_id}` 為獨立管理員入口。市民、隊員不發管理 API 請求。先 GET 最新工單及 ETag，再明確勾選示範清空、送出 UUID reading_id；不使用共享 admin token、不呼叫 collect/reset。
+- 只有後端 completed 才呈現 completion_id 與完成時間。私有工作照片沿用短效 /media/{id}/access URL；市民只讀有效成果摘要，未向市民公開工單私照。清空讀值的 observed_at／received_at 與歷史模擬時鐘分開顯示。
+- 桶詳情按後端 can_like／liked_by_me／like_count 呈現最新 completion.id 的感謝。沒有成果不聲稱剛清乾淨；過期成果 409 重新讀取，須市民另按才對新成果送出，無本機累加或加點。
+- 工單、清空、感謝共用記憶體命令保存；網路未知結果／401 重新登入同帳號保留原 key、body、ETag。409／412／428 重讀後另行確認，不自動重送；重新讀取失敗時保留過期提示且不開放確認。登出清除照片及命令，整頁重整後仍應先讀後端確認結果。
+- 既有地圖清單、最近桶、詳情、歷史、導航與案件以重新進頁、前景刷新及輪詢讀取後端；容量與工單完成各依伺服器投影呈現。
+
+本票針對性測試：20 項通過（桌面 Chromium＋Pixel 7），涵蓋兩種到達順序、尚未提交／缺查證、新回報加入阻擋完成、四種命令回應遺失重送、管理員版本衝突與讀取失敗、過期成果、角色隔離、admin／citizen 同身份重登入、無法解碼照片拒絕、鍵盤勾選與 320px 無水平溢出。桌面 1440px／手機 320px 管理員及隊員完成頁已檢視，截圖保存在本機 `.scratch/frontend-api-integration/`。
+
+完整回歸與兩軸 review 結果於本票交付前補記。
+
+限制同前：未取得真實帳密，未寫入雲端案件／照片／清空／感謝，未跑雲端 pytest、未建立資源或部署；GCS 私照、Cloud Run 實際角色操作與實體手機相機／GPS 尚未整合驗收。所有滿度仍 simulated。道路站點、非滿桶完工、修繕、成果統計等仍依後續票單開放。

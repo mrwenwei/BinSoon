@@ -1,31 +1,26 @@
+import { useState } from "react";
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import {
-  ApiError,
-  command,
-  errorMessage,
   problemLabels,
   query,
   request,
-  sendCommand,
   time,
   workLabels,
-  type Command,
   type PageData,
   type Report,
   type WorkDetail,
   type WorkOrder,
 } from "../../data/api";
 import { useSession } from "./SessionContext";
-import { LoadState } from "./MapPages";
+import { LoadState } from "./LoadState";
 import { ReportSummary } from "./ReportPages";
-import { useApi, useCooldown } from "./useApi";
+import { useApi } from "./useApi";
+import { useCommand, CommandFeedback, type Intent } from "./Commands";
+import {
+  CompletionPhoto,
+  CompletionRecord,
+  WorkEvidence,
+  WorkRequirements,
+} from "./CompletionPages";
 
 const priorityLabels = {
   immediate: "即刻處理",
@@ -37,13 +32,6 @@ const sourceLabels: Record<string, string> = {
   citizen: "市民回報",
   sensor: "感測情境",
   inspection: "稽查情境",
-};
-const requirementLabels: Record<string, string> = {
-  arrived: "到場",
-  reports_reviewed: "全部回報查證",
-  completion_photo: "完成照",
-  work_submitted: "提交完成",
-  fresh_clear_reading: "本次有效清空回傳",
 };
 export function StaffPage({ id }: { id?: string }) {
   const { session } = useSession();
@@ -211,39 +199,8 @@ function WorkList() {
   );
 }
 
-type Intent = { suffix: string; body: unknown };
-type Pending = { operation: Command; intent: Intent };
-const WorkCommands = createContext<{
-  pending: Record<string, Pending>;
-  save: (id: string, value: Pending | null) => void;
-  clear: () => void;
-} | null>(null);
-export function WorkCommandProvider({ children }: { children: ReactNode }) {
-  const [pending, setPending] = useState<Record<string, Pending>>({});
-  return (
-    <WorkCommands.Provider
-      value={{
-        pending,
-        save: (id, value) =>
-          setPending((old) => {
-            const next = { ...old };
-            if (value) next[id] = value;
-            else delete next[id];
-            return next;
-          }),
-        clear: () => setPending({}),
-      }}
-    >
-      {children}
-    </WorkCommands.Provider>
-  );
-}
-export function useWorkCommands() {
-  return useContext(WorkCommands)!;
-}
 function WorkPage({ id }: { id: string }) {
-  const { session, invalidate } = useSession();
-  const cooldown = useCooldown();
+  const { session } = useSession();
   const staff = Boolean(session?.user.roles.includes("staff"));
   const path = `/staff/work-orders/${encodeURIComponent(id)}`;
   const result = useApi(
@@ -252,89 +209,57 @@ function WorkPage({ id }: { id: string }) {
       request<WorkDetail>(path, { signal, token: session?.access_token }),
     true,
   );
-  const commands = useWorkCommands();
-  const pending = commands.pending[id];
-  const operation =
-    pending?.operation.actorId === session?.user.id ? pending.operation : null;
-  const [intent, setIntent] = useState<Intent | null>(pending?.intent || null);
-  const [conflict, setConflict] = useState(false);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  const actor = useRef(session);
-  actor.current = session;
-  const alive = useRef(true),
-    lock = useRef(false);
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
   const work = result.data?.work_order;
-  const etag = result.etag || (work ? `"v${work.version}"` : null);
-  async function execute(next: Intent, retry = false) {
-    if (
-      !session ||
-      !staff ||
-      !etag ||
-      result.loading ||
-      (Boolean(result.error) && !retry) ||
-      lock.current ||
-      cooldown.waiting
-    )
-      return;
-    const current = session;
-    const op =
-      retry && operation
-        ? operation
-        : command(`${path}/${next.suffix}`, next.body, current.user.id, etag);
-    const isCurrent = () =>
-      alive.current && actor.current?.access_token === current.access_token;
-    lock.current = true;
-    setBusy(true);
-    setError("");
-    setConflict(false);
-    commands.save(id, { operation: op, intent: next });
-    setIntent(next);
-    try {
-      await sendCommand<WorkOrder | { report: Report; work_order: WorkOrder }>(
-        op,
-        current,
-      );
-      if (!isCurrent()) return;
-      commands.save(id, null);
-      setIntent(null);
-      result.reload();
-    } catch (e) {
-      if (!isCurrent()) return;
-      setError(errorMessage(e));
-      cooldown.hold(e);
-      if (e instanceof ApiError && e.status === 401)
-        invalidate(current.access_token);
-      else if (e instanceof ApiError && [409, 412, 428].includes(e.status)) {
-        commands.save(id, null);
-        setConflict(true);
-        result.reload();
-      } else if (e instanceof ApiError && e.status < 500 && e.status !== 429) {
-        commands.save(id, null);
-        setIntent(null);
-        result.reload();
-      }
-    } finally {
-      lock.current = false;
-      if (alive.current) setBusy(false);
-    }
-  }
-  if (!staff) return <StaffLogin id={id} />;
   const owned = work?.assigned_staff_id === session?.user.id;
-  const blocked =
-    cooldown.waiting ||
-    busy ||
-    result.loading ||
-    Boolean(result.error) ||
-    Boolean(operation) ||
-    conflict ||
-    Boolean(work?.blocked_by_removed_bin);
+  const open =
+    Boolean(work?.arrived_at) &&
+    !["completed", "dismissed"].includes(work?.status || "");
+  const evidence = result.data?.evidence.find(
+    (e) => e.purpose === "completion",
+  );
+  const canFinish = Boolean(
+    work?.type === "full" &&
+    owned &&
+    open &&
+    evidence &&
+    !work.submitted_at &&
+    !result.data?.completion_requirements.missing.includes("reports_reviewed"),
+  );
+  function canRun(intent: Intent) {
+    if (work?.blocked_by_removed_bin) return false;
+    if (intent.path.endsWith("/accept")) return work?.status === "pending";
+    if (intent.path.endsWith("/arrive"))
+      return work?.status === "processing" && owned;
+    if (intent.path.endsWith("/evidence"))
+      return work?.type === "full" && owned && open && !evidence;
+    if (intent.path.endsWith("/finish")) return canFinish;
+    return owned && open;
+  }
+  const action = useCommand<
+    WorkOrder | WorkDetail | { report: Report; work_order: WorkOrder }
+  >({
+    scope: path,
+    authorized: staff,
+    ready: Boolean(result.data) && !result.loading && !result.error,
+    etag: result.etag || (work ? `"v${work.version}"` : null),
+    refresh: result.reload,
+    canRun,
+  });
+  function execute(next: { suffix: string; body: unknown; label?: string }) {
+    return action.run({
+      path: `${path}/${next.suffix}`,
+      body: next.body,
+      label:
+        next.label ||
+        (next.suffix === "accept"
+          ? "接單"
+          : next.suffix === "arrive"
+            ? "確認到場"
+            : next.suffix),
+    });
+  }
+  const blocked = action.blocked || Boolean(work?.blocked_by_removed_bin);
+  if (!staff) return <StaffLogin id={id} />;
   return (
     <main className="page api-narrow">
       <a className="back-link" href="#staff/tasks">
@@ -387,53 +312,53 @@ function WorkPage({ id }: { id: string }) {
             {!owned && work.status !== "pending" && (
               <p>此工單不是由你接單，只能查看。</p>
             )}
-            <p>完工、清空及修繕操作將於後續票單開放。</p>
-          </section>
-          {error && (
-            <p role="alert">
-              {error}
-              {conflict && "，資料已重新讀取，請確認目前內容後再操作。"}
+            {work.type === "full" && owned && open && (
+              <>
+                <CompletionPhoto
+                  scope={path}
+                  disabled={blocked || Boolean(evidence)}
+                  saved={Boolean(evidence)}
+                  onEvidence={(mediaId) =>
+                    execute({
+                      suffix: "evidence",
+                      body: { media_id: mediaId, purpose: "completion" },
+                      label: "掛上完成照",
+                    })
+                  }
+                />
+                <button
+                  className="button primary"
+                  disabled={blocked || !canFinish}
+                  onClick={() => {
+                    void execute({
+                      suffix: "finish",
+                      body: {},
+                      label: "提交完成",
+                    });
+                  }}
+                >
+                  提交完成
+                </button>
+                {work.submitted_at && (
+                  <p>已提交完成，等待伺服器確認其餘條件；不重複提交。</p>
+                )}
+              </>
+            )}
+            <a
+              className="back-link"
+              href={`#admin/work-orders/${id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              管理員示範清空入口（另開分頁，需獨立登入）
+            </a>
+            <p>
+              示範清空僅由管理員操作；非滿桶完工與修繕流程將於後續票單開放。
             </p>
-          )}
-          {operation && (
-            <button
-              className="button secondary"
-              disabled={cooldown.waiting || busy || result.loading}
-              onClick={() => {
-                if (intent) void execute(intent, true);
-              }}
-            >
-              重試原工單操作
-            </button>
-          )}
-          {conflict && intent && (
-            <button
-              className="button primary"
-              disabled={
-                cooldown.waiting ||
-                busy ||
-                result.loading ||
-                Boolean(result.error) ||
-                !result.data
-              }
-              onClick={() => {
-                void execute(intent);
-              }}
-            >
-              確認目前版本並重試
-            </button>
-          )}
-          {conflict && (
-            <button
-              onClick={() => {
-                setConflict(false);
-                setIntent(null);
-                setError("");
-              }}
-            >
-              取消這次操作
-            </button>
-          )}
+          </section>
+          <CommandFeedback action={action} retryLabel="重試原工單操作" />
+          <CompletionRecord detail={result.data!} />
+          <WorkEvidence detail={result.data!} />
           <h2>逐筆查證</h2>
           {result.data?.reports.length === 0 && (
             <p>此工單沒有市民回報，無須發點。</p>
@@ -454,20 +379,17 @@ function WorkPage({ id }: { id: string }) {
                     void execute({
                       suffix: `reports/${report.id}/review`,
                       body: { decision, reason: reason || null },
+                      label:
+                        decision === "approved"
+                          ? "查證屬實"
+                          : `查證不實：${reason}`,
                     });
                   }}
                 />
               )}
             </div>
           ))}
-          <section className="card">
-            <h2>完成條件</h2>
-            <p>
-              {result.data?.completion_requirements.missing
-                .map((r) => requirementLabels[r] || r)
-                .join("、") || "依伺服器狀態確認"}
-            </p>
-          </section>
+          <WorkRequirements detail={result.data!} />
         </>
       )}
     </main>

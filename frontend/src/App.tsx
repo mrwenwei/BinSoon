@@ -5,6 +5,7 @@ import {
   Login,
   useSession,
 } from "./components/api/SessionContext";
+import { AdminPage } from "./components/api/CompletionPages";
 import { MapPage, BinPage } from "./components/api/MapPages";
 
 import {
@@ -17,11 +18,11 @@ import {
   Member,
 } from "./components/api/ReportPages";
 
+import { StaffPage } from "./components/api/StaffPages";
 import {
-  StaffPage,
   WorkCommandProvider,
   useWorkCommands,
-} from "./components/api/StaffPages";
+} from "./components/api/Commands";
 
 function AppContent() {
   const [route, setRoute] = useState(() => location.hash.slice(1) || "map");
@@ -102,6 +103,11 @@ function AppContent() {
                   ? "admin"
                   : "map")
             }
+          />
+        ) : page === "admin" ? (
+          <AdminPage
+            key={workId || "admin"}
+            id={id === "work-orders" ? workId : undefined}
           />
         ) : page === "map" ? (
           <MapPage />
