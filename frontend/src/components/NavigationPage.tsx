@@ -11,7 +11,7 @@ import {
   walkingMinutes,
 } from "../data/binDemo";
 import { locations, type LocationRecord } from "../data/locations";
-import { LocationMap } from "../map/LocationMap";
+import { DemoLocationMap as LocationMap } from "../map/DemoLocationMap";
 import { Icon } from "./Icon";
 import { Mascot } from "./Mascot";
 const ignoreSelect = () => {};

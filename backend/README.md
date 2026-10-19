@@ -10,7 +10,7 @@ Python 3.12、FastAPI、SQLAlchemy 2、PostgreSQL 16 / PostGIS、Alembic。
 
 ## A／B／D 後端（先前版本已部署）
 
-本分支已提供登入、私有照片、地圖、回報／事件／工單、查證發點、會員／兌換、提案／投票／命名、認養、站內通知及成果統計。前端仍使用靜態快照與 localStorage，未修改也尚未串接。
+本分支已提供登入、私有照片、地圖、回報／事件／工單、查證發點、會員／兌換、提案／投票／命名、認養、站內通知及成果統計。前端目前已串接地圖／角色 session／照片回報／隊員查證與會員摘要；其餘產品流程續接中，詳見 [前端 README](../frontend/README.md)。正式首頁不再讀寫舊展示帳本。
 
 - [實作順序、資料模型與驗收](docs/BACKEND_ROADMAP.md)
 - [完整 API 契約、Request／Response、權限及前端欄位對照](docs/API_CONTRACT.md)

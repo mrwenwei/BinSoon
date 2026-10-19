@@ -2,7 +2,7 @@
 
 **雙種類已部署Cloud Run，schema=0006、revision=binsoon-api-00008-v7k；可直接使用線上API及OpenAPI。**
 
-這份文件供前端工程師直接開始串接。前端 A／B／D 畫面目前仍使用靜態資料及 localStorage；後端已提供持久化 API，本次沒有修改前端。詳細欄位及限制見 [API 契約](API_CONTRACT.md)，每一個 endpoint 的參數、必填欄位、回應型別見 [API Reference](API_REFERENCE.md)。
+這份文件供前端工程師串接。2026-10-19 前端 #6–#8 已接地圖／桶詳情／歷史、角色 session、市民照片回報、隊員接單／到場／查證及會員摘要／台帳；其餘流程依票單續接，尚未開放。正式首頁不匯入舊 localStorage 展示帳本。前端現況與驗證見 ../../frontend/README.md 及 ../../docs/FRONTEND_API_INTEGRATION_VALIDATION.md。詳細欄位及限制見 [API 契約](API_CONTRACT.md)，每一個 endpoint 的參數、必填欄位、回應型別見 [API Reference](API_REFERENCE.md)。
 
 ## 1. 連線資訊與先決條件
 
