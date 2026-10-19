@@ -13,12 +13,7 @@ import {
   type WorkOrder,
 } from "../../data/workOrders";
 import { locations } from "../../data/locations";
-import {
-  binDemo,
-  demoDistance,
-  demoOrigin,
-  distanceLabel,
-} from "../../data/binDemo";
+import { binDemo, demoDistance, distanceLabel } from "../../data/binDemo";
 import {
   formatDemoTime,
   reportAward,
@@ -26,7 +21,8 @@ import {
   reportIsFinal,
   type DemoReport,
 } from "../../data/reports";
-import { LocationMap } from "../../map/LocationMap";
+import { StaffRoutePage } from "./StaffRoutePage";
+import type { CrewVehicle } from "../../data/crewRouting";
 import { useParticipationStore } from "../../data/participation";
 import { Mascot } from "../Mascot";
 const priorityLabels = ["即刻處理", "優先", "一般", "稽查情境"];
@@ -451,6 +447,7 @@ export function StaffApp({ route }: { route: string }) {
   const { state, setState, storageError } = useDemoStore();
   const participation = useParticipationStore();
   const [tab, setTab] = useState("pending");
+  const [vehicle, setVehicle] = useState<CrewVehicle>("scooter");
   const [, tick] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => tick((n) => n + 1), 30000);
@@ -460,17 +457,24 @@ export function StaffApp({ route }: { route: string }) {
   const task = state.tasks.find((t) => t.id === id);
   const act = (action: WorkAction) =>
     setState((previous) => applyWorkAction(previous, action));
-  const open = orderedTasks(state).filter((t) => !taskClosed(t));
-  const routeTasks = open.filter(
-    (t) =>
-      !["repair", "waiting_sensor"].includes(t.status) &&
-      !binDemo(binFor(t), participation.state.removedBinIds).removed,
+  const open = useMemo(
+    () => orderedTasks(state).filter((t) => !taskClosed(t)),
+    [state],
+  );
+  const routeTasks = useMemo(
+    () =>
+      open.filter(
+        (t) =>
+          !["repair", "waiting_sensor"].includes(t.status) &&
+          !binDemo(binFor(t), participation.state.removedBinIds).removed,
+      ),
+    [open, participation.state.removedBinIds],
   );
   const routeBins = useMemo(
     () => [
       ...new Map(routeTasks.map((t) => [t.locationId, binFor(t)])).values(),
     ],
-    [state.tasks, participation.state.removedBinIds],
+    [routeTasks],
   );
   const selectedTasks = orderedTasks(state).filter((t) =>
     tab === "done"
@@ -513,8 +517,7 @@ export function StaffApp({ route }: { route: string }) {
       </nav>
       <main className="staff-main" key={route}>
         <p className="staff-demo-note">
-          D FLOW · 本機展示 ·
-          照片、位置、路線與感測回傳均為示意，未連線真實清潔隊
+          D FLOW · 本機展示 · 照片、起點與感測回傳均為示意，未連線真實清潔隊
         </p>
         {storageError && (
           <p role="alert" className="storage-warning">
@@ -546,65 +549,12 @@ export function StaffApp({ route }: { route: string }) {
         ) : section === "honor" ? (
           <HonorPage state={state} />
         ) : section === "route" ? (
-          <>
-            <div className="page-heading">
-              <div>
-                <span className="eyebrow">ONE STOP AT A TIME.</span>
-                <h1>今日示範清運路線</h1>
-                <p>
-                  {routeBins.length} 個桶 · {routeTasks.length} 張工單 ·
-                  待修繕／待感測確認另在處理中查看
-                </p>
-              </div>
-            </div>
-            <div className="staff-route-map">
-              <LocationMap
-                locations={routeBins}
-                selected={null}
-                onSelect={(bin) => {
-                  const t = routeTasks.find((t) => t.locationId === bin.id);
-                  if (t) window.location.hash = `staff/tasks/${t.id}`;
-                }}
-                demoRoute={
-                  routeBins.length
-                    ? [
-                        demoOrigin,
-                        ...routeBins.map(
-                          (p) => [p.latitude, p.longitude] as [number, number],
-                        ),
-                      ]
-                    : undefined
-                }
-              />
-            </div>
-            <p className="tiny">
-              固定起點、順序與折線均為示意；非真實路網、未做最佳化或實際導航。
-            </p>
-            <ol className="staff-route-list">
-              {routeBins.map((bin) => (
-                <li key={bin.id}>
-                  <strong>{bin.label}</strong>
-                  {routeTasks
-                    .filter((t) => t.locationId === bin.id)
-                    .map((t) => (
-                      <a
-                        key={t.id}
-                        className="button secondary"
-                        href={`#staff/tasks/${t.id}`}
-                      >
-                        {reportInfo(t.type).label} · 查看工單
-                      </a>
-                    ))}
-                </li>
-              ))}
-            </ol>
-            {!routeTasks.length && (
-              <section className="card">
-                <h2>已無一般清運下一站</h2>
-                <p>可回清單查看待修繕或等待感測確認的工單。</p>
-              </section>
-            )}
-          </>
+          <StaffRoutePage
+            bins={routeBins}
+            tasks={routeTasks}
+            vehicle={vehicle}
+            onVehicleChange={setVehicle}
+          />
         ) : section === "notifications" ? (
           <>
             <h1>工單通知（站內示範）</h1>

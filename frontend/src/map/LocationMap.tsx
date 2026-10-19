@@ -16,6 +16,9 @@ interface Props {
   selected: LocationRecord | null;
   onSelect: (location: LocationRecord) => void;
   demoRoute?: [number, number][];
+  roadRoute?: [number, number][];
+  routeOrigin?: [number, number];
+  routeLabel?: string;
   removedIds?: string[];
   point?: Point;
   onPointChange?: (point: Point) => void;
@@ -34,6 +37,9 @@ export function LocationMap({
   selected,
   onSelect,
   demoRoute,
+  roadRoute,
+  routeOrigin,
+  routeLabel,
   point,
   onPointChange,
   proposalPoints,
@@ -137,14 +143,19 @@ export function LocationMap({
     });
   }, [selected, locations, removedIds, operations]);
   useEffect(() => {
-    if (!demoRoute?.length || !map.current) return;
+    const points = roadRoute || demoRoute;
+    const start = routeOrigin || points?.[0];
+    if (!start || !map.current) return;
     const instance = map.current;
-    const line = L.polyline(demoRoute, {
-      color: "#305a48",
-      weight: 6,
-      dashArray: "10 9",
-    }).addTo(instance);
-    const origin = L.marker(demoRoute[0], {
+    const line = points?.length
+      ? L.polyline(points, {
+          color: "#305a48",
+          weight: 6,
+          dashArray: roadRoute ? undefined : "10 9",
+          className: roadRoute ? "road-route" : "demo-route",
+        }).addTo(instance)
+      : undefined;
+    const origin = L.marker(start, {
       icon: L.divIcon({
         className: "demo-origin",
         html: "<span>起</span>",
@@ -152,16 +163,22 @@ export function LocationMap({
       }),
       title: "大安森林公園示意起點",
     }).addTo(instance);
-    instance.fitBounds(line.getBounds(), {
+    const bounds =
+      line?.getBounds() ||
+      L.latLngBounds([
+        start,
+        ...locations.map((p) => [p.latitude, p.longitude] as [number, number]),
+      ]);
+    instance.fitBounds(bounds, {
       padding: [55, 65],
       maxZoom: 16,
       animate: false,
     });
     return () => {
-      line.remove();
+      line?.remove();
       origin.remove();
     };
-  }, [demoRoute]);
+  }, [demoRoute, roadRoute, routeOrigin, locations]);
   useEffect(() => {
     if (!selectionBounds) return;
     const instance = map.current!;
@@ -273,9 +290,13 @@ export function LocationMap({
           ? "點擊地圖或拖曳＋選點 · 方塊為市民提案"
           : selected
             ? "已選取位置 · 可縮放地圖查看周邊"
-            : demoRoute
-              ? "虛線為示意路線 · 未依實際道路規劃"
-              : "點選像素小夥伴，查看位置詳情"}
+            : roadRoute
+              ? routeLabel || "沿道路規劃的路線"
+              : demoRoute
+                ? "虛線為示意路線 · 未依實際道路規劃"
+                : routeOrigin
+                  ? "選擇交通方式後，產生道路路線"
+                  : "點選像素小夥伴，查看位置詳情"}
       </span>
     </div>
   );

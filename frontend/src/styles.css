@@ -3989,3 +3989,72 @@ a {
     display: none;
   }
 }
+
+.crew-route-controls {
+  margin-bottom: 22px;
+}
+.crew-route-controls fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 18px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.crew-route-controls legend {
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.crew-route-controls label {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #c9d5c3;
+  border-radius: 9px;
+  padding: 12px 18px;
+  cursor: pointer;
+}
+.crew-route-controls label:has(input:checked) {
+  background: #e6eddf;
+  border-color: #305a48;
+}
+.crew-route-controls input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  accent-color: #305a48;
+}
+.crew-route-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-top: 18px;
+  padding: 16px;
+  background: #eef3e8;
+  border-radius: 8px;
+}
+.crew-route-attribution {
+  margin: 16px 0;
+  line-height: 1.8;
+}
+.staff-route-list details {
+  margin: 14px 0;
+}
+.staff-route-list summary {
+  cursor: pointer;
+  line-height: 1.7;
+}
+.crew-route-steps {
+  padding-left: 24px;
+}
+.crew-route-steps li {
+  padding: 10px 0;
+  font-size: 14px;
+}
+.crew-route-steps small {
+  display: block;
+  color: #64735f;
+  margin-top: 5px;
+}
