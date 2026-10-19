@@ -152,3 +152,13 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 前景每 10 秒重讀，背景停止、離頁 abort；資料與角色 session 隔離，401 連回原入口登入，403 不借用管理員或市民權限。站點座標／順序／起點／工單集合／車種變更取消舊請求並移除結果，generated_at 單獨變更不清指引。重讀失敗仍可看先前站點與工單，但標為過期、停用計算並清道路；恢復後須手動規劃，不復活舊路線。路線服務失敗／429／20 秒逾時不畫直線替代。
 
 先以 API 瀏覽器案例確認正式入口未開放，再實作首個有序合站與雙車種流程，接續驗證延遲回應、同桶工單變動、空站點、種類篩選、失敗與恢復、403／401／角色隔離、背景／離頁停止及跨隊員分頁實際 finish 後站點移除。新案例在桌面與手機皆已通過；既有道路指引回歸通過。已檢視桌面 1440px 與手機 320px 截圖 `.scratch/frontend-api-integration/api-route-*.png`，保留完整底圖署名及清單替代入口。測試採 HTTP 攔截，不代表真實 Cloud Run／Valhalla 整合或現場行駛驗收。
+
+### Standards
+
+獨立 reviewer 以 `git diff a6d455e...0affa7d` 核對 AGENTS.md、frontend/AGENTS.md、GLOSSARY.md、專案背景與 smell baseline，0 項硬違規、0 項需處理的 heuristic finding。站點順序、各工單 UUID、未知桶況、座標、session 隔離與來源署名均符合規範；共用介面未導入舊展示帳本。
+
+### Spec
+
+獨立 reviewer 比對 #11、RouteStops 契約與後端實作，0 項 actionable finding。起點與站序、雙種類合站及各工單入口、外傳座標限制、取消舊路線、失敗保留操作、前景重讀與身份失效均符合範圍。Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
+
+完整回歸首次揭露既有滿桶流程測試的導航斷言時序問題：點「導航過去」後仍等待桶詳情 H1，可能在 hash 切換完成前提前通過。實際頁面已為步行導航，目的桶是 H2。測試改為同時確認導航 URL、步行導航 H1 與正確目的桶 H2，保留 evidence→finish→demo-clear→like 的命令順序斷言；未修改產品流程。
