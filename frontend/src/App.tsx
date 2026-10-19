@@ -134,6 +134,23 @@ export default function App() {
       r.locationId === id && r.type === draft.type && reportEventOpen(state, r),
   );
   const loginHref = `#login?next=${encodeURIComponent(route)}`;
+  const submitParams = new URLSearchParams(search);
+  submitParams.set("submit", "1");
+  const loginSubmitHref = `#login?next=${encodeURIComponent(`${path}?${submitParams}`)}`;
+  const loginBackHref = (() => {
+    const next = params.get("next");
+    if (page !== "login" || !next) return null;
+    const [nextPath, ...queryParts] = next.split("?");
+    const nextQuery = new URLSearchParams(queryParts.join("?"));
+    nextQuery.delete("submit");
+    const [nextPage, nextId] = nextPath.split("/");
+    if (
+      !["report", "scan", "quick-report"].includes(nextPage) ||
+      !locations.some((item) => item.id === nextId && item.kind === "bin")
+    )
+      return null;
+    return nextQuery.size ? `#${nextPath}?${nextQuery}` : `#${nextPath}`;
+  })();
   function login() {
     setState((prev) => ({ ...prev, loggedIn: true }));
     const next = params.get("next") || "map";
@@ -162,32 +179,53 @@ export default function App() {
             ? participation.state.proposals.some((item) => item.id === nextId)
             : ["report-done", "review"].includes(nextPage) &&
               state.reports.some((item) => item.id === nextId)));
+    const autoSubmit = nextQuery.get("submit");
+    nextQuery.delete("submit");
+    const validSubmit =
+      autoSubmit === null ||
+      (autoSubmit === "1" &&
+        ["report", "scan", "quick-report"].includes(nextPage));
     const validQuery =
-      nextQuery.size === 0 ||
-      (nextQuery.size === 1 &&
-        ((["report", "scan"].includes(nextPage) &&
-          nextQuery.get("demo") === "1") ||
-          (nextPage === "nav" && validBin(nextQuery.get("from"))) ||
-          (nextPage === "rewards" &&
-            state.redemptions.some(
-              (item) => item.id === nextQuery.get("receipt"),
-            ))));
+      validSubmit &&
+      (nextQuery.size === 0 ||
+        (nextQuery.size === 1 &&
+          ((["report", "scan"].includes(nextPage) &&
+            nextQuery.get("demo") === "1") ||
+            (nextPage === "nav" && validBin(nextQuery.get("from"))) ||
+            (nextPage === "rewards" &&
+              state.redemptions.some(
+                (item) => item.id === nextQuery.get("receipt"),
+              )))));
     const valid = validPath && validQuery;
-    window.location.hash = valid ? next : "map";
+    // Already logged in ("繼續體驗"): return without auto-submitting again.
+    const target = state.loggedIn
+      ? `${nextPath}${nextQuery.size ? `?${nextQuery}` : ""}`
+      : next;
+    window.location.hash = valid ? target : "map";
   }
-  function submitReport() {
+  // Why the current draft cannot be submitted; messages are shown after login.
+  function reportBlocker() {
     if (
-      submitting.current ||
       !location ||
-      binDemo(location, participation.state.removedBinIds, state).removed ||
-      !state.loggedIn ||
-      reportingSuspended(state) ||
-      (requestedPage === "quick-report" &&
-        !isAdopter(participation.state, location.id)) ||
+      binDemo(location, participation.state.removedBinIds, state).removed
+    )
+      return "已登入，但這個桶已撤除，回報沒有送出。";
+    if (!state.loggedIn) return "尚未登入，回報沒有送出。";
+    if (reportingSuspended(state))
+      return "已登入，但回報資格已暫停，這次沒有送出。";
+    if (
+      requestedPage === "quick-report" &&
+      !isAdopter(participation.state, location.id)
+    )
+      return "已登入，但快捷通報需要有效認養資格，這次沒有送出。";
+    if (
       !draft.type ||
       !draft.photo ||
       draft.proximity !== "near" ||
-      (draft.type === "other" && !draft.description.trim()) ||
+      (draft.type === "other" && !draft.description.trim())
+    )
+      return "已登入，但回報還有欄位沒完成，請確認後再送出。";
+    if (
       state.reports.some(
         (item) =>
           item.locationId === location.id &&
@@ -196,6 +234,11 @@ export default function App() {
           reportEventOpen(state, item),
       )
     )
+      return "已登入，但這個問題已經有人回報，這次沒有送出。";
+    return null;
+  }
+  function submitReport() {
+    if (submitting.current || !location || !draft.type || reportBlocker())
       return;
     submitting.current = true;
     const record = {
@@ -242,6 +285,19 @@ export default function App() {
       }
     });
   }
+  // "登入並送出回報" returns here with submit=1; submit once login has landed.
+  const autoSubmit = page === "report" && params.get("submit") === "1";
+  useEffect(() => {
+    if (!autoSubmit || !state.loggedIn) return;
+    const query = new URLSearchParams(search);
+    query.delete("submit");
+    const cleanRoute = query.size ? `${path}?${query}` : path;
+    window.history.replaceState(null, "", `#${cleanRoute}`);
+    setRoute(cleanRoute);
+    const blocker = reportBlocker();
+    if (blocker) setNotice(blocker);
+    else submitReport();
+  }, [autoSubmit, state.loggedIn]);
 
   function redeem(reward: Reward) {
     if (
@@ -618,6 +674,7 @@ export default function App() {
             onSubmit={submitReport}
             reports={memberState.reports}
             loginHref={loginHref}
+            loginSubmitHref={loginSubmitHref}
             suspended={reportingSuspended(state)}
           />
         ) : page === "report-done" && report && reportLocation ? (
@@ -635,6 +692,7 @@ export default function App() {
         ) : page === "login" ? (
           <LoginPage
             loggedIn={state.loggedIn}
+            backHref={loginBackHref}
             onLogin={login}
             onLogout={() => {
               setState((prev) => ({ ...prev, loggedIn: false }));

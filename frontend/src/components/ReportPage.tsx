@@ -34,6 +34,7 @@ export function ReportPage({
   onSubmit,
   reports,
   loginHref,
+  loginSubmitHref,
   suspended,
   quick = false,
   removed = false,
@@ -46,6 +47,7 @@ export function ReportPage({
   onSubmit: () => void;
   reports: DemoReport[];
   loginHref: string;
+  loginSubmitHref: string;
   suspended: boolean;
   quick?: boolean;
   removed?: boolean;
@@ -61,8 +63,7 @@ export function ReportPage({
       report.type === draft.type &&
       reportEventOpen(operations, report),
   );
-  const ready = Boolean(
-    loggedIn &&
+  const readyExceptLogin = Boolean(
     !suspended &&
     info &&
     draft.photo &&
@@ -70,6 +71,7 @@ export function ReportPage({
     (draft.type !== "other" || draft.description.trim()) &&
     !duplicate,
   );
+  const ready = loggedIn && readyExceptLogin;
   const set = (patch: Partial<ReportDraft>) => onChange({ ...draft, ...patch });
   if (removed || binDemo(location).removed)
     return (
@@ -358,14 +360,28 @@ export function ReportPage({
                 <a href={`#review/${duplicate.id}`}>查看回報</a>
               </p>
             )}
-            <button
-              className="button primary wide"
-              type="submit"
-              disabled={!ready}
-            >
-              送出示範回報
-              <Icon name="arrow" />
-            </button>
+            {loggedIn ? (
+              <button
+                className="button primary wide"
+                type="submit"
+                disabled={!ready}
+              >
+                送出示範回報
+                <Icon name="arrow" />
+              </button>
+            ) : (
+              <button
+                className="button primary wide"
+                type="button"
+                disabled={!readyExceptLogin}
+                onClick={() => {
+                  window.location.hash = loginSubmitHref;
+                }}
+              >
+                登入並送出回報
+                <Icon name="arrow" />
+              </button>
+            )}
             <p className="tiny">需完成類型、照片、50m 內示意定位與登入。</p>
           </section>
         </aside>
