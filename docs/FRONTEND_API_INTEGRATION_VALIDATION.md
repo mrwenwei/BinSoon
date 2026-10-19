@@ -132,3 +132,13 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 最後 fetch 確認 origin/main 仍為 7481ba5；range-diff 確認原第 5 票 c3feec7／05d34d8 與 rebase 後 8bd846d／c2e97e7 內容等價。本機截圖保留；本輪未推送、未 force push 或合併 main。
 
 限制：所有滿度仍 simulated，CSV 無桶槽分類／現勘證據。未取得真實帳密，未驗證 Cloud Run 角色完整操作、私有 GCS、實體手機相機／GPS／跨裝置 QR。未對雲端寫入案件、清空、按讚、重設模擬、執行 pytest 或部署；原始資料／歷史未改。未串接的道路站點、通知等仍依後續票單進行。
+
+## 雙桶況詳情頁視覺整理
+
+2026-10-19，依使用者指定的 emil-design-eng 調整桶詳情：縮小吉祥物，將一般垃圾／資源回收並排為可選取的狀態卡，顯示各自滿度、可用性、滿度條與目前選擇；未知滿度不畫成 0%。點擊或鍵盤 Enter 使用原種類切換流程，導航／回報仍保留 waste_type。分類與來源可展開，展示假設及 simulated 提示仍保留。
+
+導航與回報集中於主要狀態下方；歷史、最近清運／感謝、位置來源與地圖改為獨立區塊。修正位置詳情沿用地圖浮層的高度上限與定位，讓座標／來源完整顯示，關閉鈕留在卡片內。動態僅用主操作按壓的 transform 回饋，鍵盤選取即時、支援 reduced-motion；沒有新增動畫套件。
+
+擴充既有雙種類瀏覽器案例，驗證卡片鍵盤與指標選取、aria-pressed、對應種類的導航連結與 320px 無水平溢出。截圖使用攔截 API 資料（一般 95%、回收 20%），不代表雲端當前桶況；底圖依測試環境可用性顯示。調整前後桌面／手機截圖保留於 .scratch/frontend-api-integration/waste-compartments-*.png，preview 為首屏。
+
+本輪驗證：typecheck、data:check、build、Prettier、git diff --check 通過；完整 test:e2e **184 項通過（4.5 分鐘）**。已檢視 1440px 桌面及 320px 手機模擬截圖。保留既有大型 bundle 與底圖供應端警告；未驗證實體手機與真實角色操作。未寫入雲端業務資料、未部署或推送。

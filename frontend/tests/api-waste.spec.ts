@@ -217,7 +217,9 @@ test("switching waste preserves separate photo drafts and does not expose a stal
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
   ).toHaveCount(0);
-  await expect(page.getByText("維修中", { exact: true })).toBeVisible();
+  await expect(page.locator(".bin-action-panel .status-pill")).toHaveText(
+    "維修中",
+  );
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
   ).toHaveCount(0);
@@ -240,6 +242,25 @@ test("report list filtering and waste choice stay usable on desktop and 320px sc
   await expect(page.getByRole("region", { name: "各類桶槽" })).toContainText(
     "資源回收：20%",
   );
+  const general = page.getByRole("button", {
+    name: "選擇一般垃圾",
+    exact: true,
+  });
+  await general.focus();
+  await general.press("Enter");
+  await expect(
+    page.getByRole("button", { name: "選擇一般垃圾", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("link", { name: "尋找可用桶並導航", exact: true }),
+  ).toHaveAttribute("href", `#nav/${binId}?waste_type=general`);
+  await page.getByRole("button", { name: "選擇資源回收", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "選擇資源回收", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("link", { name: "導航過去", exact: true }),
+  ).toHaveAttribute("href", `#nav/${binId}?waste_type=recycling`);
   if (testInfo.project.name === "mobile")
     await page.setViewportSize({ width: 320, height: 900 });
   await expect
@@ -256,6 +277,10 @@ test("report list filtering and waste choice stay usable on desktop and 320px sc
   await page.screenshot({
     path: `../.scratch/frontend-api-integration/waste-compartments-${testInfo.project.name}.png`,
     fullPage: true,
+  });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: `../.scratch/frontend-api-integration/waste-compartments-preview-${testInfo.project.name}.png`,
   });
 });
 

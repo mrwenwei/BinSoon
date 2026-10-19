@@ -4881,3 +4881,264 @@ a {
 .api-app .api-detail-map {
   position: relative;
 }
+
+/* API bin detail: compare streams before choosing an action. */
+.api-bin-detail .bin-heading {
+  align-items: center;
+}
+.bin-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.bin-avatar {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 72px;
+  flex: 0 0 64px;
+  border-radius: 20px;
+  background: #eaf0df;
+}
+.bin-avatar svg {
+  width: 48px;
+  height: 56px;
+}
+.bin-title h1 {
+  margin: 0;
+}
+.bin-title p {
+  margin: 6px 0 0;
+}
+.api-bin-detail .bin-overview {
+  padding: 24px;
+}
+.bin-overview-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.bin-overview-heading h2 {
+  margin: 0;
+}
+.bin-overview-heading p {
+  margin: 6px 0 0;
+}
+.bin-overview-heading .api-waste-select {
+  margin: 0;
+  font-size: 12px;
+}
+.api-compartments .compartment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.api-compartments .compartment-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  text-align: left;
+}
+.compartment-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.compartment-label strong {
+  font-family: "Space Grotesk", "Noto Sans TC", sans-serif;
+  font-size: 32px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.compartment-availability {
+  font-size: 12px;
+}
+.api-compartments meter {
+  width: 100%;
+  height: 12px;
+  accent-color: var(--green);
+}
+.api-compartments meter::-webkit-meter-bar {
+  background: #e8eade;
+  border: 0;
+}
+.api-compartments meter::-webkit-meter-optimum-value {
+  background: #73816b;
+}
+.api-compartments [data-usable="true"] meter::-webkit-meter-optimum-value {
+  background: #527e58;
+}
+.api-compartments .compartment-card[aria-pressed="true"] {
+  background: #eff4e7;
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 1px var(--green);
+}
+.compartment-choice {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+}
+.api-bin-detail .compartment-picker {
+  padding: 0;
+  border: 0;
+  margin: 20px 0;
+}
+.compartment-picker h3 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.compartment-sources {
+  font-size: 12px;
+  color: var(--muted);
+}
+.compartment-sources summary {
+  cursor: pointer;
+  width: fit-content;
+  min-height: 28px;
+}
+.bin-action-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+.bin-action-panel p {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.bin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.bin-adoption {
+  padding-top: 16px;
+  margin: 16px 0 0;
+  border-top: 1px solid var(--line);
+}
+.bin-support-grid,
+.bin-location-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+  margin-top: 20px;
+}
+.api-bin-detail .bin-support-grid h2 {
+  margin-top: 0;
+}
+.api-bin-detail .api-history {
+  max-height: 240px;
+}
+.api-bin-detail .bin-community .api-thanks {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.api-bin-detail .bin-community h3 {
+  margin-top: 0;
+}
+.api-app .api-bin-detail .bin-location-grid .details {
+  position: relative;
+  max-height: none;
+  overflow: visible;
+  z-index: auto;
+  inset: auto;
+  margin: 0;
+  width: 100%;
+  box-shadow: none;
+}
+.api-bin-detail .bin-location-grid .api-detail-map {
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0;
+  height: 340px;
+}
+.api-bin-detail .button {
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.api-bin-detail .button:active:not(:focus-visible) {
+  transform: scale(0.98);
+}
+@media (hover: hover) and (pointer: fine) {
+  .compartment-picker .compartment-card:hover {
+    border-color: var(--green);
+  }
+}
+@media (max-width: 760px) {
+  .api-bin-detail .bin-overview {
+    padding: 16px;
+  }
+  .bin-avatar {
+    width: 48px;
+    height: 58px;
+    flex-basis: 48px;
+    border-radius: 14px;
+  }
+  .bin-avatar svg {
+    width: 36px;
+    height: 44px;
+  }
+  .bin-title {
+    gap: 10px;
+  }
+  .bin-overview-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .bin-overview-heading .api-waste-select {
+    width: 100%;
+  }
+  .api-compartments .compartment-card {
+    padding: 12px;
+  }
+  .compartment-label {
+    font-size: 12px;
+  }
+  .compartment-label strong {
+    font-size: 28px;
+  }
+  .compartment-choice {
+    font-size: 11px;
+  }
+  .bin-action-panel {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .bin-actions {
+    flex-wrap: wrap;
+  }
+  .bin-actions .button {
+    flex: 1 1 auto;
+  }
+  .bin-support-grid,
+  .bin-location-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .api-bin-detail .button {
+    transition: none;
+  }
+  .api-bin-detail .button:active {
+    transform: none;
+  }
+}

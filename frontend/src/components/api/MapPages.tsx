@@ -360,105 +360,117 @@ export function BinPage({
     );
   const { location: item, status, can_report } = view.data;
   return (
-    <main className="page detail-page">
+    <main className="page detail-page api-bin-detail">
       <a className="back-link" href={wasteHref("map", wasteType)}>
         ← 返回地圖
       </a>
-      <div className="page-heading">
-        <div>
-          <h1>{item.label}</h1>
-          <p>
-            {item.district} ·{" "}
-            {item.placement_status === "proposed"
-              ? "建議點／待現勘"
-              : item.placement_status === "installed"
-                ? "示範設置"
-                : "既有公布桶"}
-          </p>
+      <div className="page-heading bin-heading">
+        <div className="bin-title">
+          <span className="bin-avatar" aria-hidden="true">
+            <Mascot />
+          </span>
+          <div>
+            <h1>{item.label}</h1>
+            <p>
+              {item.district} ·{" "}
+              {item.placement_status === "proposed"
+                ? "建議點／待現勘"
+                : item.placement_status === "installed"
+                  ? "示範設置"
+                  : "既有公布桶"}
+            </p>
+          </div>
         </div>
         <span className="demo-tag">
           {status.reading_source_type || "來源未知"} · 非實測 IoT
         </span>
       </div>
-      <WasteSelect
-        value={wasteType}
-        onChange={(value) => {
-          if (value) onWasteChange(value);
-        }}
-      />
       <LoadState {...view} />
-      <div className="detail-grid">
-        <section className="buddy-card">
-          <div className="buddy-portrait">
-            <Mascot />
+      <section className="card bin-overview">
+        <div className="bin-overview-heading">
+          <div>
+            <h2>一個定點，兩種桶況</h2>
+            <p className="tiny">選擇這次要使用的種類，查看可用性與操作。</p>
           </div>
-          <Status status={status} />
-          <WasteInfo value={status} />
-          <Compartments items={view.data.compartments} />
-          <p>
-            {item.placement_status === "proposed"
-              ? "建議點／待現勘，尚未設置"
-              : status.is_usable
-                ? "只收隨手小垃圾，請依現場狀況使用。"
-                : `目前不可用：${status.unavailable_reasons.map((r) => reasonLabels[r] || r).join("、")}`}
-          </p>
-          <p>認養：{view.data.adopter?.display_name || "尚無認養者"}</p>
-          {!view.error &&
-            (status.is_usable ? (
-              <a
-                className="button primary"
-                href={wasteHref(`nav/${id}`, wasteType)}
-              >
-                導航過去
-              </a>
-            ) : (
-              <a
-                className="button secondary"
-                href={wasteHref(`nav/${id}`, wasteType)}
-              >
-                尋找可用桶並導航
-              </a>
-            ))}
-          {can_report && !view.error ? (
-            <a
-              className="button secondary"
-              href={wasteHref(`report/${id}`, wasteType)}
-            >
-              回報問題
-            </a>
-          ) : (
+          <WasteSelect
+            value={wasteType}
+            onChange={(value) => {
+              if (value) onWasteChange(value);
+            }}
+          />
+        </div>
+        <Compartments
+          items={view.data.compartments}
+          selected={wasteType}
+          onSelect={onWasteChange}
+        />
+        <div className="bin-action-panel">
+          <div>
+            <Status status={status} />
+            <WasteInfo value={status} />
             <p>
-              {view.error ? (
-                "桶況更新失敗，請重新載入後操作。"
-              ) : view.data.report_block_reason === "login_required" ? (
+              {item.placement_status === "proposed"
+                ? "建議點／待現勘，尚未設置"
+                : status.is_usable
+                  ? "只收隨手小垃圾，請依現場狀況使用。"
+                  : `目前不可用：${status.unavailable_reasons.map((r) => reasonLabels[r] || r).join("、")}`}
+            </p>
+          </div>
+          <div className="bin-actions">
+            {!view.error &&
+              (status.is_usable ? (
                 <a
-                  href={`#login?next=${encodeURIComponent(wasteHref(`bin/${id}`, wasteType).slice(1))}`}
+                  className="button primary"
+                  href={wasteHref(`nav/${id}`, wasteType)}
                 >
-                  登入後回報
+                  導航過去
                 </a>
               ) : (
-                `暫不能回報：${reasonLabels[view.data.report_block_reason || ""] || view.data.report_block_reason}`
-              )}
-            </p>
-          )}
-          <CompletionThanks
-            cleanup={view.data.latest_cleanup}
-            binId={id}
-            wasteType={wasteType}
-            ready={!view.loading && !view.error}
-            refresh={view.reload}
-          />
-          <p>認養操作尚未開放。</p>
-        </section>
+                <a
+                  className="button secondary"
+                  href={wasteHref(`nav/${id}`, wasteType)}
+                >
+                  尋找可用桶並導航
+                </a>
+              ))}
+            {can_report && !view.error ? (
+              <a
+                className="button secondary"
+                href={wasteHref(`report/${id}`, wasteType)}
+              >
+                回報問題
+              </a>
+            ) : (
+              <p>
+                {view.error ? (
+                  "桶況更新失敗，請重新載入後操作。"
+                ) : view.data.report_block_reason === "login_required" ? (
+                  <a
+                    href={`#login?next=${encodeURIComponent(wasteHref(`bin/${id}`, wasteType).slice(1))}`}
+                  >
+                    登入後回報
+                  </a>
+                ) : (
+                  `暫不能回報：${reasonLabels[view.data.report_block_reason || ""] || view.data.report_block_reason}`
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+        <p className="bin-adoption tiny">
+          認養：{view.data.adopter?.display_name || "尚無認養者"} ·
+          認養操作尚未開放。
+        </p>
+      </section>
+      <div className="bin-support-grid">
         <section className="card">
-          <h2>今天的飽足度</h2>
+          <h2>滿度與清運歷史</h2>
           <p>
             {status.fill_level_pct === null
               ? "尚無有效讀值"
               : `${status.fill_level_pct}%（模擬）`}
           </p>
           <p>觀測：{time(status.observed_at)}</p>
-          <h2>滿度與清運歷史</h2>
           <label className="api-waste-select">
             歷史種類
             <select
@@ -496,19 +508,30 @@ export function BinPage({
             ))}
           </ol>
         </section>
+        <section className="card bin-community">
+          <CompletionThanks
+            cleanup={view.data.latest_cleanup}
+            binId={id}
+            wasteType={wasteType}
+            ready={!view.loading && !view.error}
+            refresh={view.reload}
+          />
+        </section>
       </div>
-      <LocationDetails
-        location={item}
-        onClose={() => {
-          window.location.hash = "map";
-        }}
-      />
-      <div className="api-detail-map">
-        <LocationMap
-          locations={[{ ...item, bin_status: status }]}
-          selected={item}
-          onSelect={ignoreSelect}
+      <div className="bin-location-grid">
+        <LocationDetails
+          location={item}
+          onClose={() => {
+            window.location.hash = wasteHref("map", wasteType).slice(1);
+          }}
         />
+        <div className="api-detail-map">
+          <LocationMap
+            locations={[{ ...item, bin_status: status }]}
+            selected={item}
+            onSelect={ignoreSelect}
+          />
+        </div>
       </div>
     </main>
   );
