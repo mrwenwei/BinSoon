@@ -94,7 +94,7 @@ test("a routing failure preserves stop access without presenting straight lines 
   await expect(
     page.locator(".staff-route-list").getByRole("link", { name: /查看工單/ }),
   ).toHaveCount(4);
-  await expect(page.getByText(/預估行駛/)).toHaveCount(0);
+  await expect(page.locator(".crew-route-placeholder")).toHaveCount(2);
 });
 
 test("a late response for the previous vehicle never replaces the current route", async ({
@@ -190,4 +190,55 @@ test("partial or mismatched vehicle responses cannot be shown as valid guidance"
   payload.trip.legs[0].shape = shape;
   payload.trip.summary.length = -1;
   expect(() => parseCrewRoute(payload, "car", 1)).toThrow(/距離或時間/);
+});
+
+test("keyboard vehicle selection works and planning feedback keeps the map in place", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  let release!: () => void;
+  await page.route(endpoint, async (route) => {
+    const request = route.request().postDataJSON();
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await route.fulfill({
+      json: routeResponse(request.costing, request.locations.length - 1),
+    });
+  });
+  await page.goto("/#staff/route");
+  await page.getByRole("button", { name: "使用大安區示範隊員" }).click();
+  await page.getByRole("radio", { name: "機車（一般機車）" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("radio", { name: "汽車", exact: true }),
+  ).toBeChecked();
+  await page.evaluate(() => document.fonts.ready);
+  const mapTop = () =>
+    page
+      .locator(".crew-route-map-panel")
+      .evaluate(
+        (element) => element.getBoundingClientRect().top + window.scrollY,
+      );
+  const initial = await mapTop();
+  const started = page.waitForRequest(endpoint);
+  await page.getByRole("button", { name: "產生路線指引" }).click();
+  await started;
+  await expect(
+    page.getByRole("status").filter({ hasText: "正在取得汽車道路路線" }),
+  ).toBeVisible();
+  expect(Math.abs((await mapTop()) - initial)).toBeLessThan(2);
+  release();
+  await expect(page.locator(".road-route")).toHaveCount(1);
+  expect(Math.abs((await mapTop()) - initial)).toBeLessThan(2);
+  const summary = page.locator(".crew-route-stop summary").first();
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.locator(".crew-route-stop details").first(),
+  ).not.toHaveAttribute("open");
+  await page.keyboard.press("Enter");
+  await expect(
+    page.locator(".crew-route-stop details").first(),
+  ).toHaveAttribute("open", "");
 });

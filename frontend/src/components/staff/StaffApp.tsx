@@ -502,9 +502,24 @@ export function StaffApp({ route }: { route: string }) {
         >
           派工清單
         </a>
-        <a href="#staff/notifications">工單通知</a>
-        <a href="#staff/route">清運路線</a>
-        <a href="#staff/honor">榮譽榜</a>
+        <a
+          href="#staff/notifications"
+          aria-current={section === "notifications" ? "page" : undefined}
+        >
+          工單通知
+        </a>
+        <a
+          href="#staff/route"
+          aria-current={section === "route" ? "page" : undefined}
+        >
+          清運路線
+        </a>
+        <a
+          href="#staff/honor"
+          aria-current={section === "honor" ? "page" : undefined}
+        >
+          榮譽榜
+        </a>
         {state.staffLoggedIn && (
           <button
             onClick={() =>
