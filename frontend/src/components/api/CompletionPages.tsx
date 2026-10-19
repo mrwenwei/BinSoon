@@ -26,6 +26,13 @@ const requirementLabels: Record<string, string> = {
   fresh_clear_reading: "本次有效清空回傳",
 };
 export function WorkRequirements({ detail }: { detail: WorkDetail }) {
+  if (detail.work_order.status === "dismissed")
+    return (
+      <section className="card">
+        <h2>結案結果</h2>
+        <p>本案已依現況證據確認無需處理，未產生可計件完成紀錄。</p>
+      </section>
+    );
   return (
     <section className="card">
       <h2>完成條件</h2>
@@ -37,17 +44,22 @@ export function WorkRequirements({ detail }: { detail: WorkDetail }) {
     </section>
   );
 }
-export function CompletionPhoto({
-  scope,
+export function WorkPhoto({
+  scope: workScope,
+  purpose = "completion",
   disabled,
   saved,
   onEvidence,
 }: {
   scope: string;
+  purpose?: "completion" | "site";
   disabled: boolean;
   saved: boolean;
   onEvidence: (mediaId: string) => Promise<unknown>;
 }) {
+  const scope = `${workScope}/${purpose}`;
+  const title = purpose === "site" ? "現況照片" : "完成照片";
+  const photo = purpose === "site" ? "現況照" : "完成照";
   const { session, invalidate } = useSession();
   const store = useWorkCommands();
   const candidate = store.photos[scope];
@@ -127,7 +139,7 @@ export function CompletionPhoto({
       if (!mediaId) {
         const form = new FormData();
         form.append("file", draft.file);
-        form.append("purpose", "completion");
+        form.append("purpose", purpose);
         const { data } = await request<{ id: string }>("/media", {
           method: "POST",
           body: form,
@@ -152,16 +164,17 @@ export function CompletionPhoto({
       if (alive.current) setBusy(false);
     }
   }
-  if (saved) return <p>完成照已保存</p>;
+  if (saved) return <p>{photo}已保存</p>;
   return (
     <section className="api-form api-completion-photo">
-      <h3>完成照片</h3>
+      <h3>{title}</h3>
       <p className="tiny">
         到場後再拍攝／上傳，一張 JPEG、PNG 或 WebP，最多 5 MiB／2000
-        萬像素。上傳後須掛到本工單，再明確提交完成。
+        萬像素。上傳後須掛到本工單，再明確
+        {purpose === "site" ? "確認無需處理" : "提交完成"}。
       </p>
       <label>
-        完成照片
+        {title}
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
@@ -173,7 +186,7 @@ export function CompletionPhoto({
         />
       </label>
       {preview && (
-        <img className="api-photo" src={preview} alt="待送出的完成照片" />
+        <img className="api-photo" src={preview} alt={`待送出的${title}`} />
       )}
       {error && <p role="alert">{error}</p>}
       {draft?.mediaId && <p>照片已上傳，尚待確認掛到本工單；不會重複上傳。</p>}
@@ -187,10 +200,10 @@ export function CompletionPhoto({
         }}
       >
         {busy
-          ? "處理完成照中…"
+          ? `處理${photo}中…`
           : draft?.mediaId
-            ? "掛上已上傳的完成照"
-            : "上傳並掛上完成照"}
+            ? `掛上已上傳的${photo}`
+            : `上傳並掛上${photo}`}
       </button>
     </section>
   );
@@ -225,6 +238,20 @@ export function WorkEvidence({ detail }: { detail: WorkDetail }) {
           </p>
         </div>
       )}
+    </section>
+  );
+}
+export function DismissalRecord({ detail }: { detail: WorkDetail }) {
+  const work = detail.work_order;
+  if (work.status !== "dismissed") return null;
+  return (
+    <section className="card">
+      <h2>已確認無需處理</h2>
+      <p>結案時間：{time(work.completed_at)}</p>
+      <p>原因：{work.reason || "未提供"}</p>
+      <p>
+        依現況照片與逐筆查證結案，不計完成件數，也不產生本次可讚成果。其他同桶工單仍依各自狀態處理。
+      </p>
     </section>
   );
 }

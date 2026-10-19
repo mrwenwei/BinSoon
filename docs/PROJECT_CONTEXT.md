@@ -1,6 +1,6 @@
 # BinSoon 專案背景與架構
 
-2026-10-19 前端串接更新：GitHub #6–#8 將正式首頁切換為後端 API，已接地圖／桶詳情／歷史、角色 session、市民照片回報、隊員接單／到場／逐筆查證及會員摘要／台帳。尚未串接的操作顯示未開放；舊 A／B／D 本機展示保留於開發測試入口，不匯入其 localStorage。下方先前「前端尚未串接」段落為歷史狀態；現況與限制見 [前端 README](../frontend/README.md) 及 [串接驗證](FRONTEND_API_INTEGRATION_VALIDATION.md)。
+2026-10-19 前端串接更新：GitHub #6–#10 將正式首頁切換為後端 API，已接地圖／桶詳情／歷史、角色 session、市民照片回報、隊員接單／到場／逐筆查證、各類現場完工／待修繕／無需處理、獨立管理員示範清空、市民感謝及會員摘要／台帳。尚未串接的操作顯示未開放；舊 A／B／D 本機展示保留於開發測試入口，不匯入其 localStorage。下方先前「前端尚未串接」段落為歷史狀態；現況與限制見 [前端 README](../frontend/README.md) 及 [串接驗證](FRONTEND_API_INTEGRATION_VALIDATION.md)。
 
 PM 提供的 PRD、Web flow、手機 App flow 與新增 User flow，統一由 [產品需求與使用者流程](PRODUCT_REQUIREMENTS.md) 提供入口。該頁記錄產品規劃來源；目前已完成能力以本文件及各flow驗證紀錄為準，已確認的實作契約見[A flow](A_FLOW.md)、[B flow](B_FLOW.md)及[D flow](D_FLOW.md)規格，實際驗證紀錄與規格一併記錄展示範圍。
 

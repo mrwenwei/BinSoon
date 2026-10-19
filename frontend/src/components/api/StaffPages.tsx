@@ -16,8 +16,9 @@ import { ReportSummary } from "./ReportPages";
 import { useApi } from "./useApi";
 import { useCommand, CommandFeedback, type Intent } from "./Commands";
 import {
-  CompletionPhoto,
+  WorkPhoto,
   CompletionRecord,
+  DismissalRecord,
   WorkEvidence,
   WorkRequirements,
 } from "./CompletionPages";
@@ -218,11 +219,17 @@ function WorkPage({ id }: { id: string }) {
     (e) => e.purpose === "completion",
   );
   const canFinish = Boolean(
-    work?.type === "full" &&
     owned &&
     open &&
     evidence &&
-    !work.submitted_at &&
+    !work?.submitted_at &&
+    !result.data?.completion_requirements.missing.includes("reports_reviewed"),
+  );
+  const siteEvidence = result.data?.evidence.find((e) => e.purpose === "site");
+  const canDismiss = Boolean(
+    owned &&
+    open &&
+    siteEvidence &&
     !result.data?.completion_requirements.missing.includes("reports_reviewed"),
   );
   function canRun(intent: Intent) {
@@ -230,9 +237,26 @@ function WorkPage({ id }: { id: string }) {
     if (intent.path.endsWith("/accept")) return work?.status === "pending";
     if (intent.path.endsWith("/arrive"))
       return work?.status === "processing" && owned;
-    if (intent.path.endsWith("/evidence"))
-      return work?.type === "full" && owned && open && !evidence;
+    if (intent.path.endsWith("/evidence")) {
+      const purpose = (intent.body as { purpose?: unknown })?.purpose;
+      return (
+        owned &&
+        open &&
+        (purpose === "completion" || purpose === "site") &&
+        !result.data?.evidence.some((e) => e.purpose === purpose)
+      );
+    }
+    if (intent.path.endsWith("/dismiss"))
+      return canDismiss && validReason(intent.body);
     if (intent.path.endsWith("/finish")) return canFinish;
+    if (intent.path.endsWith("/defer-repair"))
+      return (
+        owned &&
+        open &&
+        work?.type === "broken" &&
+        work.status !== "repair" &&
+        validReason(intent.body)
+      );
     return owned && open;
   }
   const action = useCommand<
@@ -284,6 +308,12 @@ function WorkPage({ id }: { id: string }) {
               接單 {time(work.accepted_at)} · 到場 {time(work.arrived_at)}
             </p>
             {work.is_overdue && <p>超過示範目標，非真實到場承諾。</p>}
+            {work.reason && <p>處理原因：{work.reason}</p>}
+            {work.status === "repair" && (
+              <p>
+                工單尚未結案；完成修復後仍須完成照、全部查證與提交完成。桶況與維修限制依後端最新狀態。
+              </p>
+            )}
             {work.blocked_by_removed_bin && (
               <p role="alert">桶已撤除，工單操作受阻擋；未自動結案。</p>
             )}
@@ -312,9 +342,9 @@ function WorkPage({ id }: { id: string }) {
             {!owned && work.status !== "pending" && (
               <p>此工單不是由你接單，只能查看。</p>
             )}
-            {work.type === "full" && owned && open && (
+            {owned && open && (
               <>
-                <CompletionPhoto
+                <WorkPhoto
                   scope={path}
                   disabled={blocked || Boolean(evidence)}
                   saved={Boolean(evidence)}
@@ -344,20 +374,78 @@ function WorkPage({ id }: { id: string }) {
                 )}
               </>
             )}
-            <a
-              className="back-link"
-              href={`#admin/work-orders/${id}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              管理員示範清空入口（另開分頁，需獨立登入）
-            </a>
-            <p>
-              示範清空僅由管理員操作；非滿桶完工與修繕流程將於後續票單開放。
-            </p>
+            {owned &&
+              open &&
+              work.type === "broken" &&
+              work.status !== "repair" && (
+                <ReasonAction
+                  label="待修繕原因"
+                  button="留待修繕"
+                  disabled={blocked}
+                  onConfirm={(reason) => {
+                    void execute({
+                      suffix: "defer-repair",
+                      body: { reason },
+                      label: `留待修繕：${reason}`,
+                    });
+                  }}
+                />
+              )}
+            {owned && open && (
+              <section aria-label="無需處理">
+                <h3>無需處理</h3>
+                <p>
+                  現場確認不需工作時，先掛現況照片，完成全部查證並填原因再結案；回報不實本身不會結案。
+                </p>
+                <WorkPhoto
+                  scope={path}
+                  purpose="site"
+                  disabled={blocked || Boolean(siteEvidence)}
+                  saved={Boolean(siteEvidence)}
+                  onEvidence={(mediaId) =>
+                    execute({
+                      suffix: "evidence",
+                      body: { media_id: mediaId, purpose: "site" },
+                      label: "掛上現況照",
+                    })
+                  }
+                />
+                <ReasonAction
+                  label="無需處理原因"
+                  button="確認無需處理"
+                  disabled={blocked}
+                  allowed={canDismiss}
+                  onConfirm={(reason) => {
+                    void execute({
+                      suffix: "dismiss",
+                      body: { reason },
+                      label: `確認無需處理：${reason}`,
+                    });
+                  }}
+                />
+              </section>
+            )}
+            {work.type === "full" ? (
+              <>
+                <a
+                  className="back-link"
+                  href={`#admin/work-orders/${id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  管理員示範清空入口（另開分頁，需獨立登入）
+                </a>
+                <p>示範清空僅由管理員操作，不能代替現場處理。</p>
+              </>
+            ) : (
+              <p>
+                本工單依現場工作證據結案，不要求桶內清空；桶況與其他工單由後端各自判定。
+              </p>
+            )}
           </section>
           <CommandFeedback action={action} retryLabel="重試原工單操作" />
           <CompletionRecord detail={result.data!} />
+          <DismissalRecord detail={result.data!} />
           <WorkEvidence detail={result.data!} />
           <h2>逐筆查證</h2>
           {result.data?.reports.length === 0 && (
@@ -442,6 +530,54 @@ function Verification({
         }
       >
         確認查證
+      </button>
+    </form>
+  );
+}
+
+function validReason(body: unknown): boolean {
+  const reason = (body as { reason?: unknown })?.reason;
+  return (
+    typeof reason === "string" && Boolean(reason.trim()) && reason.length <= 500
+  );
+}
+function ReasonAction({
+  label,
+  button,
+  disabled,
+  allowed = true,
+  onConfirm,
+}: {
+  label: string;
+  button: string;
+  disabled: boolean;
+  allowed?: boolean;
+  onConfirm: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+  return (
+    <form
+      className="api-form api-command"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!disabled && allowed && reason.trim()) onConfirm(reason.trim());
+      }}
+    >
+      <label>
+        {label}
+        <textarea
+          required
+          maxLength={500}
+          value={reason}
+          disabled={disabled}
+          onChange={(e) => setReason(e.target.value)}
+        />
+      </label>
+      <button
+        className="button secondary"
+        disabled={disabled || !allowed || !reason.trim()}
+      >
+        {button}
       </button>
     </form>
   );

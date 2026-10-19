@@ -1,4 +1,4 @@
-# 前端 API 串接驗證：第 1–4 票
+# 前端 API 串接驗證：第 1–5 票
 
 第 1–3 票紀錄（第 4 票見文末）：日期 2026-10-19，範圍為 GitHub #6、#7、#8，起始基準 38b67b8，分支 feat/frontend-v0。後端契約、資料庫 migration 與雲端部署未修改。
 
@@ -73,3 +73,20 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 本票完整驗證：typecheck、data:check（811＝681＋130）、build、Prettier 與 git diff --check 均通過。完整 test:e2e 共 **144 項通過（3.7 分鐘）**，包含 58 項 API 流程與 86 項歷史展示回歸；正式 build 不含 localStorage 或舊展示帳本字串。build 仍有既有 MapLibre 大型 bundle 提示。最後僅調整新回報測試資料後，全部 20 項完工流程測試再次通過（29.9 秒）。
 
 限制同前：未取得真實帳密，未寫入雲端案件／照片／清空／感謝，未跑雲端 pytest、未建立資源或部署；GCS 私照、Cloud Run 實際角色操作與實體手機相機／GPS 尚未整合驗收。所有滿度仍 simulated。道路站點、非滿桶完工、修繕、成果統計等仍依後續票單開放。
+
+
+## 第 5 票：非滿桶問題處理、待修繕與無需處理
+
+2026-10-19，GitHub [#10](https://github.com/mrwenwei/BinSoon/issues/10)，基準 fd6c6d8。沿用 feat/frontend-v0，先快轉同步已合併的 main；原本機截圖保留。後端契約、資料庫與雲端部署未改。
+
+- dirty／dumping／other 到場後可上傳完成照、掛 evidence、全部查證後明確 finish，不要求或偽造清空。
+- broken 到場後可填最多 500 字原因送 defer-repair；顯示後端 repair、原因與未結案說明。修復後再掛完成照及 finish，每步用最新 ETag。桶況與維修限制重新讀取，其他 broken 事件仍存在時不自行恢復可用性。
+- WorkPhoto 支援 completion／site，按工單與用途隔離照片草稿及 media.id。無需處理使用 site 照＋全部查證＋非空白原因，再獨立 dismiss；顯示後端 dismissed／原因／證據，沒有 completion_id 或本次可讚成果，不聲稱正常完工。
+- 回報不實與現場工作分開：不實可以與工單仍到場、後續完成工作並存；不自行結算點數、關閉其他工單或改容量。市民案件、桶況、導航、最近桶與維修限制持續讀後端。
+- defer-repair／dismiss 沿用原命令重試與同帳號重新登入；key、body、ETag 不變。409／412／428 重讀後明確確認；重讀失敗時保持操作關閉。照片證據、原因、責任區／所有權與到場條件均由後端再次驗證。
+
+採用既有瀏覽器／HTTP 邊界 seam。已先確認原介面缺少非滿桶完成照、留待修繕、無需處理三個失敗案例，再逐段實作驗證。針對性桌面／Pixel 7 測試 20 項通過（28.3 秒）：各種非滿桶類型、修復後重讀、不實仍有工作、同桶其他工作保留、雙用途照片、重送、版本衝突／重讀失敗、角色／所有權／到場／空白原因、同帳號重登入。已檢視桌面 1440px 與手機 320px 的完整現場處理頁，無水平溢出、頁首不重疊，截圖在本機 .scratch/frontend-api-integration/work-resolution-*.png。
+
+完整驗證與兩軸 review 結果於交付前補記。
+
+未驗證：真實 Cloud Run 角色登入與操作、GCS 照片及實體手機相機／GPS。未取得或儲存帳密、未寫入雲端測試案件／證據／工單、未跑雲端 pytest、未清除／重設資料、未建立資源或部署。滿度仍 simulated；現場作業時間不與模擬歷史時鐘混用。
