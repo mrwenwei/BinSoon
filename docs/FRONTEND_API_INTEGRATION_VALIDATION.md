@@ -162,3 +162,9 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 獨立 reviewer 比對 #11、RouteStops 契約與後端實作，0 項 actionable finding。起點與站序、雙種類合站及各工單入口、外傳座標限制、取消舊路線、失敗保留操作、前景重讀與身份失效均符合範圍。Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 
 完整回歸首次揭露既有滿桶流程測試的導航斷言時序問題：點「導航過去」後仍等待桶詳情 H1，可能在 hash 切換完成前提前通過。實際頁面已為步行導航，目的桶是 H2。測試改為同時確認導航 URL、步行導航 H1 與正確目的桶 H2，保留 evidence→finish→demo-clear→like 的命令順序斷言；未修改產品流程。
+
+補充 review：兩位 reviewer 核對 `0affa7d...f16c2c4`，確認導航斷言改為穩定的 URL／H1／H2，強化驗收且未放寬命令條件，Standards 0／Spec 0。修正後的原失敗案例在桌面／手機 2 項通過（14.5 秒），再完整執行 **200 項全部通過（5.1 分鐘）**：114 項 API 流程＋86 項歷史展示回歸，含新道路流程 16 項。
+
+本輪 typecheck、data:check（681 桶＋130 場所、十二區）、build、Prettier 與 git diff --check 均通過。production build 未帶入舊展示帳本或測試密碼；保留既有大型 MapLibre bundle 提示與底圖供應端警告。已檢視 1440px 桌面／320px 手機，無水平溢出，底圖署名及工單清單可用。
+
+限制：未取得真實帳密、未驗證 Cloud Run 授權路線／真實角色完整操作、實體手機、GPS 或現場車種通行限制；本輪 Valhalla 回應採攔截，沒有新做外部服務實測。滿度仍 simulated，CSV 無種類／現勘證據。未對雲端建立案件、上傳證據、清空、按讚、重設或跑 pytest，未建立資源或部署，原始資料與歷史未修改。
