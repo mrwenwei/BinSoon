@@ -60,6 +60,16 @@ Review 結果：Standards 0 項必修／1 項可選觀察；Spec 2 項原始 P2 
 
 本票針對性測試：20 項通過（桌面 Chromium＋Pixel 7），涵蓋兩種到達順序、尚未提交／缺查證、新回報加入阻擋完成、四種命令回應遺失重送、管理員版本衝突與讀取失敗、過期成果、角色隔離、admin／citizen 同身份重登入、無法解碼照片拒絕、鍵盤勾選與 320px 無水平溢出。桌面 1440px／手機 320px 管理員及隊員完成頁已檢視，截圖保存在本機 `.scratch/frontend-api-integration/`。
 
-完整回歸與兩軸 review 結果於本票交付前補記。
+### Standards
+
+獨立 reviewer 以 `git diff 03f456d...1af1a9d` 對照 AGENTS.md、frontend/AGENTS.md、GLOSSARY.md、專案背景及 smell baseline，未發現可操作的規範問題。共用 useCommand、LoadState 與 validatePhoto 為本票實際使用的重複邏輯整理；0 項必修、0 項可選發現。
+
+### Spec
+
+獨立 reviewer 核對 #9、後端 workflows／views／media 權限與 diff，未發現缺漏、範圍擴張或契約錯誤。完成狀態、缺少條件、容量及按讚權益均讀後端；0 項發現。自查另將「新回報加入」測試改為新增第二筆未查證回報，保留原已通過回報與證據，避免把已最終查證結果改回處理中。
+
+Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
+
+本票完整驗證：typecheck、data:check（811＝681＋130）、build、Prettier 與 git diff --check 均通過。完整 test:e2e 共 **144 項通過（3.7 分鐘）**，包含 58 項 API 流程與 86 項歷史展示回歸；正式 build 不含 localStorage 或舊展示帳本字串。build 仍有既有 MapLibre 大型 bundle 提示。最後僅調整新回報測試資料後，全部 20 項完工流程測試再次通過（29.9 秒）。
 
 限制同前：未取得真實帳密，未寫入雲端案件／照片／清空／感謝，未跑雲端 pytest、未建立資源或部署；GCS 私照、Cloud Run 實際角色操作與實體手機相機／GPS 尚未整合驗收。所有滿度仍 simulated。道路站點、非滿桶完工、修繕、成果統計等仍依後續票單開放。

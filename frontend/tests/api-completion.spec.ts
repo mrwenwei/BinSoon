@@ -234,12 +234,18 @@ test("new report blocks finish on conflict and preserves attached evidence", asy
   await expect(
     page.getByRole("button", { name: "提交完成", exact: true }),
   ).toBeEnabled();
-  f.state.reviewed = false;
+  f.state.newReport = true;
   await page.getByRole("button", { name: "提交完成", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "確認目前版本並重試", exact: true }),
   ).toBeDisabled();
   await expect(page.getByText("完成照已保存", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("查證狀態：查證屬實", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("查證狀態：查證中", { exact: true }),
+  ).toBeVisible();
   expect(f.state.finishCount).toBe(0);
   expect(f.state.completed).toBe(false);
   expect(f.requests).toHaveLength(1);

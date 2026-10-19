@@ -3,7 +3,6 @@ import {
   apiFixture,
   arrivedWork,
   binId,
-  eventId,
   location,
   report,
   reportId,
@@ -30,6 +29,7 @@ export function completionFixture() {
     cleared: false,
     completed: false,
     reviewed: true,
+    newReport: false,
     liked: false,
     completionId,
     clearCount: 0,
@@ -95,10 +95,25 @@ export function completionFixture() {
     work_status: work().status,
     event_status: state.completed ? "closed" : "open",
   });
+  const allReviewed = () => state.reviewed && !state.newReport;
   const detail = () => ({
     work_order: work(),
     location: binLocation(),
-    reports: [reportView()],
+    reports: [
+      reportView(),
+      ...(state.newReport
+        ? [
+            {
+              ...reportView(),
+              id: "20000000-0000-4000-8000-000000000002",
+              first_reporter: false,
+              status: "processing",
+              pending_points: 0,
+              awarded_points: 0,
+            },
+          ]
+        : []),
+    ],
     evidence: state.evidence
       ? [
           {
@@ -112,12 +127,12 @@ export function completionFixture() {
     latest_reading: state.cleared ? reading() : null,
     completion_requirements: {
       arrived: true,
-      reports_reviewed: state.reviewed,
+      reports_reviewed: allReviewed(),
       completion_photo: state.evidence,
       work_submitted: state.submitted,
       fresh_clear_reading: state.cleared,
       missing: [
-        ...(state.reviewed ? [] : ["reports_reviewed"]),
+        ...(allReviewed() ? [] : ["reports_reviewed"]),
         ...(state.evidence ? [] : ["completion_photo"]),
         ...(state.submitted ? [] : ["work_submitted"]),
         ...(state.cleared ? [] : ["fresh_clear_reading"]),
@@ -301,7 +316,7 @@ export function completionFixture() {
         result = detail();
       } else if (path.endsWith("/finish")) {
         expect(token).toContain("staff");
-        if (!state.evidence || !state.reviewed) {
+        if (!state.evidence || !allReviewed()) {
           await route.fulfill({
             status: 409,
             json: {
@@ -325,7 +340,7 @@ export function completionFixture() {
         state.readingId = body.reading_id;
         state.clearCount++;
         state.cleared = true;
-        state.completed = state.submitted && state.reviewed && state.evidence;
+        state.completed = state.submitted && allReviewed() && state.evidence;
         state.version++;
         result = { reading: reading(), work_order: work() };
       } else {
