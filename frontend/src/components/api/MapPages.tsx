@@ -55,11 +55,13 @@ export function LoadState({
   error,
   reload,
   retryAt = 0,
+  stale = false,
 }: {
   loading: boolean;
   error?: string;
   reload: () => void;
   retryAt?: number;
+  stale?: boolean;
 }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -70,6 +72,7 @@ export function LoadState({
   return (
     <>
       {loading && <p role="status">載入中…</p>}
+      {stale && <p role="status">先前讀取的資料可能已過期，請重新載入確認。</p>}
       {error && (
         <div role="alert">
           <p>{error}</p>
@@ -340,7 +343,16 @@ export function BinPage({
         <a href="#map">返回地圖</a>
       </main>
     );
-  if (navigation) return <Navigation view={view.data} />;
+  if (navigation)
+    return view.error ? (
+      <main className="page">
+        <h1>步行導航</h1>
+        <LoadState {...view} />
+        <p>桶況尚未更新，請先重新載入確認可用性。</p>
+      </main>
+    ) : (
+      <Navigation view={view.data} />
+    );
   const { location: item, status, can_report } = view.data;
   return (
     <main className="page detail-page">
@@ -378,22 +390,25 @@ export function BinPage({
                 : `目前不可用：${status.unavailable_reasons.map((r) => reasonLabels[r] || r).join("、")}`}
           </p>
           <p>認養：{view.data.adopter?.display_name || "尚無認養者"}</p>
-          {status.is_usable ? (
-            <a className="button primary" href={`#nav/${id}`}>
-              導航過去
-            </a>
-          ) : (
-            <a className="button secondary" href={`#nav/${id}`}>
-              尋找可用桶並導航
-            </a>
-          )}
-          {can_report ? (
+          {!view.error &&
+            (status.is_usable ? (
+              <a className="button primary" href={`#nav/${id}`}>
+                導航過去
+              </a>
+            ) : (
+              <a className="button secondary" href={`#nav/${id}`}>
+                尋找可用桶並導航
+              </a>
+            ))}
+          {can_report && !view.error ? (
             <a className="button secondary" href={`#report/${id}`}>
               回報問題
             </a>
           ) : (
             <p>
-              {view.data.report_block_reason === "login_required" ? (
+              {view.error ? (
+                "桶況更新失敗，請重新載入後操作。"
+              ) : view.data.report_block_reason === "login_required" ? (
                 <a href={`#login?next=${encodeURIComponent(`bin/${id}`)}`}>
                   登入後回報
                 </a>

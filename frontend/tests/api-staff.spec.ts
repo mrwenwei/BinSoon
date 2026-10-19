@@ -291,3 +291,215 @@ test("staff command survives reauthentication with its original body, key and ET
   await expect.poll(() => calls.length).toBe(2);
   expect(calls[1]).toEqual(calls[0]);
 });
+
+test("a rejected first report never promotes later reporters and suspension only blocks reporting", async ({
+  page,
+}) => {
+  let firstRejected = false,
+    laterApproved = false,
+    version = 3;
+  const laterId = "20000000-0000-4000-8000-000000000002";
+  await apiFixture(page, async (route, path) => {
+    if (path === `/staff/work-orders/${workId}`) {
+      await route.fulfill({
+        headers: { ETag: `"v${version}"` },
+        json: {
+          work_order: { ...arrivedWork, version },
+          location,
+          reports: [
+            {
+              ...report,
+              photo_ids: [],
+              first_reporter: true,
+              status: firstRejected ? "rejected" : "processing",
+              rejection_reason: firstRejected ? "不符現場" : null,
+            },
+            {
+              ...report,
+              id: laterId,
+              photo_ids: [],
+              first_reporter: false,
+              adopter: true,
+              status: laterApproved ? "approved" : "processing",
+              awarded_points: 0,
+            },
+          ],
+          evidence: [],
+          completion_requirements: { missing: ["completion_photo"] },
+        },
+      });
+      return true;
+    }
+    if (path.endsWith("/review")) {
+      if (path.includes(reportId)) firstRejected = true;
+      else laterApproved = true;
+      version++;
+      await route.fulfill({
+        headers: { ETag: `"v${version}"` },
+        json: {
+          work_order: { ...arrivedWork, version },
+          report: { ...report, awarded_points: 0 },
+        },
+      });
+      return true;
+    }
+    if (path === "/me/membership") {
+      await route.fulfill({
+        json: {
+          cumulative_points: 0,
+          available_points: 0,
+          pending_points: 0,
+          approved_report_count: 0,
+          rejected_report_count: 3,
+          reporting_suspended: true,
+          current_tier: { name: "見習生" },
+          next_tier: null,
+          points_to_next_tier: null,
+        },
+      });
+      return true;
+    }
+    if (path === `/bins/${binId}/view`) {
+      await route.fulfill({
+        json: {
+          location,
+          status: location.bin_status,
+          adopter: null,
+          latest_cleanup: null,
+          can_report: false,
+          report_block_reason: "suspended",
+          my_adoption_id: null,
+          can_apply_adoption: true,
+        },
+      });
+      return true;
+    }
+  });
+  await login(page, "staff", `staff/tasks/${workId}`);
+  const first = page.locator(".api-review").first();
+  await first.getByLabel("查證結果").selectOption("rejected");
+  await first.getByLabel("不實原因").fill("不符現場");
+  await first.getByRole("button", { name: "確認查證", exact: true }).click();
+  await expect(
+    first.getByText("查證狀態：查證不實", { exact: true }),
+  ).toBeVisible();
+  const later = page.locator(".api-review").nth(1);
+  await later.getByLabel("查證結果").selectOption("approved");
+  await later.getByRole("button", { name: "確認查證", exact: true }).click();
+  await expect(
+    later.getByText("查證狀態：查證屬實", { exact: true }),
+  ).toBeVisible();
+  await expect(later.getByText("已入帳點數 0", { exact: true })).toBeVisible();
+  await login(page, "citizen", "member");
+  await expect(page.getByText("可用點數 0", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("回報資格暫停");
+  await page.getByRole("link", { name: "找垃圾桶", exact: true }).click();
+  await expect(page.locator(".location-row")).toHaveCount(1);
+  await page.evaluate((id) => {
+    window.location.hash = `report/${id}`;
+  }, binId);
+  await expect(page.getByRole("alert")).toContainText("回報資格暫停");
+  await expect(
+    page.getByRole("button", { name: "確認送出回報", exact: true }),
+  ).toBeDisabled();
+  // Unconnected B flows remain unopened rather than being gated by reporting suspension.
+  for (const hash of ["vote", "adopt", `quick-report/${binId}`]) {
+    await page.evaluate((value) => {
+      window.location.hash = value;
+    }, hash);
+    await expect(
+      page.getByRole("heading", { name: "功能尚未開放" }),
+    ).toBeVisible();
+  }
+});
+
+test("a lost verification response replays one command and the citizen ledger stays singular", async ({
+  page,
+}) => {
+  let awarded = false;
+  const keys: string[] = [];
+  const setup = async () =>
+    apiFixture(page, async (route, path) => {
+      if (path === `/staff/work-orders/${workId}`) {
+        await route.fulfill({
+          headers: { ETag: awarded ? '"v4"' : '"v3"' },
+          json: {
+            work_order: { ...arrivedWork, version: awarded ? 4 : 3 },
+            location,
+            reports: [
+              {
+                ...report,
+                photo_ids: [],
+                status: awarded ? "approved" : "processing",
+                awarded_points: awarded ? 1 : 0,
+              },
+            ],
+            evidence: [],
+            completion_requirements: { missing: [] },
+          },
+        });
+        return true;
+      }
+      if (path.endsWith(`/reports/${reportId}/review`)) {
+        keys.push(route.request().headers()["idempotency-key"]);
+        if (!awarded) {
+          awarded = true;
+          await route.abort("failed");
+        } else {
+          await route.fulfill({
+            headers: { ETag: '"v4"', "Idempotency-Replayed": "true" },
+            json: {
+              report: { ...report, status: "approved", awarded_points: 1 },
+              work_order: { ...arrivedWork, version: 4 },
+            },
+          });
+        }
+        return true;
+      }
+      if (path === "/me/membership") {
+        await route.fulfill({
+          json: {
+            cumulative_points: 1,
+            available_points: 1,
+            pending_points: 0,
+            approved_report_count: 1,
+            rejected_report_count: 0,
+            reporting_suspended: false,
+            current_tier: { name: "見習生" },
+            next_tier: null,
+            points_to_next_tier: null,
+          },
+        });
+        return true;
+      }
+      if (path === "/me/point-entries") {
+        await route.fulfill({
+          json: envelope([
+            {
+              id: "only-entry",
+              amount: 1,
+              balance_after: 1,
+              report_id: reportId,
+              created_at: report.created_at,
+              type: "report_award",
+            },
+          ]),
+        });
+        return true;
+      }
+    });
+  await setup();
+  await login(page, "staff", `staff/tasks/${workId}`);
+  await page.getByLabel("查證結果").selectOption("approved");
+  await page.getByRole("button", { name: "確認查證", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("連線未完成");
+  await page
+    .getByRole("button", { name: "重試原工單操作", exact: true })
+    .click();
+  await expect(page.getByText("已入帳點數 1", { exact: true })).toBeVisible();
+  expect(keys).toHaveLength(2);
+  expect(keys[1]).toBe(keys[0]);
+  await login(page, "citizen", "member");
+  await expect(page.getByText("可用點數 1", { exact: true })).toBeVisible();
+  await expect(page.locator(".api-items li")).toHaveCount(1);
+});

@@ -215,6 +215,7 @@ export function ReportForm({ id }: { id: string }) {
     if (
       !draft.operation &&
       (!view.data?.can_report ||
+        Boolean(view.error) ||
         !validPosition ||
         !draft.file ||
         validating ||
@@ -288,7 +289,12 @@ export function ReportForm({ id }: { id: string }) {
       {session?.user.roles.includes("citizen") &&
         view.data &&
         !view.data.can_report && (
-          <p role="alert">暫不能回報：{view.data.report_block_reason}</p>
+          <p role="alert">
+            暫不能回報：
+            {view.data.report_block_reason === "suspended"
+              ? "回報資格暫停"
+              : view.data.report_block_reason}
+          </p>
         )}
       <form
         className="card api-form"
@@ -432,6 +438,7 @@ export function ReportForm({ id }: { id: string }) {
                 (!draft.file ||
                   !validPosition ||
                   !view.data?.can_report ||
+                  Boolean(view.error) ||
                   (draft.type === "other" && !draft.description.trim())))
             }
           >

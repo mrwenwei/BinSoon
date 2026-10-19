@@ -250,3 +250,58 @@ test("history reads full bare-array pagination and navigation respects server us
     "#report/10000000-0000-4000-8000-000000000003",
   );
 });
+
+test("a refresh failure preserves the last complete map and marks it stale", async ({
+  page,
+}) => {
+  let fail = false;
+  let recovering = false;
+  let recoveryStarted = false;
+  let release!: () => void;
+  const recovery = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await apiFixture(page, async (route, path) => {
+    if (path === "/map/locations" && fail) {
+      await route.fulfill({
+        status: 503,
+        json: {
+          detail: { code: "UNAVAILABLE", message: "刷新地圖失敗", fields: [] },
+        },
+      });
+      return true;
+    }
+    if (path === "/map/locations" && recovering) {
+      recoveryStarted = true;
+      await recovery;
+    }
+  });
+  await page.goto("/");
+  await expect(page.locator(".location-row")).toHaveCount(1);
+  fail = true;
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
+  await expect(page.getByRole("alert")).toContainText("刷新地圖失敗");
+  await expect(page.locator(".location-row")).toHaveCount(1);
+  await expect(
+    page.getByText("先前讀取的資料可能已過期，請重新載入確認。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  fail = false;
+  recovering = true;
+  await page.getByRole("button", { name: "重新載入", exact: true }).click();
+  await expect.poll(() => recoveryStarted).toBe(true);
+  await expect(
+    page.getByText("先前讀取的資料可能已過期，請重新載入確認。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  release();
+  await expect(
+    page.getByText("先前讀取的資料可能已過期，請重新載入確認。", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+});

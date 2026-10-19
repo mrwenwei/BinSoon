@@ -22,7 +22,10 @@ export function useApi<T>(
   }>({ identity, loading: true });
   const retryAfter = useRef(0);
   const reload = useCallback(() => {
-    if (Date.now() >= retryAfter.current) setRevision((v) => v + 1);
+    if (Date.now() >= retryAfter.current) {
+      setState((old) => ({ ...old, loading: true }));
+      setRevision((v) => v + 1);
+    }
   }, []);
   useEffect(() => {
     if (key === null) return;
@@ -38,6 +41,8 @@ export function useApi<T>(
       setState((old) => ({
         identity,
         result: old.identity === identity ? old.result : undefined,
+        error: old.identity === identity ? old.error : undefined,
+        retryAt: old.identity === identity ? old.retryAt : undefined,
         loading: true,
       }));
       try {
@@ -52,12 +57,16 @@ export function useApi<T>(
               : 0;
           retryAfter.current = retryAt;
           if (retryAt) delay = Math.max(1000, retryAt - Date.now());
-          setState({
+          const transient =
+            !(e instanceof ApiError) || e.status >= 500 || e.status === 429;
+          setState((old) => ({
             identity,
+            result:
+              transient && old.identity === identity ? old.result : undefined,
             error: errorMessage(e),
             retryAt,
             loading: false,
-          });
+          }));
           if (e instanceof ApiError && e.status === 401 && token)
             invalidate(token);
         }
@@ -69,7 +78,11 @@ export function useApi<T>(
     const visibility = () => {
       clearTimeout(timer);
       controller?.abort();
-      if (!document.hidden) void refresh();
+      if (!document.hidden) {
+        if (Date.now() < retryAfter.current)
+          timer = setTimeout(refresh, retryAfter.current - Date.now());
+        else void refresh();
+      }
     };
     if (!document.hidden) void refresh();
     document.addEventListener("visibilitychange", visibility);
@@ -86,6 +99,7 @@ export function useApi<T>(
     data: visible?.result?.data,
     etag: visible?.result?.etag,
     error: visible?.error,
+    stale: Boolean(visible?.result && visible.error),
     retryAt: visible?.retryAt,
     loading: key !== null && (!visible || visible.loading),
     reload,

@@ -278,6 +278,7 @@ function WorkPage({ id }: { id: string }) {
       !staff ||
       !etag ||
       result.loading ||
+      (Boolean(result.error) && !retry) ||
       lock.current ||
       cooldown.waiting
     )
@@ -330,6 +331,7 @@ function WorkPage({ id }: { id: string }) {
     cooldown.waiting ||
     busy ||
     result.loading ||
+    Boolean(result.error) ||
     Boolean(operation) ||
     conflict ||
     Boolean(work?.blocked_by_removed_bin);
@@ -408,7 +410,11 @@ function WorkPage({ id }: { id: string }) {
             <button
               className="button primary"
               disabled={
-                cooldown.waiting || busy || result.loading || !result.data
+                cooldown.waiting ||
+                busy ||
+                result.loading ||
+                Boolean(result.error) ||
+                !result.data
               }
               onClick={() => {
                 void execute(intent);
