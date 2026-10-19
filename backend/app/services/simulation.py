@@ -32,8 +32,18 @@ def get_clock(db):
 
 
 def record(db, state, event, clock):
-    db.add(BinReading(bin_id=state.bin_id, fill_level_pct=state.fill_level_pct,
-        recorded_at=state.last_updated_at, source_type="simulated", event_type=event, generation=clock.generation))
+    previous = db.scalar(select(BinReading).where(BinReading.bin_id == state.bin_id)
+        .order_by(BinReading.observation_sequence.desc(), BinReading.recorded_at.desc()).limit(1))
+    state.observation_sequence = (state.observation_sequence or 0) + 1
+    state.observed_at, state.received_at = state.last_updated_at, datetime.now(timezone.utc)
+    reading = BinReading(bin_id=state.bin_id, fill_level_pct=state.fill_level_pct,
+        recorded_at=state.last_updated_at, source_type="simulated", event_type=event, generation=clock.generation,
+        observed_at=state.observed_at, received_at=state.received_at, observation_sequence=state.observation_sequence)
+    db.add(reading)
+    if event == "measurement" and state.fill_level_pct >= 80 and (previous is None or previous.fill_level_pct < 80):
+        from app.modules.workflows import adoption_alert
+        adoption_alert(db, state.bin_id, "full", f"{state.bin_id}:{clock.generation}:{state.observation_sequence}")
+    return reading
 
 
 def initialize(db):

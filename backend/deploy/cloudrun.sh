@@ -25,8 +25,16 @@ BACKEND_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE_TAG="${IMAGE_TAG:-$(date -u +%Y%m%d%H%M%S)-$(git -C "$BACKEND_DIR" rev-parse --short HEAD)}"
 IMAGE="${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${IMAGE_TAG}"
 JOB="${SERVICE}-initialize"
-# gcloud's default comma delimiter is safe for this project's validated names.
-ENV_VARS="POSTGRES_HOST=/cloudsql/${CLOUD_SQL_CONNECTION_NAME},POSTGRES_PORT=5432,POSTGRES_USER=${POSTGRES_USER},POSTGRES_DB=${POSTGRES_DB}"
+# Custom delimiter preserves the commas in the CORS JSON array.
+DEMO_AUTH_ENABLED="${DEMO_AUTH_ENABLED:-false}"
+CORS_ORIGINS="${CORS_ORIGINS:-[]}"
+MEDIA_BUCKET="${MEDIA_BUCKET:-}"
+MEDIA_SIGNING_SERVICE_ACCOUNT="${MEDIA_SIGNING_SERVICE_ACCOUNT:-$RUNTIME_SERVICE_ACCOUNT}"
+case "$DEMO_AUTH_ENABLED" in true|false) ;; *) echo 'DEMO_AUTH_ENABLED must be true or false' >&2; exit 2 ;; esac
+for value in "$CLOUD_SQL_CONNECTION_NAME" "$POSTGRES_USER" "$POSTGRES_DB" "$CORS_ORIGINS" "$MEDIA_BUCKET" "$MEDIA_SIGNING_SERVICE_ACCOUNT"; do
+  if [[ "$value" == *'~'* ]]; then echo 'Deployment setting contains reserved delimiter ~' >&2; exit 2; fi
+done
+ENV_VARS="^~^POSTGRES_HOST=/cloudsql/${CLOUD_SQL_CONNECTION_NAME}~POSTGRES_PORT=5432~POSTGRES_USER=${POSTGRES_USER}~POSTGRES_DB=${POSTGRES_DB}~DEMO_AUTH_ENABLED=${DEMO_AUTH_ENABLED}~CORS_ORIGINS=${CORS_ORIGINS}~MEDIA_BACKEND=gcs~MEDIA_BUCKET=${MEDIA_BUCKET}~MEDIA_SIGNING_SERVICE_ACCOUNT=${MEDIA_SIGNING_SERVICE_ACCOUNT}"
 
 # Admin token; old secret setting names remain compatible.
 SECRETS="POSTGRES_PASSWORD=${DB_PASSWORD_SECRET}:${SECRET_VERSION}"
@@ -34,6 +42,16 @@ ADMIN_SECRET="${ADMIN_SECRET:-${DEMO_ADMIN_SECRET:-}}"
 ADMIN_SECRET_VERSION="${ADMIN_SECRET_VERSION:-${DEMO_ADMIN_SECRET_VERSION:-latest}}"
 if [[ -n "$ADMIN_SECRET" ]]; then
   SECRETS+=",ADMIN_TOKEN=${ADMIN_SECRET}:${ADMIN_SECRET_VERSION}"
+fi
+if [[ "$DEMO_AUTH_ENABLED" == true ]]; then
+  for role in CITIZEN STAFF ADMIN; do
+    name="DEMO_${role}_PASSWORD_SECRET"
+    secret="${!name:-}"
+    name="DEMO_${role}_PASSWORD_SECRET_VERSION"
+    version="${!name:-latest}"
+    : "${secret:?Set DEMO_${role}_PASSWORD_SECRET (Secret Manager name, not password)}"
+    SECRETS+=",DEMO_${role}_PASSWORD=${secret}:${version}"
+  done
 fi
 GCLOUD="${GCLOUD:-gcloud}"
 "$GCLOUD" builds submit "$BACKEND_DIR" --project="$GCP_PROJECT_ID" \

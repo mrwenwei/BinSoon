@@ -135,7 +135,7 @@ hotspots          # 原景點聚合資料，與 Bin 監測無關
 
 這是需要協調切換的 schema 變更，舊 API 程式無法繼續使用新 schema。雲端部署前需備份、安排維護並停止舊版寫入，完成 migration 與新版本切換後再開放服務；不能把舊的一鍵流程視為無停機升級。downgrade 明確拒絕，避免丟掉舊 schema 無法表達的既有 Bin 歷史；回復需使用備份或往前修復。
 
-2026-10-19 已完成本機及雲端備份、0003 遷移與切換，Cloud Run 已提供本頁的新 API。/demo 路由在新版本移除；/candidates 是 deprecated 相容入口，POST 也改為需管理權限。GET /bins 改為包含所有類型並增加 current_usage，前端需按新契約更新。
+2026-10-19 已完成0003遷移及後續0005產品功能部署。/demo路由已移除；本輪亦依使用者授權移除GET／POST /candidates（404）。市民新增點改用POST /proposals，維運直接建立用POST /bins；GET /bins包含所有類型及current_usage，歷史仍用相同 /bins/{id}/history。現有Bin UUID與資料不刪除。
 
 ## 本機驗證紀錄
 

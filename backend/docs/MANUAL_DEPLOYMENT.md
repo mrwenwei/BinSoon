@@ -1,5 +1,7 @@
 # BinSoon 手動部署操作手冊
 
+> 最新 A／B／D 已於2026-10-19部署，schema=0005、revision=binsoon-api-00005-kcw。日常重部署請 source `backend/deploy/binsoon-product.env.example`，保留登入密碼Secret references、私有媒體及CORS；舊 `binsoon.env.example` 預設關閉展示登入。詳見 [部署紀錄](DEPLOYMENT_STATUS.md) 最新章節。照片bucket與三個Secret已存在，不需重建。預設初始化Job只跑migration／CSV；獨立seed Job為 `binsoon-api-product-seed`。
+
 > 統一 Bin（0003）已於 2026-10-19 完成備份、維護與雲端切換，版本見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。0003 整併表結構，需備份、停止舊寫入並協調程式切換；不能直接以原流程宣稱無停機升級，也不能只回滾舊映像。新 API、權限、官方筆數篩選與歷史行為見 [BINS.md](BINS.md)。
 
 此手冊供下次自行部署使用。指令以 macOS 的 bash／zsh 為例，從 **BinSoon 儲存庫根目錄**執行；不用將資料庫密碼下載到本機。
@@ -272,7 +274,7 @@ python3 backend/scripts/check_deployment.py "$SERVICE_URL"
 瀏覽器開啟 `$SERVICE_URL/docs` 查看 Swagger。平常更新只做唯讀驗收；若確實要測試 POST，可執行以下指令，它會永久留下一筆有清楚標示的測試候選點：
 
 ```sh
-python3 backend/scripts/check_deployment.py "$SERVICE_URL" --create-candidate
+python3 backend/scripts/check_deployment.py "$SERVICE_URL" --create-bin
 ```
 
 ### 14. 保存此次發布結果
@@ -368,3 +370,8 @@ Demo migration 隨標準初始化 Job 執行；不會自動 seed 十個點。Dem
 8. 以 HTTP 核對官方數量、新舊 ID、舊歷史、目前滿度、模擬時鐘、GeoJSON 與 Admin 權限，再保存備份 ID、digest、Job execution、流量與來源 manifest。
 
 本次維護 revision 為 binsoon-api-00003-5zc、正式為 binsoon-api-00004-lql；按需備份 1792342693302。詳見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。舊資料歷史已保留，不需為了驗收而 reset；若 schema 已是 0003，不可僅切回 0002 映像，回復需先明確規劃備份還原或往前修復。
+## A／B／D分支補充（2026-10-19，未部署）
+
+本分支migration head為0005；新增產品API、角色、媒體及初始化操作見 [PRODUCT_OPERATIONS](PRODUCT_OPERATIONS.md)。DEMO_AUTH_ENABLED預設false；若使用獨立展示環境，須配置三組Secret Manager帳密reference、允許的CORS_ORIGINS、私有MEDIA_BUCKET及IAM簽名。cloudrun.sh已支援這些設定並保留JSON逗號；手動部署也必須加入同等env／secret，不能只複製舊版DB設定。
+
+部署前先備份並協調寫入切換；初始化Job只執行migration／CSV，展示seed需另一次明確Job。Cloud Run API不在冷啟動seed；bucket及IAM沒有在本輪建立，GCS live驗證仍待進行。原已部署0003紀錄不代表本分支已上線。

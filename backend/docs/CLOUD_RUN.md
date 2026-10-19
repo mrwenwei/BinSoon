@@ -1,5 +1,7 @@
 # BinSoon：Google Cloud Run 部署與操作
 
+> 2026-10-19 A／B／D後端及0004／0005已部署至既有展示服務 binsoon-api-00005-kcw，私有GCS與三角色登入已驗證。重部署請用 [binsoon-product.env.example](../deploy/binsoon-product.env.example) 保留Secret reference／媒體／CORS設定；完整結果見 [部署紀錄](DEPLOYMENT_STATUS.md) 最新章節。展示登入不能接到真實作業環境。以下初版／0003內容為歷史與資源建立說明。
+
 > 統一 Bin（0003）已於 2026-10-19 完成備份、維護與雲端切換，版本見 [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)。0003 整併表結構，需備份、停止舊寫入並協調程式切換；不能直接以原流程宣稱無停機升級，也不能只回滾舊映像。新 API、權限、官方筆數篩選與歷史行為見 [BINS.md](BINS.md)。
 
 本文件的終端指令從儲存庫根目錄開始。專案 ID、Billing Account 與資料庫實際建立結果，以部署完成後的紀錄為準；以下名稱是可重現的預設方案，尚未表示雲端資源已建立。
@@ -160,7 +162,7 @@ gcloud run services proxy binsoon-api --project="$GCP_PROJECT_ID" --region="$REG
 
 驗收 /health、/docs、/openapi.json；大安區 bins 應為 47、hotspots 為 18。建立候選點後 GET 應可查到，該測試點會永久存在雲端資料庫；應清楚命名為部署驗收候選點並記錄 ID，不能將其混入清潔箱。
 
-不要對雲端正式資料庫直接執行 pytest。pytest 使用本機 Compose PostGIS 即可；雲端使用明確的 HTTP smoke checks。
+不要對雲端正式資料庫直接執行 pytest。pytest 使用本機 Compose PostGIS 即可；雲端使用明確的 HTTP smoke checks。本輪GET／POST /candidates已移除（404），驗收腳本已改用Bin並預設不寫入；選用建立測試點旗標為 `--create-bin`。
 
 ## 6. 日常操作與排錯
 

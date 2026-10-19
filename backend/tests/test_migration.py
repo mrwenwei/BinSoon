@@ -41,6 +41,8 @@ def test_migration_preserves_old_data_and_reading_ids(isolated_engine):
         c.execute(text("""INSERT INTO reading_history VALUES (:reading,:candidate,42.5,'2026-01-05T01:00:00Z','simulated','measurement')"""),dict(reading=reading,candidate=candidate))
         c.execute(text("""INSERT INTO demo_advances VALUES (:id,'daan_phase1_10bins',3,60,'2026-01-05T01:00:00Z')"""),dict(id=request))
         revision(c,'0003_unified_bins.py')
+        revision(c,'0004_product.py')
+        revision(c,'0005_product_integrity.py')
     with Session(isolated_engine) as db:
         assert db.get(Bin,existing).note=='保留原始備註'
         assert db.get(Bin,existing).source_file=='original.csv'
@@ -72,7 +74,7 @@ def test_uuid_collision_stops_migration_before_changes(isolated_engine):
 
 def test_parallel_advance_and_seed(isolated_engine):
     with isolated_engine.begin() as c:
-        for name in ('0001_initial.py','0002_demo.py','0003_unified_bins.py'):
+        for name in ('0001_initial.py','0002_demo.py','0003_unified_bins.py','0004_product.py','0005_product_integrity.py'):
             revision(c,name)
     def seed(_):
         with Session(isolated_engine) as db,db.begin():

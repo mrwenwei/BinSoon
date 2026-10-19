@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_session
 from app.models import Bin, BinState, Hotspot
 from app.schemas import (BinCreate, BinRead, BinGeoJSON, BinType, District, DistrictFilter,
-                         HotspotRead, CandidateRead, ReadingRead, PriorityRead)
+                         HotspotRead, ReadingRead, PriorityRead)
 from app.security import require_admin
 from app.services import bins as service, simulation
 
@@ -69,17 +69,3 @@ def hotspots(db: DB, district: District = "大安區"):
     rows = db.execute(service.location_query(Hotspot).where(Hotspot.district == district).order_by(Hotspot.id))
     return [dict({col.name: getattr(row[0], col.name) for col in Hotspot.__table__.columns if col.name != "location"},
                  longitude=row.longitude, latitude=row.latitude) for row in rows]
-
-
-@router.get("/candidates", response_model=list[CandidateRead], deprecated=True)
-def candidates(db: DB, district: District = "大安區"):
-    rows = db.execute(service.candidate_query().where(Bin.district == district).order_by(Bin.id))
-    return [service.serialize_candidate(row) for row in rows]
-
-
-@router.post("/candidates", response_model=CandidateRead, status_code=201, deprecated=True, dependencies=ADMIN)
-def create_candidate(body: BinCreate, db: DB):
-    result = service.create(db, body)
-    legacy = service.legacy_candidate(db, result["id"])
-    db.commit()
-    return legacy

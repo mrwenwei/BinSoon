@@ -65,13 +65,6 @@ class HotspotRead(LocationRead):
     location_precision: str
 
 
-class CandidateRead(LocationRead):
-    """Deprecated wire format; proposed bins have no independent model/table."""
-    name: str
-    status: str
-    nearest_bin_distance_m: float | None
-
-
 class ReadingRead(BaseModel):
     id: UUID
     bin_id: UUID

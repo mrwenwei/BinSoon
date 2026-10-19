@@ -29,13 +29,15 @@ docker compose -f backend/compose.yaml --env-file backend/.env up --build
 建議直接 `cd backend` 後執行文件中的指令。Compose 專案名稱固定為 `trashbin_soon`，保留原開發環境的容器／volume 命名與資料相容性。
 ## 產品與範圍
 
-台北市智慧垃圾桶 MVP，地圖預設大安區，資料支援十二行政區。已有資料初始化、點位查詢、新增 Bin、滿度／清運歷史及可重現模擬。尚無前端、IoT 硬體通訊、選址最佳化或正式派工。
+台北市智慧垃圾桶 MVP，地圖預設大安區，資料支援十二行政區。後端已有資料初始化、點位查詢、新增 Bin、滿度／清運歷史及可重現模擬。前端 A／B／D 為獨立本機展示，尚未串接後端；無 IoT 硬體通訊、選址最佳化或正式派工。
+
+2026-10-19 使用者確認後端擴充並完成實作與Cloud Run部署：新增身分／媒體、回報／事件／工單、會員／點數兌換、提案／投票／認養、通知／成果與統計，migration head=0005、線上revision=binsoon-api-00005-kcw。frontend未修改，pytest只在本機；雲端已驗證三角色、私有GCS及明示回報到結案閉環。完整範圍見 [後端計畫](../backend/docs/BACKEND_ROADMAP.md)，前端請讀 [串接指南](../backend/docs/FRONTEND_INTEGRATION.md)、[逐項API參考](../backend/docs/API_REFERENCE.md) 與 [API 契約](../backend/docs/API_CONTRACT.md)。部署紀錄見 [DEPLOYMENT_STATUS](../backend/docs/DEPLOYMENT_STATUS.md)。既有與新增 Bin 繼續使用同一 ID；市民提案關聯 proposed Bin，不表示已實際設置。新功能需由前端負責人另行串接。
 
 使用者最新要求：新增的 candidate 等同 Bin，統一模型與查詢。這不表示已實際設置；`bin_type=proposed`、`placement_status=proposed`、`feasibility_status=pending_review` 保留其待現勘意義。Hotspot 仍不是 bin。
 
 ## 目錄與環境
 
-後端程式、資料、測試、migration、部署腳本與部署文件都在 backend/。尚未建立 frontend/。後端命令於 backend/ 執行；根目錄 Compose 需 `docker compose -f backend/compose.yaml --env-file backend/.env ...`。
+後端程式、資料、測試、migration、部署腳本與部署文件都在 backend/。frontend/ 已包含 React／TypeScript／Vite 的 A／B／D 展示。後端命令於 backend/ 執行；根目錄 Compose 需 `docker compose -f backend/compose.yaml --env-file backend/.env ...`。
 
 Compose 專案固定 trashbin_soon，沿用 postgres_data volume。Python 3.12、FastAPI、SQLAlchemy 2、Pydantic v2、psycopg 3、PostgreSQL 16/PostGIS、Alembic、pytest；requirements.lock 固定依賴。
 
@@ -68,11 +70,13 @@ UTF-8-SIG 讀取，驗證 UUID、來源唯一性、行政區、座標有限值�
 
 主要使用 /api/v1/bins：列表、POST 新增、/{id} 詳情、/{id}/history、/{id}/collect、/collection-priorities。列表預設大安區，包含 existing/proposed；district=all 查全市，bin_type 篩選類型，format=geojson 取得 FeatureCollection。單一 ID 可查任一 Bin 的目前使用量及歷史。
 
-原 /candidates GET/POST 暫保留原回應格式並 deprecated，但底層同一張 bins，POST 也需 Admin token。最近距離使用 ST_Distance 對全市 bin_type=existing 計算；無既有清潔箱回 null。Hotspot、proposed Bin 不參與既有清潔箱最近距離。
+原 /candidates GET／POST 已依使用者授權移除，回404；同時清除專用DTO與距離投影helper，不動bins資料或來源欄位。市民新增點用POST /proposals，維運直接建立用POST /bins，讀建議點用 /bins?bin_type=proposed。提案前用 /map/availability 檢查周邊已設置桶（含後續installed新增桶）；Hotspot不是Bin。
 
-舊 /demo/* 在新版本移除，控制集中 /api/v1/simulation/{status,seed,advance,pause,resume,reset}。所有 POST 使用共享 Admin Bearer token；未設定時 503、未授權時 401。ADMIN_TOKEN 支援舊 DEMO_ADMIN_TOKEN fallback。帳密與 token 不提交 Git。
+舊 /demo/* 在新版本移除，控制集中 /api/v1/simulation/{status,seed,advance,pause,resume,reset}。既有 POST 維持共享 Admin Bearer token；未設定時 503、未授權時 401。ADMIN_TOKEN 支援舊 DEMO_ADMIN_TOKEN fallback。新增產品API採可撤銷session及citizen/staff/admin權限；管理API亦可接受維運token，不能用共享token冒充市民／隊員。帳密與 token 不提交 Git。
 
-請求驗證在 Pydantic：十二行政區、有限座標與全球範圍、非空白 name 等。一般新增點尚未用多邊形驗證行政區歸屬，推薦 seed 有區界檢查。
+新增資料位於 app/modules：User／AuthSession、MediaAsset、Incident／Report／WorkOrder／Evidence／Completion、PointEntry／Reward／Redemption、Proposal／Vote／ProposalReview、Adoption、Notification／CompletionLike／WorkAction／Idempotency。舊Bin／狀態／歷史仍是同一套資料；產品寫入以資料庫advisory transaction lock序列化，部分唯一索引及首報FK再保證完整性。查證結算與工單完成分開，reset不影響會員台帳或工單。
+
+請求驗證在 Pydantic：十二行政區、有限座標與全球範圍、非空白 name 等。舊POST Bin一般新增點尚未用多邊形驗證歸屬，推薦 seed 有區界檢查；新市民提案必須位於保存的官方大安區圖資內，不使用前端示範矩形當行政邊界。
 
 ## 狀態、歷史與模擬
 

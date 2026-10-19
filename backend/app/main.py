@@ -10,6 +10,9 @@ app = FastAPI(title="台北市智慧垃圾桶 MVP", version="0.1.0")
 app.include_router(router)
 app.include_router(simulation_router)
 
+from app.modules.application import install
+install(app)
+
 
 @app.get("/health")
 def health(db: Session = Depends(get_session)):

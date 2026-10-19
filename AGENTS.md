@@ -28,7 +28,7 @@
 - `requirements.lock` 固定 Docker 使用的依賴；更新 `pyproject.toml` 時同步檢查鎖定版本。
 - 請求驗證放在 Pydantic schemas，資料存取使用 SQLAlchemy；SQL 參數不得用使用者輸入字串拼接。
 - 座標必須驗證範圍與有限值。行政區支援十二區，GET 預設大安區。
-- 使用統一 `/bins` 列表、POST、單點、歷史與清運；舊 `/candidates` 為 deprecated 相容入口。GET /bins 已改為包含新增點，官方筆數需 bin_type=existing；所有 POST 需 Admin。一般點位更新、刪除仍需明確需求。
+- 使用統一 `/bins` 列表、POST、單點、歷史與清運；舊 `/candidates` GET／POST 已依使用者授權移除，回404。市民新增點走 `/proposals`，維運直接建桶走POST `/bins`。GET /bins 包含新增點，官方筆數需 bin_type=existing；這些既有 POST 保留 Admin token。新增 A／B／D API 採 session／角色及責任區，契約見 `backend/docs/API_CONTRACT.md`，操作見 `backend/docs/PRODUCT_OPERATIONS.md`。本分支已授權提案設置、命名及撤除生命週期，不增加通用任意點位更新／刪除。
 - 已核准所有既有與新增 Bin 共用模擬狀態與歷史，控制在 /simulation，詳見 `backend/docs/BINS.md`；不自行擴充 IoT 硬體通訊、選址最佳化演算法、前端、Redis、Kafka、Celery 或微服務。
 - 修改契約、資料假設或啟動流程時同步更新文件。
 

@@ -2,7 +2,6 @@
 from fastapi import HTTPException
 from geoalchemy2 import Geometry
 from sqlalchemy import cast, func, select
-from sqlalchemy.orm import aliased
 from app.models import Bin, BinState, BinReading
 from app.services import simulation
 
@@ -78,19 +77,3 @@ def history(db, bin_id, limit, offset, start=None, end=None, generation=None, so
     rows = db.scalars(statement.order_by(BinReading.generation.desc().nulls_last(), BinReading.recorded_at.desc(),
                          BinReading.event_type, BinReading.id.desc()).limit(limit).offset(offset))
     return [{col.name: getattr(row, col.name) for col in BinReading.__table__.columns} for row in rows]
-
-
-def candidate_query():
-    nearest = aliased(Bin)
-    distance = select(func.min(func.ST_Distance(Bin.location, nearest.location))).where(nearest.bin_type == "existing").correlate(Bin).scalar_subquery()
-    return location_query(Bin).add_columns(distance.label("nearest_bin_distance_m")).where(Bin.bin_type == "proposed")
-
-
-def serialize_candidate(row):
-    result = {col.name: getattr(row[0], col.name) for col in Bin.__table__.columns if col.name != "location"}
-    result.update(longitude=row.longitude, latitude=row.latitude, nearest_bin_distance_m=row.nearest_bin_distance_m)
-    return result
-
-
-def legacy_candidate(db, bin_id):
-    return serialize_candidate(db.execute(candidate_query().where(Bin.id == bin_id)).one())

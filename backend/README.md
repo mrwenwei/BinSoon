@@ -4,6 +4,19 @@ Python 3.12、FastAPI、SQLAlchemy 2、PostgreSQL 16 / PostGIS、Alembic。
 
 所有清潔箱和新增點統一為 **Bin**。資料來源及現勘狀態仍保留：`bin_type=existing` 為既有清潔箱，`proposed` 為新增待現勘點。所有 Bin 使用相同 ID、狀態及歷史 API。景點／商圈 `hotspots` 不是 bin。
 
+## A／B／D 後端（2026-10-19 已部署）
+
+本分支已提供登入、私有照片、地圖、回報／事件／工單、查證發點、會員／兌換、提案／投票／命名、認養、站內通知及成果統計。前端仍使用靜態快照與 localStorage，未修改也尚未串接。
+
+- [實作順序、資料模型與驗收](docs/BACKEND_ROADMAP.md)
+- [完整 API 契約、Request／Response、權限及前端欄位對照](docs/API_CONTRACT.md)
+- [前端串接指南：可複製範例、畫面呼叫順序及錯誤處理](docs/FRONTEND_INTEGRATION.md)
+- [API Reference：全部 endpoint 參數、DTO 必填／nullable／預設／enum](docs/API_REFERENCE.md)
+- [API 全覽與舊入口整理：保留、維運與淘汰建議](docs/API_INVENTORY.md)
+- [初始化、A→D 手動驗收、HTTP smoke 及 Cloud Run 準備](docs/PRODUCT_OPERATIONS.md)
+
+本機與雲端 migration head 均為 0005；線上 revision 為 binsoon-api-00005-kcw。展示登入程式預設關閉；既有 BinSoon 雲端展示環境已明確啟用並初始化三個角色與獎品，沒有初始贈點。CSV 初始化不會自動建立帳號。連線、測試與資源見 [部署紀錄](docs/DEPLOYMENT_STATUS.md)。
+
 ## 本機啟動
 
 在 backend/ 執行：
@@ -18,7 +31,7 @@ docker compose up --build -d --wait
 
 - Swagger：http://localhost:8000/docs
 - 健康檢查：http://localhost:8000/health
-- 所有 POST 需 Admin Bearer token，未設定時寫入關閉。
+- 下表既有 POST 維持 Admin Bearer token；新增產品 API 使用個人 session／角色，詳見契約。
 
 ## API
 
@@ -45,7 +58,7 @@ curl 'http://localhost:8000/api/v1/bins?bin_type=existing'
 curl 'http://localhost:8000/api/v1/bins/replace-with-bin-id/history?limit=100'
 ```
 
-`/candidates` GET/POST 暫時保留原回應格式並標示 deprecated，實際讀寫同一張 bins；POST 現在也需 Admin token。舊 `/demo/*` 已移除；讀取改用 `/bins/*`，控制改用 `/simulation/*`。
+`/candidates` GET／POST 已移除（404）；市民新增點用 `/proposals`，維運直接建桶用POST `/bins`，建議點讀 `/bins?bin_type=proposed`。舊 `/demo/*` 亦已移除；讀取用 `/bins/*`，控制用 `/simulation/*`。目前契約為68 paths／70 operations。
 
 完整操作與回應範例：[BINS.md](docs/BINS.md)。
 
@@ -56,8 +69,8 @@ curl 'http://localhost:8000/api/v1/bins/replace-with-bin-id/history?limit=100'
 - `hotspots_all_taipei.csv`：實際為 18 筆缺口分析，不自動匯入。
 - 後兩檔名對調，匯入器檢查欄位、警告並保留實際來源檔名。UTF-8-SIG 讀取，兩組資料同一 transaction upsert，保留 UUID、source_type/source_row/source_file，不刪除來源消失的資料。
 - 所有 Bin 的滿度目前都是 simulated，包含真實既有清潔箱；沒有實測資料。預設容量 120 公升也是模擬設定，估計公升數不能當成實測垃圾量。
-- 十點原始座標與排名不變，第 4、7 點屬中正區並保留警告。新增點須現勘，不代表已實際設置。一般人工點位尚未檢查行政區邊界。
-- 座標為 Geography(Point,4326)，UTC timestamptz。舊 candidates 最近距離仍只對全市 existing Bin 計算 ST_Distance，無既有點時為 null。
+- 十點原始座標與排名不變，第 4、7 點屬中正區並保留警告。新增點須現勘，不代表已實際設置。維運直接建桶未檢查行政區邊界；市民提案用官方大安區多邊形驗證。
+- 座標為 Geography(Point,4326)，UTC timestamptz。距離使用PostGIS ST_Distance；提案前周邊檢查用 `/map/availability`，包含已設置新增桶，不將場所當桶。
 
 ## 測試與遷移
 
@@ -68,7 +81,7 @@ docker compose exec api python -m scripts.import_data
 docker compose exec api pytest -q
 ```
 
-測試使用本機真實 PostGIS，外層 transaction rollback；遷移／並行測試使用獨立 schema 並於結束清除該 schema。不得對雲端正式資料庫跑 pytest。requirements.lock 與依賴未變動。
+測試使用本機真實 PostGIS，外層 transaction rollback；產品／遷移／並行測試使用獨立 schema 並於結束清除該 schema，避免本機已有展示帳號影響測試。不得對雲端正式資料庫跑 pytest。新增圖片、multipart 與 GCS 依賴已同步固定於 requirements.lock。
 
 **0003 已整併舊資料表，需新舊程式協調切換，不支援直接回滾到舊 schema。** 所有原始 UUID、追溯欄位、候選點與歷史讀值會保留；UUID 衝突或多個舊時鐘會停止遷移。備份後於維護窗口遷移，再啟動新 API。2026-10-19 已完成備份與維護切換並部署 0003；後續 schema 不相容變更仍不可當作無停機升級。
 

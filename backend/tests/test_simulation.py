@@ -98,7 +98,7 @@ def test_bounds_zero_rate_and_priorities(admin,seeded):
     assert rows[-1]['estimated_hours_to_90_pct'] is None
 
 
-@pytest.mark.parametrize('path',['bins','candidates',f'bins/{uuid4()}/collect','simulation/seed','simulation/advance','simulation/reset','simulation/pause','simulation/resume'])
+@pytest.mark.parametrize('path',['bins',f'bins/{uuid4()}/collect','simulation/seed','simulation/advance','simulation/reset','simulation/pause','simulation/resume'])
 def test_mutation_auth(client,monkeypatch,path):
     monkeypatch.setattr(get_settings(),'admin_token',SecretStr('test-admin'))
     assert client.post('/api/v1/'+path,json={}).status_code==401

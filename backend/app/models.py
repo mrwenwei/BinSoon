@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from geoalchemy2 import Geography
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
@@ -36,6 +36,11 @@ class Bin(LocationMixin, Base):
     placement_status: Mapped[str] = mapped_column(String(30))
     feasibility_status: Mapped[str | None] = mapped_column(String(30))
     boundary_warning: Mapped[str | None] = mapped_column(Text)
+    operational_status: Mapped[str] = mapped_column(String(20), default="normal", server_default="normal")
+    installed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lifecycle_reason: Mapped[str | None] = mapped_column(String(500))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
 
 class Hotspot(LocationMixin, Base):
@@ -69,10 +74,15 @@ class BinState(Base):
     last_emptied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     source_type: Mapped[str] = mapped_column(String(30))
 
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    observation_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
 
 class BinReading(Base):
     __tablename__ = "bin_readings"
-    __table_args__ = (CheckConstraint("fill_level_pct >= 0 AND fill_level_pct <= 100"),)
+    __table_args__ = (CheckConstraint("fill_level_pct >= 0 AND fill_level_pct <= 100"),
+                     Index("ix_bin_readings_observation", "bin_id", "observation_sequence"))
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     bin_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("bins.id"), index=True)
     fill_level_pct: Mapped[float] = mapped_column(Float)
@@ -80,6 +90,9 @@ class BinReading(Base):
     source_type: Mapped[str] = mapped_column(String(30))
     event_type: Mapped[str] = mapped_column(String(30))
     generation: Mapped[int | None] = mapped_column(Integer)
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    observation_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class SimulationAdvance(Base):
@@ -88,3 +101,6 @@ class SimulationAdvance(Base):
     generation: Mapped[int] = mapped_column(Integer)
     minutes: Mapped[int] = mapped_column(Integer)
     simulated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+from app.modules import models as product_models  # noqa: E402,F401 -- register Alembic metadata
