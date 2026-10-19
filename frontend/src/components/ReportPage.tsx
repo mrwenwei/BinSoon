@@ -336,7 +336,7 @@ export function ReportPage({
                   ? "這個桶的核准認養者 · 屬實首報 +2 點"
                   : "一般民眾 · 屬實首報 +1 點"}
               </p>
-              <a href={`#adopt/${location.id}`}>查看認養申請與資格</a>
+              <a href={`#bin/${location.id}?adopt=1`}>查看認養申請與資格</a>
               <p className="tiny">
                 首報資格依同事件回報紀錄判定，不能自行指定。
               </p>

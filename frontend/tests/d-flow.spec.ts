@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { adoptLoginUrl } from "./adoption-helpers";
 test("citizen report is verified and completed by staff while both tabs stay synchronized", async ({
   page,
   context,
@@ -204,10 +205,14 @@ test("a member joins a fixture event as a later reporter without gaining another
 test("submission rechecks persisted adoption even when the displayed form has not received its update", async ({
   page,
 }) => {
-  await page.goto("/#login?next=adopt");
+  await page.goto(adoptLoginUrl());
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await page.getByLabel("認養者公開名稱").fill("提交資格測試");
   await page.getByRole("button", { name: "送出認養申請", exact: true }).click();
+  await expect(
+    page.getByText("申請已送出，等待清潔隊審核。", { exact: false }),
+  ).toBeVisible();
+  await page.goto("/#adopt");
   const adoption = page.getByRole("article", { name: /認養申請：/ }).first();
   await adoption.getByText("展示控制：認養審批", { exact: true }).click();
   await adoption.getByRole("button", { name: "核准認養", exact: true }).click();

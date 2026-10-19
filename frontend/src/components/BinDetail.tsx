@@ -2,11 +2,17 @@ import { useDemoStore } from "../data/demoStore";
 import { latestCleanup } from "../data/workOrders";
 import { formatDemoTime } from "../data/reports";
 import type { LocationRecord } from "../data/locations";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { binDemo, stateLabels, lifecycleLabel } from "../data/binDemo";
+import {
+  canApply,
+  type ParticipationAction,
+  type ParticipationState,
+} from "../data/participation";
 import { Icon } from "./Icon";
 import { Mascot } from "./Mascot";
 import { LocationDetails } from "./LocationDetails";
+import { AdoptionForm } from "./AdoptionForm";
 import { LocationMap } from "../map/LocationMap";
 const ignoreSelect = () => {};
 
@@ -16,14 +22,49 @@ export function BinDetail({
   onLike,
   adopter,
   removedIds,
+  participation,
+  loggedIn,
+  act,
+  adoptRequested,
 }: {
   location: LocationRecord;
   liked: boolean;
   onLike: () => void;
   adopter: string | null;
   removedIds: string[];
+  participation: ParticipationState;
+  loggedIn: boolean;
+  act: (
+    action: ParticipationAction,
+    loggedIn: boolean,
+  ) => Promise<string | null>;
+  adoptRequested: boolean;
 }) {
   const { state: operations } = useDemoStore();
+  const applicable = canApply(participation, location.id);
+  const pending = participation.adoptions.some(
+    (a) => a.locationId === location.id && a.status === "pending",
+  );
+  // `?adopt=1` (login return or an old #adopt/<id> link) opens the form in place.
+  const [adopting, setAdopting] = useState(adoptRequested);
+  const [sent, setSent] = useState(false);
+  const panel = useRef<HTMLElement>(null);
+  const panelOpen = adopting && applicable;
+  useEffect(() => {
+    const top = panel.current?.getBoundingClientRect().top;
+    // Desktop shows the panel beside the bin card; only phones need to scroll.
+    if (top !== undefined && (top < 0 || top > window.innerHeight * 0.5))
+      panel.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [panelOpen]);
+  const sentNotice = useRef<HTMLParagraphElement>(null);
+  // The form collapses on success; bring the confirmation back into view.
+  useEffect(() => {
+    if (sent)
+      sentNotice.current?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+  }, [sent]);
   const cleanup = latestCleanup(operations, location.id);
   const demo = binDemo(location, removedIds, operations);
   const [showMap, setShowMap] = useState(false);
@@ -86,19 +127,62 @@ export function BinDetail({
                   : "隨手的小垃圾，就交給我吧！"}
           </p>
           <div className="buddy-tags">
-            <span>認養：{adopter || "還沒有認養者"}</span>
+            <span>
+              認養：
+              {adopter || (pending ? "你的認養申請審核中" : "還沒有認養者")}
+            </span>
             {lifecycleLabel(location, removedIds) && (
               <span>{lifecycleLabel(location, removedIds)}</span>
             )}
           </div>
-          {!adopter && !demo.removed && (
-            <a className="button secondary" href={`#adopt/${location.id}`}>
+          {applicable && !demo.removed && (
+            <button
+              className="button secondary"
+              aria-expanded={panelOpen}
+              aria-controls="adoption-panel"
+              onClick={() => {
+                setAdopting((open) => !open);
+                setSent(false);
+              }}
+            >
               成為這個桶的認養者
-            </a>
+            </button>
+          )}
+          {sent && pending && (
+            <p className="adoption-sent" role="status" ref={sentNotice}>
+              申請已送出，等待清潔隊審核。
+              <a href="#adopt">查看我的認養</a>
+            </p>
           )}
           <span className="tiny">認養、開口與設撤狀態均為展示設定</span>
         </section>
         <div className="detail-stack">
+          {panelOpen && (
+            <section
+              className="card adoption-panel"
+              id="adoption-panel"
+              aria-labelledby="adoption-panel-title"
+              ref={panel}
+            >
+              <span className="eyebrow">ADOPT THIS BUDDY</span>
+              <h2 id="adoption-panel-title">認養這個桶</h2>
+              <p className="muted">
+                {location.label} · #{demo.code}
+              </p>
+              <AdoptionForm
+                location={location}
+                loggedIn={loggedIn}
+                onApply={async (action) => {
+                  const error = await act(action, loggedIn);
+                  if (!error) {
+                    setAdopting(false);
+                    setSent(true);
+                  }
+                  return error;
+                }}
+              />
+            </section>
+          )}
           <section className="card capacity-card">
             <div className="section-heading">
               <h2>今天的飽足度</h2>

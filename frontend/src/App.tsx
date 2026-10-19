@@ -192,6 +192,7 @@ export default function App() {
           ((["report", "scan"].includes(nextPage) &&
             nextQuery.get("demo") === "1") ||
             (nextPage === "nav" && validBin(nextQuery.get("from"))) ||
+            (nextPage === "bin" && nextQuery.get("adopt") === "1") ||
             (nextPage === "rewards" &&
               state.redemptions.some(
                 (item) => item.id === nextQuery.get("receipt"),
@@ -298,6 +299,17 @@ export default function App() {
     if (blocker) setNotice(blocker);
     else submitReport();
   }, [autoSubmit, state.loggedIn]);
+  // Old #adopt/<id> links now open the in-place form on the bin detail page;
+  // replace the entry so Back does not bounce through the redirect.
+  const legacyAdopt = page === "adopt" && id ? id : null;
+  useEffect(() => {
+    if (legacyAdopt === null) return;
+    window.location.replace(
+      locations.some((item) => item.id === legacyAdopt && item.kind === "bin")
+        ? `#bin/${legacyAdopt}?adopt=1`
+        : "#adopt",
+    );
+  }, [legacyAdopt]);
 
   function redeem(reward: Reward) {
     if (
@@ -356,7 +368,6 @@ export default function App() {
             找垃圾桶
           </a>
           <a href="#vote">這裡需要桶</a>
-          <a href="#adopt">認養電子雞</a>
           <a href="#honor">清潔隊榮譽榜</a>
         </nav>
         <span className="prototype">A + B + D · 展示模式</span>
@@ -623,17 +634,21 @@ export default function App() {
             page={page}
             id={id}
           />
-        ) : page === "adopt" ? (
+        ) : page === "adopt" && id ? null : page === "adopt" ? (
           <AdoptionPage
             key={route}
             state={participation.state}
             act={participation.act}
             loggedIn={state.loggedIn}
-            id={id}
           />
         ) : page === "bin" && location ? (
           <BinDetail
+            key={route}
             location={location}
+            participation={participation.state}
+            act={participation.act}
+            loggedIn={state.loggedIn}
+            adoptRequested={params.get("adopt") === "1"}
             liked={Boolean(
               cleanup && state.completionLikes.includes(cleanup.id),
             )}

@@ -1,5 +1,10 @@
 import { reviewAsStaff } from "./staff-helpers";
 import { test, expect } from "@playwright/test";
+import {
+  adoptableBin,
+  adoptLoginUrl,
+  applyForAdoption,
+} from "./adoption-helpers";
 test.use({ actionTimeout: 10000 });
 
 test("P11 votes count people, support changes and withdrawal survive reload", async ({
@@ -129,13 +134,18 @@ test("a new event requires a fresh photo and proximity check without reloading t
 test("P14 approval grants A/B adopter rewards and ending adoption preserves submitted eligibility", async ({
   page,
 }) => {
-  await page.goto("/#login?next=adopt");
+  await page.goto(adoptLoginUrl());
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
-  await expect(
-    page.getByRole("heading", { name: "我的電子雞", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("region", { name: "認養這個桶" })).toBeVisible();
   await page.getByLabel("認養者公開名稱").fill("巷口日常小隊");
   await page.getByRole("button", { name: "送出認養申請", exact: true }).click();
+  await expect(
+    page.getByText("認養：你的認養申請審核中", { exact: true }),
+  ).toBeVisible();
+  await page.goto("/#adopt");
+  await expect(
+    page.getByRole("heading", { name: "我的認養", exact: true }),
+  ).toBeVisible();
   const application = page.getByRole("article", { name: /認養申請：/ }).first();
   await expect(application).toContainText("待審");
   await application.getByText("展示控制：認養審批", { exact: true }).click();
@@ -345,13 +355,10 @@ test("P15 withdrawal, rejection and removal preserve history and do not grant ad
 }) => {
   await page.goto("/#login?next=adopt");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
-  const chosen = await page.getByLabel("要認養的桶").inputValue();
+  const chosen = adoptableBin.id;
   async function apply() {
-    await page.getByLabel("要認養的桶").selectOption(chosen);
-    await page.getByLabel("認養者公開名稱").fill("居民小隊");
-    await page
-      .getByRole("button", { name: "送出認養申請", exact: true })
-      .click();
+    await applyForAdoption(page, "居民小隊", chosen);
+    await page.goto("/#adopt");
   }
   await apply();
   const records = page.getByRole("article", { name: /認養申請：/ });
@@ -365,7 +372,21 @@ test("P15 withdrawal, rejection and removal preserve history and do not grant ad
     .click();
   await page.getByRole("button", { name: "確認撤回申請" }).click();
   await expect(records.first()).toContainText("已撤回");
-  await apply();
+  await expect(page.locator(".participation-feedback")).toHaveText(
+    "已撤回申請。",
+  );
+  // Reapplying reopens the in-place form on the same bin.
+  await records
+    .first()
+    .getByRole("link", { name: "重新填寫申請", exact: true })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`#bin/${chosen}\\?adopt=1$`));
+  await page.getByLabel("認養者公開名稱").fill("居民小隊");
+  await page.getByRole("button", { name: "送出認養申請", exact: true }).click();
+  await expect(
+    page.getByText("申請已送出，等待清潔隊審核。", { exact: false }),
+  ).toBeVisible();
+  await page.goto("/#adopt");
   await records
     .first()
     .getByText("展示控制：認養審批", { exact: true })
