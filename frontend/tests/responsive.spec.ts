@@ -18,7 +18,7 @@ test("P1-P9 fit desktop and phone viewports including 320px", async ({
       fullPage: true,
     });
   }
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await expect(page.locator(".location-row")).toHaveCount(47);
   await capture("map", /附近哪裡/);
   await page.getByRole("button", { name: "只看餓了的", exact: true }).click();
@@ -63,7 +63,7 @@ test("P1-P9 fit desktop and phone viewports including 320px", async ({
   await capture("review", /回報審核結果/);
   await page.getByRole("link", { name: "前往會員中心", exact: true }).click();
   await capture("member", /會員中心/);
-  await page.goto("/#rewards");
+  await page.goto("/tests/legacy/index.html#rewards");
   await capture("rewards", /兌換獎品/);
   await page
     .getByRole("article", { name: "7-11 50 元兌換券" })
@@ -82,17 +82,17 @@ test("P1-P9 fit desktop and phone viewports including 320px", async ({
         ["report", reportUrl, /回報這個桶/],
         ["report-done", doneUrl, /謝謝你幫城市變乾淨/],
         ["review", reviewUrl, /回報審核結果/],
-        ["member", "/#member", /會員中心/],
+        ["member", "/tests/legacy/index.html#member", /會員中心/],
         ["rewards", rewardsUrl, /兌換獎品/],
-        ["login", "/#login", /先讓電子雞/],
-        ["map", "/#map", /附近哪裡/],
+        ["login", "/tests/legacy/index.html#login", /先讓電子雞/],
+        ["map", "/tests/legacy/index.html#map", /附近哪裡/],
       ] as const) {
         await page.goto(url);
         await capture(`${name}-${width}`, heading);
       }
     }
   }
-  await page.goto("/#report/does-not-exist");
+  await page.goto("/tests/legacy/index.html#report/does-not-exist");
   await expect(
     page.getByRole("heading", { name: "找不到這個頁面" }),
   ).toBeVisible();
@@ -106,7 +106,7 @@ test("v1 storage is preserved, invalid v2 recovers, and unavailable storage stay
     localStorage.setItem("binsoon-a-flow-v1", legacy);
     localStorage.setItem("binsoon-a-flow-1018-v2", '{"reports":[{}]}');
   }, legacy);
-  await page.goto("/#stamps");
+  await page.goto("/tests/legacy/index.html#stamps");
   await expect(
     page.getByRole("heading", { name: "會員中心", exact: true }),
   ).toBeVisible();
@@ -119,7 +119,7 @@ test("v1 storage is preserved, invalid v2 recovers, and unavailable storage stay
       throw new Error("storage unavailable");
     };
   });
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await expect(
     page.getByText("瀏覽器無法儲存資料，重新整理後可能無法保留本次紀錄。"),
   ).toBeVisible();
@@ -130,7 +130,7 @@ test("v1 storage is preserved, invalid v2 recovers, and unavailable storage stay
   await expect(
     page.getByText("尚無可驗證清運完成紀錄", { exact: true }),
   ).toBeVisible();
-  await page.goto("/#login");
+  await page.goto("/tests/legacy/index.html#login");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "瀏覽器無法儲存資料" }),

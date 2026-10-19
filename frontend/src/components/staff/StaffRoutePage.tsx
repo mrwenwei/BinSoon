@@ -9,7 +9,7 @@ import {
 import type { LocationRecord } from "../../data/locations";
 import type { WorkOrder } from "../../data/workOrders";
 import { reportTypes } from "../../data/reports";
-import { LocationMap } from "../../map/LocationMap";
+import { DemoLocationMap as LocationMap } from "../../map/DemoLocationMap";
 import { Icon } from "../Icon";
 
 export function StaffRoutePage({

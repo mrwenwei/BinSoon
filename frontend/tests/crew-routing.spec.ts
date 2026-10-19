@@ -40,7 +40,7 @@ test("crew routes use the selected vehicle, display road geometry and invalidate
       json: routeResponse(request.costing, request.locations.length - 1),
     });
   });
-  await page.goto("/#staff/route");
+  await page.goto("/tests/legacy/index.html#staff/route");
   await page.getByRole("button", { name: "使用大安區示範隊員" }).click();
   await expect(
     page.getByRole("radio", { name: "機車（一般機車）" }),
@@ -86,7 +86,7 @@ test("a routing failure preserves stop access without presenting straight lines 
   await page.route(endpoint, (route) =>
     route.fulfill({ status: 503, json: { error: "unavailable" } }),
   );
-  await page.goto("/#staff/route");
+  await page.goto("/tests/legacy/index.html#staff/route");
   await page.getByRole("button", { name: "使用大安區示範隊員" }).click();
   await page.getByRole("button", { name: "產生路線指引" }).click();
   await expect(page.getByRole("alert")).toContainText("目前無法取得道路路線");
@@ -123,7 +123,7 @@ test("a late response for the previous vehicle never replaces the current route"
         json: routeResponse(request.costing, request.locations.length - 1, 9.1),
       });
   });
-  await page.goto("/#staff/route");
+  await page.goto("/tests/legacy/index.html#staff/route");
   await page.getByRole("button", { name: "使用大安區示範隊員" }).click();
   const started = page.waitForRequest(endpoint);
   await page.getByRole("button", { name: "產生路線指引" }).click();
@@ -147,12 +147,12 @@ test("finishing a stop in another tab invalidates its previous road guidance", a
       json: routeResponse(request.costing, request.locations.length - 1),
     });
   });
-  await page.goto("/#staff/route");
+  await page.goto("/tests/legacy/index.html#staff/route");
   await page.getByRole("button", { name: "使用大安區示範隊員" }).click();
   await page.getByRole("button", { name: "產生路線指引" }).click();
   await expect(page.locator(".road-route")).toHaveCount(1);
   const crew = await context.newPage();
-  await crew.goto("/#staff/tasks");
+  await crew.goto("/tests/legacy/index.html#staff/tasks");
   await crew.locator(".staff-task-card").filter({ hasText: "很髒" }).click();
   await crew.getByRole("button", { name: "接單", exact: true }).click();
   await crew.getByRole("button", { name: "示範已到場" }).click();
@@ -206,7 +206,7 @@ test("keyboard vehicle selection works and planning feedback keeps the map in pl
       json: routeResponse(request.costing, request.locations.length - 1),
     });
   });
-  await page.goto("/#staff/route");
+  await page.goto("/tests/legacy/index.html#staff/route");
   await page.getByRole("button", { name: "使用大安區示範隊員" }).click();
   await page.getByRole("radio", { name: "機車（一般機車）" }).focus();
   await page.keyboard.press("ArrowRight");

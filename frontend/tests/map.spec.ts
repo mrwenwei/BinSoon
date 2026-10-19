@@ -5,7 +5,7 @@ test("811 original records, twelve districts and source precision survive A flow
 }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await expect(page.locator(".location-row")).toHaveCount(47);
   await expect(page.locator("#district option")).toHaveCount(13);
   await page.locator("#district").selectOption("all");
@@ -83,7 +83,7 @@ test("basemap connection failure leaves records accessible", async ({
   await page.route("https://tiles.openfreemap.org/**", (route) =>
     route.abort(),
   );
-  await page.goto("/");
+  await page.goto("/tests/legacy/index.html");
   await expect(page.locator(".map-warning")).toBeVisible({ timeout: 20000 });
   await expect(page.locator(".location-row")).toHaveCount(47);
   await page.locator(".location-row").first().click();

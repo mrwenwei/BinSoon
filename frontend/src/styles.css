@@ -4638,3 +4638,186 @@ a {
     font-size: 12px;
   }
 }
+
+/* API-backed flows reuse the established visual language. */
+.api-app .topbar {
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.api-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.api-narrow {
+  max-width: 760px;
+  margin: auto;
+}
+.api-form {
+  display: grid;
+  gap: 18px;
+}
+.api-form label {
+  display: grid;
+  gap: 8px;
+}
+.api-form input,
+.api-form select,
+.api-form textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.api-footer {
+  padding: 24px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.api-footer a {
+  display: inline-block;
+  margin: 6px;
+}
+.api-history {
+  display: grid;
+  gap: 12px;
+  max-height: 460px;
+  overflow: auto;
+  padding-left: 22px;
+}
+.api-history li {
+  display: grid;
+  gap: 6px;
+}
+.api-detail-map {
+  height: 380px;
+  margin-top: 24px;
+}
+.api-app .details {
+  position: relative;
+  width: auto;
+  max-width: none;
+  margin-top: 24px;
+}
+.api-app .location-row .status-pill {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+.api-app h1,
+.api-app h2,
+.api-app p,
+.api-app dd,
+.api-app a {
+  overflow-wrap: anywhere;
+}
+.api-app .card {
+  min-width: 0;
+}
+.api-app meter {
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .api-app .desktop-nav {
+    display: flex;
+    flex-wrap: wrap;
+    order: 3;
+    width: 100%;
+    gap: 12px;
+  }
+  .api-detail-map {
+    height: 300px;
+  }
+  .api-app .page {
+    padding: 20px 16px;
+  }
+  .api-app .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.api-photo {
+  display: block;
+  max-width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+.api-items {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+.api-form fieldset {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 16px;
+}
+.api-form input[type="checkbox"] {
+  width: auto;
+  justify-self: start;
+}
+.api-work-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 24px 0;
+}
+.api-work-filters label {
+  display: grid;
+  gap: 8px;
+}
+.api-work-filters select {
+  padding: 8px;
+  max-width: 100%;
+}
+.api-review {
+  margin: 20px 0;
+}
+.api-app .topbar {
+  height: auto;
+  min-height: 82px;
+  padding: 16px 24px;
+}
+.api-app .desktop-nav {
+  height: auto;
+  margin-left: 0;
+}
+.api-app .desktop-nav a {
+  height: auto;
+  min-height: 36px;
+}
+.api-app .api-account {
+  margin-left: auto;
+  font-size: 12px;
+}
+.api-app .api-form label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.api-app .map-section .details {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  width: auto;
+  max-height: 55%;
+  overflow: auto;
+}
+@media (max-width: 760px) {
+  .api-app .topbar {
+    padding: 12px 16px;
+    min-height: 0;
+  }
+  .api-app .desktop-nav {
+    gap: 4px 16px;
+  }
+  .api-app .desktop-nav a {
+    min-height: 32px;
+  }
+}

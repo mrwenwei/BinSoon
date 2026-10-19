@@ -13,7 +13,7 @@ import {
   type ParticipationState,
   type Point,
 } from "../data/participation";
-import { LocationMap } from "../map/LocationMap";
+import { DemoLocationMap as LocationMap } from "../map/DemoLocationMap";
 const ignoreBin = () => {};
 export function ParticipationPage({
   state,
