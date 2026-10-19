@@ -1,5 +1,7 @@
 # BinSoon 專案背景與架構
 
+2026-10-19 前端串接更新：GitHub #6–#8 將正式首頁切換為後端 API，已接地圖／桶詳情／歷史、角色 session、市民照片回報、隊員接單／到場／逐筆查證及會員摘要／台帳。尚未串接的操作顯示未開放；舊 A／B／D 本機展示保留於開發測試入口，不匯入其 localStorage。下方先前「前端尚未串接」段落為歷史狀態；現況與限制見 [前端 README](../frontend/README.md) 及 [串接驗證](FRONTEND_API_INTEGRATION_VALIDATION.md)。
+
 PM 提供的 PRD、Web flow、手機 App flow 與新增 User flow，統一由 [產品需求與使用者流程](PRODUCT_REQUIREMENTS.md) 提供入口。該頁記錄產品規劃來源；目前已完成能力以本文件及各flow驗證紀錄為準，已確認的實作契約見[A flow](A_FLOW.md)、[B flow](B_FLOW.md)及[D flow](D_FLOW.md)規格，實際驗證紀錄與規格一併記錄展示範圍。
 
 [B flow 規格](B_FLOW.md) 已於2026-10-18完成使用者確認，範圍為 P10–P16 前端本機展示，已加入投票、認養、快捷通報與展示控制。A flow 認養資格與回報事件週期已同步調整；驗證結果見 [B flow 驗證紀錄](B_FLOW_VALIDATION.md)。
@@ -29,13 +31,15 @@ docker compose -f backend/compose.yaml --env-file backend/.env up --build
 建議直接 `cd backend` 後執行文件中的指令。Compose 專案名稱固定為 `trashbin_soon`，保留原開發環境的容器／volume 命名與資料相容性。
 ## 產品與範圍
 
-台北市智慧垃圾桶 MVP，地圖預設大安區，資料支援十二行政區。已有資料初始化、點位查詢、新增 Bin、滿度／清運歷史及可重現模擬。尚無前端、IoT 硬體通訊、選址最佳化或正式派工。
+台北市智慧垃圾桶 MVP，地圖預設大安區，資料支援十二行政區。後端已有資料初始化、點位查詢、新增 Bin、滿度／清運歷史及可重現模擬。前端 A／B／D 為獨立本機展示，尚未串接後端；無 IoT 硬體通訊、選址最佳化或正式派工。
+
+2026-10-19 使用者確認後端擴充並完成實作與Cloud Run部署：新增身分／媒體、回報／事件／工單、會員／點數兌換、提案／投票／認養、通知／成果與統計，migration head=0006、線上revision=binsoon-api-00008-v7k。frontend未修改，pytest只在本機；雲端已驗證三角色、私有GCS及明示回報到結案閉環。完整範圍見 [後端計畫](../backend/docs/BACKEND_ROADMAP.md)，前端請讀 [串接指南](../backend/docs/FRONTEND_INTEGRATION.md)、[逐項API參考](../backend/docs/API_REFERENCE.md) 與 [API 契約](../backend/docs/API_CONTRACT.md)。部署紀錄見 [DEPLOYMENT_STATUS](../backend/docs/DEPLOYMENT_STATUS.md)。既有與新增 Bin 繼續使用同一 ID；市民提案關聯 proposed Bin，不表示已實際設置。新功能需由前端負責人另行串接。
 
 使用者最新要求：新增的 candidate 等同 Bin，統一模型與查詢。這不表示已實際設置；`bin_type=proposed`、`placement_status=proposed`、`feasibility_status=pending_review` 保留其待現勘意義。Hotspot 仍不是 bin。
 
 ## 目錄與環境
 
-後端程式、資料、測試、migration、部署腳本與部署文件都在 backend/。尚未建立 frontend/。後端命令於 backend/ 執行；根目錄 Compose 需 `docker compose -f backend/compose.yaml --env-file backend/.env ...`。
+後端程式、資料、測試、migration、部署腳本與部署文件都在 backend/。frontend/ 已包含 React／TypeScript／Vite 的 A／B／D 展示。後端命令於 backend/ 執行；根目錄 Compose 需 `docker compose -f backend/compose.yaml --env-file backend/.env ...`。
 
 Compose 專案固定 trashbin_soon，沿用 postgres_data volume。Python 3.12、FastAPI、SQLAlchemy 2、Pydantic v2、psycopg 3、PostgreSQL 16/PostGIS、Alembic、pytest；requirements.lock 固定依賴。
 
@@ -57,8 +61,8 @@ UTF-8-SIG 讀取，驗證 UUID、來源唯一性、行政區、座標有限值�
 
 - **Bin / bins**：所有既有及新增點，使用單一 UUID。bin_type 區分 existing/proposed；保留 name、address、status、placement_status、feasibility_status、推薦資訊及來源欄位。
 - **Hotspot / hotspots**：景點聚合代表點，name、reported_count、location_precision。
-- **BinState / bin_states**：每 Bin 一筆目前滿度、模擬容量、速度、觀測／清運時間與 reading source_type。
-- **BinReading / bin_readings**：所有 Bin 的 measurement／collection／reset 事件；bin_id、滿度、UTC 時間、source_type、generation。
+- **BinState / bin_states**：每(bin_id,waste_type)一筆，general／recycling各自滿度、模擬容量、速度、觀測／清運時間；附classification_source，不更改Bin來源。
+- **BinReading / bin_readings**：所有 Bin 的 measurement／collection／reset 事件；bin_id、waste_type、分類來源、滿度、UTC時間、source_type、generation；舊讀值種類為null。
 - **SimulationClock / simulation_clocks**：全體共用持久化時鐘、seed、倍率與 generation。
 - **SimulationAdvance / simulation_advances**：request UUID、generation、時長與完成時間，處理重試去重。
 
@@ -68,17 +72,19 @@ UTF-8-SIG 讀取，驗證 UUID、來源唯一性、行政區、座標有限值�
 
 主要使用 /api/v1/bins：列表、POST 新增、/{id} 詳情、/{id}/history、/{id}/collect、/collection-priorities。列表預設大安區，包含 existing/proposed；district=all 查全市，bin_type 篩選類型，format=geojson 取得 FeatureCollection。單一 ID 可查任一 Bin 的目前使用量及歷史。
 
-原 /candidates GET/POST 暫保留原回應格式並 deprecated，但底層同一張 bins，POST 也需 Admin token。最近距離使用 ST_Distance 對全市 bin_type=existing 計算；無既有清潔箱回 null。Hotspot、proposed Bin 不參與既有清潔箱最近距離。
+原 /candidates GET／POST 已依使用者授權移除，回404；同時清除專用DTO與距離投影helper，不動bins資料或來源欄位。市民新增點用POST /proposals，維運直接建立用POST /bins，讀建議點用 /bins?bin_type=proposed。提案前用 /map/availability 檢查周邊已設置桶（含後續installed新增桶）；Hotspot不是Bin。
 
-舊 /demo/* 在新版本移除，控制集中 /api/v1/simulation/{status,seed,advance,pause,resume,reset}。所有 POST 使用共享 Admin Bearer token；未設定時 503、未授權時 401。ADMIN_TOKEN 支援舊 DEMO_ADMIN_TOKEN fallback。帳密與 token 不提交 Git。
+舊 /demo/* 在新版本移除，控制集中 /api/v1/simulation/{status,seed,advance,pause,resume,reset}。既有 POST 維持共享 Admin Bearer token；未設定時 503、未授權時 401。ADMIN_TOKEN 支援舊 DEMO_ADMIN_TOKEN fallback。新增產品API採可撤銷session及citizen/staff/admin權限；管理API亦可接受維運token，不能用共享token冒充市民／隊員。帳密與 token 不提交 Git。
 
-請求驗證在 Pydantic：十二行政區、有限座標與全球範圍、非空白 name 等。一般新增點尚未用多邊形驗證行政區歸屬，推薦 seed 有區界檢查。
+新增資料位於 app/modules：User／AuthSession、MediaAsset、Incident／Report／WorkOrder／Evidence／Completion、PointEntry／Reward／Redemption、Proposal／Vote／ProposalReview、Adoption、Notification／CompletionLike／WorkAction／Idempotency。舊Bin／狀態／歷史仍是同一套資料；產品寫入以資料庫advisory transaction lock序列化，部分唯一索引及首報FK再保證完整性。查證結算與工單完成分開，reset不影響會員台帳或工單。
+
+請求驗證在 Pydantic：十二行政區、有限座標與全球範圍、非空白 name 等。舊POST Bin一般新增點尚未用多邊形驗證歸屬，推薦 seed 有區界檢查；新市民提案必須位於保存的官方大安區圖資內，不使用前端示範矩形當行政邊界。
 
 ## 狀態、歷史與模擬
 
 CSV 匯入／POST Bin 同一 transaction 初始化缺少的狀態及歷史，不重設現有讀值。新增 Bin 從加入時的模擬時間開始，不補造過去資料。有效 ID 無讀值時 current_usage=null、history=[]；未知 ID 為 404。GET 沒有寫入或時間推進副作用。
 
-目前所有滿度都是 simulated，包括既有清潔箱。預設容量 120 公升、基礎速率、時段／週末倍率與 noise 都是假設，estimated_used_liters 為估算。未來 iot_sensor 讀值可沿用查詢格式，硬體 ingestion 尚未實作；模擬只更新 source_type=simulated 的狀態。
+目前所有滿度都是 simulated，包括既有清潔箱。新一般槽120公升／回收槽80公升、回收速率倍率0.65及基礎速率、時段／週末倍率與 noise 都是假設，estimated_used_liters 為估算。未來 iot_sensor 讀值可沿用查詢格式，硬體 ingestion 尚未實作；模擬只更新 source_type=simulated 的狀態。
 
 固定 seed=42，統一手動 advance，不靠前端 timer，也沒有每個 Bin 無限背景迴圈。分鐘級 BLAKE2 noise 可重現，拆分推進結果相同，滿度限制 0～100。資料庫 advisory transaction lock 序列化 seed、建立、推進、清運與 reset；request ID 防重試重算，generation 拒絕 reset 前未完成的舊請求。
 
@@ -95,3 +101,9 @@ Reset 歸零並回復初始時鐘，generation +1；保留歷史，新增 reset 
 操作與範例見 [統一 Bin 手冊](../backend/docs/BINS.md)、[後端 README](../backend/README.md)；已部署的歷史版本見 [DEPLOYMENT_STATUS.md](../backend/docs/DEPLOYMENT_STATUS.md)。
 
 目前完成項目、驗證與待辦整理見 [PROGRESS.md](PROGRESS.md)。
+
+## 本輪雙種類變更（已部署 Cloud Run）
+
+依使用者要求所有現有／新增／推薦／提案Bin先配置general與recycling兩槽；CSV無分類證據，均明示demo_assumption。0006將舊State及舊業務案件標為legacy_assumed_general並保留數值，舊Reading保持null種類／legacy_unclassified，不複製。一般／回收各自歷史、滿度、速率、清運及事件工單；地圖／導航按選定種類判可用，省略種類預設general。認養與提案仍為點位，會員依實際查證台帳計算。
+
+本機與雲端head=0006，正式revision=binsoon-api-00008-v7k。0006複合主鍵及雙槽數量不支援舊程式直接讀寫，部署需備份／維護／初始化Job／新程式協調切換，不可單純回滾舊映像。細節見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。

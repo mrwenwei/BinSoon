@@ -41,12 +41,15 @@ def test_migration_preserves_old_data_and_reading_ids(isolated_engine):
         c.execute(text("""INSERT INTO reading_history VALUES (:reading,:candidate,42.5,'2026-01-05T01:00:00Z','simulated','measurement')"""),dict(reading=reading,candidate=candidate))
         c.execute(text("""INSERT INTO demo_advances VALUES (:id,'daan_phase1_10bins',3,60,'2026-01-05T01:00:00Z')"""),dict(id=request))
         revision(c,'0003_unified_bins.py')
+        revision(c,'0004_product.py')
+        revision(c,'0005_product_integrity.py')
+        revision(c,'0006_waste_streams.py')
     with Session(isolated_engine) as db:
         assert db.get(Bin,existing).note=='保留原始備註'
         assert db.get(Bin,existing).source_file=='original.csv'
         assert db.get(Bin,candidate).rank==4 and db.get(Bin,candidate).name=='原始提案'
         assert db.get(Bin,candidate).bin_type=='proposed'
-        assert db.get(BinState,candidate).fill_level_pct==42.5
+        assert db.get(BinState,(candidate,'general')).fill_level_pct==42.5
         assert db.get(BinReading,reading).bin_id==candidate
         assert db.get(BinReading,reading).generation==3
         assert db.get(SimulationAdvance,request).minutes==60
@@ -72,7 +75,7 @@ def test_uuid_collision_stops_migration_before_changes(isolated_engine):
 
 def test_parallel_advance_and_seed(isolated_engine):
     with isolated_engine.begin() as c:
-        for name in ('0001_initial.py','0002_demo.py','0003_unified_bins.py'):
+        for name in ('0001_initial.py','0002_demo.py','0003_unified_bins.py','0004_product.py','0005_product_integrity.py','0006_waste_streams.py'):
             revision(c,name)
     def seed(_):
         with Session(isolated_engine) as db,db.begin():
@@ -91,4 +94,4 @@ def test_parallel_advance_and_seed(isolated_engine):
     with Session(isolated_engine) as db:
         assert sim.get_clock(db).simulated_at==sim.START+timedelta(hours=3)
         assert db.scalar(select(func.count()).select_from(Bin))==10
-        assert db.scalar(select(func.count()).select_from(BinReading))==40
+        assert db.scalar(select(func.count()).select_from(BinReading))==80

@@ -1,4 +1,4 @@
-import { useDemoStore } from "../data/demoStore";
+import type { OperationalState } from "../data/workOrders";
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
@@ -12,6 +12,7 @@ import type { Point } from "../data/participation";
 setWorkerUrl(workerUrl);
 
 interface Props {
+  operations?: OperationalState;
   locations: LocationRecord[];
   selected: LocationRecord | null;
   onSelect: (location: LocationRecord) => void;
@@ -47,8 +48,8 @@ export function LocationMap({
   selectedProposalId,
   selectionBounds,
   removedIds,
+  operations,
 }: Props) {
-  const { state: operations } = useDemoStore();
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);

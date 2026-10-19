@@ -26,6 +26,19 @@ export function locationMarkerIcon(
   operations?: OperationalState,
 ) {
   if (location.kind !== "bin") return markerIcon(location.kind, selected);
+  if (location.bin_status !== undefined || !operations) {
+    const status = location.bin_status;
+    return markerIcon(
+      location.kind,
+      selected,
+      status?.fill_status || "unknown",
+      status?.operational_status === "removed"
+        ? "removed"
+        : status?.is_new
+          ? "new"
+          : undefined,
+    );
+  }
   const demo = binDemo(location, removedIds, operations);
   return markerIcon(
     location.kind,

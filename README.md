@@ -43,6 +43,8 @@ npm run preview
 
 ## 後端快速啟動
 
+2026-10-19 已部署 A／B／D 持久化展示後端（frontend未修改／串接）：登入、照片、回報／事件／工單、查證發點、會員／兌換、投票／認養、通知及成果統計。前端先讀 [串接指南](backend/docs/FRONTEND_INTEGRATION.md)，再查 [完整API Reference](backend/docs/API_REFERENCE.md) 與 [契約／欄位對照](backend/docs/API_CONTRACT.md)。本機與雲端head=0005，線上revision=binsoon-api-00005-kcw；三角色及私有GCS已初始化驗證，帳號不隨冷啟動重建。完整結果見 [部署紀錄](backend/docs/DEPLOYMENT_STATUS.md)。
+
 需先安裝 Docker Desktop 與 Docker Compose。
 台北市智慧垃圾桶 MVP。後端統一使用 **Bin** 管理既有清潔箱與新增點，以同一個 ID 查詢目前滿度及歷史；proposed 標記保留待現勘意義。所有滿度目前是模擬資料，沒有實測感測器。
 
@@ -120,10 +122,12 @@ BinSoon/
 
 開發前請閱讀 [AGENTS.md](AGENTS.md) 與 [專案詳細背景](docs/PROJECT_CONTEXT.md)。後端操作詳見 [backend/README.md](backend/README.md)。
 
-目前範圍為資料初始化、清潔箱／景點／候選點查詢、候選點建立與最近清潔箱距離。未實作 IoT、模擬感測器、推薦演算法。
+本分支包含統一Bin／滿度歷史／模擬及A／B／D展示後端；無真實IoT、台北通／SMS／LINE、最佳化演算法或正式派工／薪資。前端仍獨立使用本機展示資料。
 
-Cloud Run 部署架構、建立 GCP 專案與詳細操作見 [部署指南](docs/CLOUD_RUN.md)。
+Cloud Run 部署架構、建立 GCP 專案與詳細操作見 [部署指南](backend/docs/CLOUD_RUN.md)。
 
-已部署的公開 API 與資源版本見 [部署紀錄](docs/DEPLOYMENT_STATUS.md)。
+已部署的公開 API 與資源版本見 [部署紀錄](backend/docs/DEPLOYMENT_STATUS.md)。
 
-下次自行更新部署，請依 [手動部署操作手冊](docs/MANUAL_DEPLOYMENT.md) 逐步執行，包含腳本與完全手動兩種方式。
+下次自行更新部署，請依 [手動部署操作手冊](backend/docs/MANUAL_DEPLOYMENT.md) 逐步執行，包含腳本與完全手動兩種方式。
+
+本輪已實作一般垃圾／資源回收雙種類（本機與Cloud Run均為0006），每個Bin有兩個獨立滿度／歷史／清運狀態，點位ID不變；完整遷移假設、API參數與前端用法見 [雙種類串接](backend/docs/WASTE_STREAMS.md)。

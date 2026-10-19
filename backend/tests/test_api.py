@@ -1,7 +1,6 @@
 from uuid import uuid4
 import pytest
 from pydantic import SecretStr
-from sqlalchemy import select, func, update
 from app.config import get_settings
 from app.models import Bin, BinReading, BinState
 
@@ -34,7 +33,7 @@ def test_lists_health_and_geojson(client):
     assert '/api/v1/demo/bins' not in paths
 
 
-def test_new_bin_and_legacy_candidate_share_identity_and_history(admin_client, seeded):
+def test_new_bin_has_shared_identity_and_history(admin_client, seeded):
     existing = admin_client.get('/api/v1/bins?bin_type=existing').json()[0]
     payload = dict(name='新點', longitude=existing['longitude'], latitude=existing['latitude'])
     response = admin_client.post('/api/v1/bins', headers=AUTH, json=payload)
@@ -46,16 +45,18 @@ def test_new_bin_and_legacy_candidate_share_identity_and_history(admin_client, s
     assert id_ in {r['id'] for r in admin_client.get('/api/v1/bins').json()}
     assert admin_client.get('/api/v1/bins/'+id_).json() == item
     history = admin_client.get('/api/v1/bins/'+id_+'/history').json()
-    assert len(history) == 1 and history[0]['event_type'] == 'reset'
+    assert len(history) == 2 and {h['waste_type'] for h in history} == {'general','recycling'}
     assert history[0]['bin_id'] == id_
-    legacy = next(r for r in admin_client.get('/api/v1/candidates').json() if r['id'] == id_)
-    assert legacy['nearest_bin_distance_m'] == pytest.approx(0, abs=0.001)
-    second = admin_client.post('/api/v1/candidates', headers=AUTH, json=payload)
-    assert second.status_code == 201
-    assert admin_client.get('/api/v1/bins/'+second.json()['id']).status_code == 200
-    # Proposed points never count as an existing physical bin for distance.
-    seeded.execute(update(Bin).where(Bin.bin_type == 'existing').values(bin_type='proposed'))
-    assert all(r['nearest_bin_distance_m'] is None for r in admin_client.get('/api/v1/candidates').json())
+    assert len(admin_client.get('/api/v1/bins?bin_type=existing').json()) == 47
+
+
+def test_candidate_routes_removed(admin_client):
+    contract = admin_client.get('/openapi.json').json()
+    assert '/api/v1/candidates' not in contract['paths']
+    assert 'CandidateRead' not in contract['components']['schemas']
+    for headers in ({}, AUTH):
+        assert admin_client.get('/api/v1/candidates', headers=headers).status_code == 404
+        assert admin_client.post('/api/v1/candidates', headers=headers, json={}).status_code == 404
 
 
 @pytest.mark.parametrize('field,value', [('longitude',181),('longitude',-181),('latitude',91),('latitude',-91),('longitude','NaN'),('latitude','Infinity'),('district','台中市'),('name',' ')])
@@ -74,4 +75,4 @@ def test_empty_and_unknown_history(client, seeded):
     assert client.get(f'/api/v1/bins/{bin_.id}/history').json() == []
     for suffix in ('','/history'):
         assert client.get(f'/api/v1/bins/{uuid4()}{suffix}').status_code == 404
-    assert seeded.get(BinState, bin_.id) is None
+    assert seeded.get(BinState, (bin_.id,'general')) is None

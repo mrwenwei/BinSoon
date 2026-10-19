@@ -29,6 +29,15 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:-${DEMO_ADMIN_TOKEN:-}}
       SIMULATION_CAPACITY_LITERS: ${SIMULATION_CAPACITY_LITERS:-${DEMO_CAPACITY_LITERS:-120}}
       SIMULATION_TIME_MULTIPLIER: ${SIMULATION_TIME_MULTIPLIER:-${DEMO_TIME_MULTIPLIER:-600}}
+      SIMULATION_RECYCLING_CAPACITY_LITERS: ${SIMULATION_RECYCLING_CAPACITY_LITERS:-80}
+      SIMULATION_RECYCLING_RATE_MULTIPLIER: ${SIMULATION_RECYCLING_RATE_MULTIPLIER:-0.65}
+      DEMO_AUTH_ENABLED: ${DEMO_AUTH_ENABLED:-false}
+      DEMO_CITIZEN_PASSWORD: ${DEMO_CITIZEN_PASSWORD:-}
+      DEMO_STAFF_PASSWORD: ${DEMO_STAFF_PASSWORD:-}
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-[]}
+      MEDIA_BACKEND: local
+      MEDIA_DIRECTORY: /app/media
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       TZ: UTC
@@ -43,6 +52,7 @@ services:
       - ./alembic:/app/alembic
       - ./tests:/app/tests
       - ./data:/app/data:ro
+      - media_data:/app/media
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
@@ -50,3 +60,4 @@ services:
       retries: 10
 volumes:
   postgres_data:
+  media_data:

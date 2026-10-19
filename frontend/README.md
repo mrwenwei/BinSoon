@@ -1,10 +1,40 @@
-# BinSoon 地圖與 A／B／D flow 展示
+# BinSoon 前端：API 地圖、回報、查證與滿桶完工
 
-React＋TypeScript＋Vite，Leaflet 管理操作與標記，MapLibre 渲染 OpenFreeMap 底圖。前端使用已提交的靜態資料快照，可獨立部署，無需後端、資料庫或金鑰。
+React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)。
+
+## 目前可操作範圍
+
+- 訪客地圖：十二區、搜尋、來源／桶況篩選、全部分頁、最近可用桶、桶詳情、分頁歷史與示意步行導航。未知維持 null，導航依後端 is_usable。
+- 市民：帳號密碼登入、照片檔案／相機入口、定位或明確輸入現場座標、五類回報、案件進度、會員摘要與點數台帳。
+- 隊員：責任區工單分類／篩選、接單、到場、逐筆查證。工單每步讀最新版本，衝突重讀後再次確認；查證入帳與完工分開。
+- 隊員滿桶完工：到場後上傳 purpose=completion 照片、掛 evidence，再提交 finish。缺查證時不能提交；未收到清空回傳時為 waiting_sensor，不能視為結案。
+- 管理員：`/#admin` 輸入工單 UUID，或使用隊員工單提供的另開分頁連結；以獨立 admin session 讀版本、確認「非真實 IoT」後送出 demo-clear。清空先到仍須完成照、全部查證與明確 finish 才能結案。每次保留 reading_id 與命令識別供未知結果重試。
+- 市民：桶詳情只呈現後端有效完成紀錄；對最新 completion.id 感謝一次，顯示後端 like_count／liked_by_me，不增加點數或排名。桶況、歷史、最近桶、導航及案件持續重新讀取後端，容量歸零本身不代表完工。
+- 道路站點、兌換、成果統計、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
+
+## API 設定與身份
+
+`frontend/.env.example` 提供公開 `VITE_API_BASE_URL`，未設定時使用已部署的 Cloud Run `/api/v1`。可改成本機 API；變更後重啟 dev 或重新 build。這是公開 URL，密碼／token 絕不放入 VITE_* 或 Git。
+
+帳號為 demo-citizen／demo-staff／demo-admin，密碼由維運私下提供，於登入表單輸入。沒有 TaipeiPass／手機 OTP。Session 只存在本頁記憶體，有效期由後端 expires_at 決定（目前 60 分鐘）；重整／關頁後須重新登入。各分頁身份互不覆蓋。登出清個人快取與草稿；不清後端資料。
+
+尚未送出的照片／表單與未確認結果的命令僅保留於同頁記憶體，重新登入同一帳號可重試原命令；重試保留 key、body、ETag。重新整理會失去這些暫存，應先重新讀取案件確認結果，不把逾時當成失敗重建。
+
+後端目前允許 http://localhost:5173、http://127.0.0.1:5173。其他 dev／preview origin 需要後端設定 CORS；API URL 無法取代 CORS。Vercel 尚未部署，未建立雲端資源。
+
+桶況皆為 simulated，歷史 recorded_at 為模擬時鐘。照片及查證時間為後端 UTC 實際作業時間；兩者不混比。場所 reported_count 是統計，proposed 仍須依 placement_status 區分待現勘／示範設置。
+
+## 歷史展示與測試
+
+舊 A／B／D 展示完整保存在開發專用 `tests/legacy/index.html`，保留原 86 項歷史回歸；此入口不是正式產品入口，Vite production build 不包含它。它的 localStorage 帳本不會由正式首頁讀取、遷移或寫入。
+
+新 API 測試攔截 HTTP 邊界，驗證目前流程；歷史回歸只驗證舊展示。兩者的通過數不能當成雲端整合或未串接功能已完成。新的驗證結果見 [串接驗證紀錄](../docs/FRONTEND_API_INTEGRATION_VALIDATION.md)。
+
+下方 A／B／D 操作章節為歷史展示說明；正式首頁以本節列出的串接範圍為準。
 
 ## Clone 後在本機查看
 
-先安裝 Git、Node.js 24（含 npm）；建議所有組員統一使用 Node 24。`package.json` 的支援範圍為 `^22.12.0 || >=24.0.0`。可用 `node --version`、`npm --version` 確認環境。前端獨立運行，不需 Docker、後端、資料庫、Vercel 帳號或 `.env`；底圖需要網路及瀏覽器 WebGL 支援。
+先安裝 Git、Node.js 24（含 npm）；建議所有組員統一使用 Node 24。`package.json` 的支援範圍為 `^22.12.0 || >=24.0.0`。可用 `node --version`、`npm --version` 確認環境。前端 build 不需 Docker 或資料庫；正式首頁操作需要可用的後端 API 與允許的 CORS origin。底圖需要網路及瀏覽器 WebGL 支援。
 
 ### 第一次下載與 build
 
@@ -43,7 +73,7 @@ npm run preview
 npm run dev
 ```
 
-瀏覽器開啟 http://127.0.0.1:5173/。終端機需保持執行，修改程式會自動更新；按 `Ctrl+C` 停止。若連接埠被占用，請以終端機顯示的 Local URL 為準。
+瀏覽器開啟 http://127.0.0.1:5173/。終端機需保持執行，修改程式會自動更新；按 `Ctrl+C` 停止。固定使用 5173；被占用時先停止原 dev server，避免默默換 port 導致 CORS 失敗。
 
 ### 建置並預覽正式產物
 
@@ -54,7 +84,7 @@ npm run build
 npm run preview
 ```
 
-`build` 會先檢查 TypeScript，再產生 `frontend/dist/`；`preview` 提供本機 HTTP 服務，預設開啟 http://127.0.0.1:4173/（以終端機輸出為準）。保持終端機執行，按 `Ctrl+C` 停止。請透過此網址查看，不要直接雙擊 `dist/index.html`。更新程式後需重新執行 `build`，才能預覽新的產物。
+`build` 會先檢查 TypeScript，再產生 `frontend/dist/`；`preview` origin 也需後端允許 CORS；它提供本機 HTTP 服務，預設開啟 http://127.0.0.1:4173/（以終端機輸出為準）。保持終端機執行，按 `Ctrl+C` 停止。請透過此網址查看，不要直接雙擊 `dist/index.html`。更新程式後需重新執行 `build`，才能預覽新的產物。
 
 ## 常見本機問題
 

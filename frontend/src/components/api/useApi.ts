@@ -1,0 +1,126 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiError, errorMessage, type Result } from "../../data/api";
+import { useSession } from "./SessionContext";
+
+export function useApi<T>(
+  key: string | null,
+  load: (signal: AbortSignal) => Promise<Result<T>>,
+  poll = false,
+) {
+  const { session, invalidate } = useSession();
+  const token = session?.access_token;
+  const identity = JSON.stringify([key, token]);
+  const loader = useRef(load);
+  loader.current = load;
+  const [revision, setRevision] = useState(0);
+  const [state, setState] = useState<{
+    identity: string;
+    result?: Result<T>;
+    error?: string;
+    retryAt?: number;
+    loading: boolean;
+  }>({ identity, loading: true });
+  const retryAfter = useRef(0);
+  const reload = useCallback(() => {
+    if (Date.now() >= retryAfter.current) {
+      setState((old) => ({ ...old, loading: true }));
+      setRevision((v) => v + 1);
+    }
+  }, []);
+  useEffect(() => {
+    if (key === null) return;
+    retryAfter.current = 0;
+    let disposed = false;
+    let controller: AbortController | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    async function refresh() {
+      controller?.abort();
+      let delay = 10000;
+      const current = new AbortController();
+      controller = current;
+      setState((old) => ({
+        identity,
+        result: old.identity === identity ? old.result : undefined,
+        error: old.identity === identity ? old.error : undefined,
+        retryAt: old.identity === identity ? old.retryAt : undefined,
+        loading: true,
+      }));
+      try {
+        const result = await loader.current(current.signal);
+        if (!disposed && !current.signal.aborted)
+          setState({ identity, result, loading: false });
+      } catch (e) {
+        if (!disposed && !current.signal.aborted) {
+          const retryAt =
+            e instanceof ApiError && e.status === 429
+              ? e.retryAt || Date.now() + 30000
+              : 0;
+          retryAfter.current = retryAt;
+          if (retryAt) delay = Math.max(1000, retryAt - Date.now());
+          const transient =
+            !(e instanceof ApiError) || e.status >= 500 || e.status === 429;
+          setState((old) => ({
+            identity,
+            result:
+              transient && old.identity === identity ? old.result : undefined,
+            error: errorMessage(e),
+            retryAt,
+            loading: false,
+          }));
+          if (e instanceof ApiError && e.status === 401 && token)
+            invalidate(token);
+        }
+      } finally {
+        if (!disposed && !current.signal.aborted && poll && !document.hidden)
+          timer = setTimeout(refresh, delay);
+      }
+    }
+    const visibility = () => {
+      clearTimeout(timer);
+      controller?.abort();
+      if (!document.hidden) {
+        if (Date.now() < retryAfter.current)
+          timer = setTimeout(refresh, retryAfter.current - Date.now());
+        else void refresh();
+      }
+    };
+    if (!document.hidden) void refresh();
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+      controller?.abort();
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [identity, revision, poll, invalidate]);
+  const visible =
+    key !== null && state.identity === identity ? state : undefined;
+  return {
+    data: visible?.result?.data,
+    etag: visible?.result?.etag,
+    error: visible?.error,
+    stale: Boolean(visible?.result && visible.error),
+    retryAt: visible?.retryAt,
+    loading: key !== null && (!visible || visible.loading),
+    reload,
+  };
+}
+
+export function useCooldown() {
+  const [until, setUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (until <= Date.now()) return;
+    const timer = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(timer);
+  }, [until]);
+  return {
+    waiting: now < until,
+    hold: (error: unknown) => {
+      if (error instanceof ApiError && error.status === 429) {
+        setNow(Date.now());
+        setUntil(error.retryAt || Date.now() + 30000);
+      }
+    },
+  };
+}

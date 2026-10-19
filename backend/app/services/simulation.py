@@ -9,13 +9,14 @@ from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 from zoneinfo import ZoneInfo
 from fastapi import HTTPException
-from sqlalchemy import func, select, text
+from sqlalchemy import and_, or_, func, select, text
 from app.config import get_settings
 from app.models import Bin, BinState, BinReading, SimulationClock, SimulationAdvance
+from app.waste import WASTE_TYPES
 
 CLOCK = "city_bins"
 RECOMMENDATIONS = "daan_phase1_10bins"
-VERSION = "unified-v1"
+VERSION = "waste-streams-v2"
 START = datetime(2026, 1, 5, tzinfo=timezone.utc)
 DATA = Path(__file__).resolve().parents[2] / "data"
 
@@ -32,8 +33,21 @@ def get_clock(db):
 
 
 def record(db, state, event, clock):
-    db.add(BinReading(bin_id=state.bin_id, fill_level_pct=state.fill_level_pct,
-        recorded_at=state.last_updated_at, source_type="simulated", event_type=event, generation=clock.generation))
+    previous = db.scalar(select(BinReading).where(BinReading.bin_id == state.bin_id)
+        .where(or_(BinReading.waste_type == state.waste_type,
+            and_(state.waste_type == "general", BinReading.waste_type.is_(None))))
+        .order_by(BinReading.observation_sequence.desc(), BinReading.recorded_at.desc()).limit(1))
+    state.observation_sequence = (state.observation_sequence or 0) + 1
+    state.observed_at, state.received_at = state.last_updated_at, datetime.now(timezone.utc)
+    reading = BinReading(bin_id=state.bin_id, waste_type=state.waste_type,
+        classification_source=state.classification_source, fill_level_pct=state.fill_level_pct,
+        recorded_at=state.last_updated_at, source_type="simulated", event_type=event, generation=clock.generation,
+        observed_at=state.observed_at, received_at=state.received_at, observation_sequence=state.observation_sequence)
+    db.add(reading)
+    if event == "measurement" and state.fill_level_pct >= 80 and (previous is None or previous.fill_level_pct < 80):
+        from app.modules.workflows import adoption_alert
+        adoption_alert(db, state.bin_id, "full", f"{state.bin_id}:{state.waste_type}:{clock.generation}:{state.observation_sequence}", state.waste_type)
+    return reading
 
 
 def initialize(db):
@@ -46,15 +60,20 @@ def initialize(db):
             time_multiplier=settings.simulation_time_multiplier, data_version=VERSION, generation=0)
         db.add(clock)
         db.flush()
-    missing = db.scalars(select(Bin).outerjoin(BinState, BinState.bin_id == Bin.id)
-                         .where(BinState.bin_id.is_(None)).order_by(Bin.id))
-    for bin_ in missing:
+    clock.data_version = VERSION
+    existing = {(s.bin_id, s.waste_type) for s in db.scalars(select(BinState))}
+    for bin_ in db.scalars(select(Bin).order_by(Bin.id)):
         # No measured rate exists: deterministic synthetic rates for all points.
         rate = bin_.demand_score / 10 + (11 - bin_.rank) * 0.03 if bin_.demand_score is not None and bin_.rank else 4 + (bin_.id.int % 401) / 100
-        state = BinState(bin_id=bin_.id, fill_level_pct=0, capacity_liters=get_settings().simulation_capacity_liters,
-            fill_rate_pct_per_hour=rate, last_updated_at=clock.simulated_at, source_type="simulated")
-        db.add(state)
-        record(db, state, "reset", clock)
+        settings = get_settings()
+        for waste_type in WASTE_TYPES:
+            if (bin_.id, waste_type) in existing: continue
+            state = BinState(bin_id=bin_.id, waste_type=waste_type, classification_source="demo_assumption",
+                fill_level_pct=0, capacity_liters=settings.simulation_capacity_liters if waste_type == "general" else settings.simulation_recycling_capacity_liters,
+                fill_rate_pct_per_hour=rate if waste_type == "general" else rate * settings.simulation_recycling_rate_multiplier,
+                last_updated_at=clock.simulated_at, source_type="simulated")
+            db.add(state)
+            record(db, state, "reset", clock)
     db.flush()
     return clock
 
@@ -121,12 +140,13 @@ def advance(db, body):
         raise HTTPException(409, "Simulation is paused")
     start_tick = int((clock.simulated_at - START).total_seconds() // 60)
     factors = [multiplier(clock.simulated_at + timedelta(minutes=i)) / 60 for i in range(minutes)]
-    for state in db.scalars(select(BinState).where(BinState.source_type == "simulated").order_by(BinState.bin_id)):
+    for state in db.scalars(select(BinState).where(BinState.source_type == "simulated").order_by(BinState.bin_id, BinState.waste_type)):
         if state.fill_rate_pct_per_hour:
             for minute, factor in enumerate(factors):
                 if state.fill_level_pct >= 100:
                     break
-                delta = state.fill_rate_pct_per_hour * factor + noise(clock.random_seed, state.bin_id, start_tick + minute)
+                stream_seed = state.bin_id if state.waste_type == "general" else f"{state.bin_id}:recycling"
+                delta = state.fill_rate_pct_per_hour * factor + noise(clock.random_seed, stream_seed, start_tick + minute)
                 state.fill_level_pct = min(100.0, max(0.0, state.fill_level_pct + max(0, delta)))
         state.last_updated_at = clock.simulated_at + timedelta(minutes=minutes)
         record(db, state, "measurement", clock)
@@ -149,12 +169,12 @@ def reset(db):
     return clock
 
 
-def collect(db, bin_id):
+def collect(db, bin_id, waste_type="general"):
     lock(db)
     clock = get_clock(db)
     if db.get(Bin, bin_id) is None:
         raise HTTPException(404, "Bin not found")
-    state = db.get(BinState, bin_id)
+    state = db.get(BinState, (bin_id, waste_type))
     if state is None or state.source_type != "simulated":
         raise HTTPException(409, "No simulated state for this bin")
     state.fill_level_pct = 0

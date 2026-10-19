@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
+from app.waste import WasteType
 
 District = Literal["中正區", "大同區", "中山區", "松山區", "大安區", "萬華區", "信義區", "士林區", "北投區", "內湖區", "南港區", "文山區"]
 DistrictFilter = District | Literal["all"]
@@ -31,6 +32,8 @@ class LocationRead(BaseModel):
 
 
 class UsageRead(BaseModel):
+    waste_type: WasteType
+    classification_source: str
     fill_level_pct: float
     capacity_liters: float
     estimated_used_liters: float
@@ -40,6 +43,12 @@ class UsageRead(BaseModel):
     last_emptied_at: datetime | None
     priority: Literal["critical", "high", "medium", "low"]
     estimated_hours_to_90_pct: float | None
+
+
+class CompartmentRead(BaseModel):
+    waste_type: WasteType
+    classification_source: str
+    current_usage: UsageRead | None
 
 
 class BinRead(LocationRead):
@@ -57,19 +66,13 @@ class BinRead(LocationRead):
     reason: str | None
     boundary_warning: str | None
     current_usage: UsageRead | None
+    compartments: list[CompartmentRead]
 
 
 class HotspotRead(LocationRead):
     name: str
     reported_count: int
     location_precision: str
-
-
-class CandidateRead(LocationRead):
-    """Deprecated wire format; proposed bins have no independent model/table."""
-    name: str
-    status: str
-    nearest_bin_distance_m: float | None
 
 
 class ReadingRead(BaseModel):
@@ -80,9 +83,13 @@ class ReadingRead(BaseModel):
     source_type: str
     event_type: Literal["measurement", "collection", "reset"]
     generation: int | None
+    waste_type: WasteType | None
+    classification_source: str
 
 
 class PriorityRead(BaseModel):
+    waste_type: WasteType
+    classification_source: str
     bin_id: UUID
     name: str
     bin_type: BinType

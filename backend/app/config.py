@@ -14,6 +14,17 @@ class Settings(BaseSettings):
     admin_token: SecretStr | None = Field(default=None, validation_alias=AliasChoices("ADMIN_TOKEN", "DEMO_ADMIN_TOKEN"))
     simulation_capacity_liters: float = Field(default=120, gt=0, allow_inf_nan=False, validation_alias=AliasChoices("SIMULATION_CAPACITY_LITERS", "DEMO_CAPACITY_LITERS"))
     simulation_time_multiplier: float = Field(default=600, gt=0, allow_inf_nan=False, validation_alias=AliasChoices("SIMULATION_TIME_MULTIPLIER", "DEMO_TIME_MULTIPLIER"))
+    simulation_recycling_capacity_liters: float = Field(default=80, gt=0, allow_inf_nan=False)
+    simulation_recycling_rate_multiplier: float = Field(default=0.65, ge=0, allow_inf_nan=False)
+    demo_auth_enabled: bool = False
+    demo_citizen_password: SecretStr | None = None
+    demo_staff_password: SecretStr | None = None
+    demo_admin_password: SecretStr | None = None
+    cors_origins: list[str] = []
+    media_backend: str = "local"
+    media_directory: str = "/tmp/binsoon-media"
+    media_bucket: str | None = None
+    media_signing_service_account: str | None = None
 
     @property
     def database_url(self) -> URL:

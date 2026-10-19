@@ -11,7 +11,7 @@
 - 大安區既有清潔箱：https://binsoon-api-887203439341.asia-east1.run.app/api/v1/bins?bin_type=existing
 - 大安區景點：https://binsoon-api-887203439341.asia-east1.run.app/api/v1/hotspots
 
-HTTP 服務公開存取；目前統一 Bin 版本所有 POST 均需 Admin Bearer token。初版匿名 POST 的紀錄僅描述當時設定。
+HTTP 服務公開存取；舊管理 POST 仍需維運 Admin token，新產品 API 使用市民／隊員／管理員 session。展示登入僅提供本專案示範，不是真實台北通或正式作業環境。以下各版細節為歷史紀錄，最新部署見文末 0005。
 
 ## 首次部署資源（最新版本見下方 0003 紀錄）
 
@@ -75,7 +75,7 @@ python3 backend/scripts/check_deployment.py \
   https://binsoon-api-887203439341.asia-east1.run.app
 ```
 
-若加上 --create-candidate，會永久建立一筆標示為部署驗收用的候選點。一般重複驗收不要加此旗標。
+目前腳本選用 `--create-bin`，會永久建立一筆標示為部署驗收用的proposed Bin；預設不寫入。舊 `--create-candidate` 及 /candidates 路由已移除。以下0001至0005紀錄中的候選點驗收描述為當時版本行為。
 
 更多操作、logs、回滾與費用管理見 [CLOUD_RUN.md](CLOUD_RUN.md)。Cloud SQL 在沒有 API 流量時仍會計費；未設定支出硬上限，也未自動停止或刪除資源。
 
@@ -134,3 +134,132 @@ python3 backend/scripts/check_deployment.py \
 本機 36 項測試通過，未在 Cloud SQL 執行 pytest。唯讀 HTTP 驗收仍為官方全市 bins/hotspots=681/130、大安區=47/18（Bin 使用 bin_type=existing 篩選）。未對新模擬時間做 advance/reset，避免改動既有讀值；切換前模擬時間及 generation 保留。
 
 新 [Swagger](https://binsoon-api-887203439341.asia-east1.run.app/docs)、[全市 Bin](https://binsoon-api-887203439341.asia-east1.run.app/api/v1/bins?district=all)、[模擬狀態](https://binsoon-api-887203439341.asia-east1.run.app/api/v1/simulation/status)。
+
+## A／B／D 持久化展示後端（0005）：2026-10-19 已部署
+
+使用者明確要求部署並自動核准。沿用 binsoon／asia-east1／binsoon-api 與既有 Cloud SQL 展示資料庫；沒有建立新 SQL instance，沒有清空既有資料、reset 模擬或執行正式 DB pytest。此環境目前只有展示／模擬桶況，不作真實城市派工用途。
+
+| 項目 | 結果 |
+| --- | --- |
+| 正式 revision／流量 | `binsoon-api-00005-kcw`／100% |
+| 上一版 | `binsoon-api-00004-lql` |
+| Alembic head | `0005`（新增0004產品表及0005完整性約束） |
+| Cloud Build | `35544a80-2fd2-434e-9b6c-77e32ba49d10`，SUCCESS |
+| 映像 digest | `sha256:4d2b87d96e5b4c97269b2590c879c9a0a347524facc6ae2c9150a78af037becc` |
+| 遷移前備份 | `1792389532929`，SUCCESSFUL；description=before-product-0005-20261019 |
+| 初始化 execution | `binsoon-api-initialize-kw4l4`，成功；CSV bins=681／hotspots=130 |
+| 帳號 seed execution | `binsoon-api-product-seed-2sgbz`，成功 |
+| Cloud Run 規格 | 維持1 vCPU／512 MiB／concurrency=8／min=0／max=2／timeout=60s |
+| 私有照片 bucket | `gs://binsoon-media-887203439341`，asia-east1／Standard／uniform access／public access prevention |
+| 照片 IAM | runtime 僅在上述 bucket 具有 storage.objectAdmin；同一 runtime signing account 具有 serviceAccountTokenCreator，啟用 IAM Credentials API，無下載私鑰 |
+| CORS origins | `http://localhost:5173`、`http://127.0.0.1:5173` |
+| 新 Secret references | `binsoon-demo-citizen-password:1`、`binsoon-demo-staff-password:1`、`binsoon-demo-admin-password:1` |
+
+新增bucket／Secret為本展示部署的一部分，按量計費；沒有改動Cloud SQL機型或Cloud Run常駐數。DB密碼與既有維運token不輪替。
+
+這次0004／0005是向後相容新增表／欄位／索引／FK：先備份，以獨立初始化Job migration／CSV upsert，seed建立三個固定帳號及四個展示獎品，預備no-traffic revision，再明確切新版100%。**未贈初始點數、未建立seed虛構待辦**；後續HTTP驗收會保留明示測試案件，見下方。
+
+來源是 main HEAD `3a24659` 之後尚未提交的後端快照，不宣稱該commit已包含功能。Build來源tar與逐檔SHA256、測試及驗收證據見 [release manifest](../deploy/releases/product-20261019.json)。文件擴充與測試隔離修正於建置後完成，不影響部署runtime程式；本機工作尚未commit／push。
+
+### 前端交接
+
+- [前端串接指南](FRONTEND_INTEGRATION.md)：URL、三角色登入、可複製TypeScript、照片、各畫面順序、cache／重試／ETag／錯誤處理。
+- [API契約](API_CONTRACT.md)：權限、DTO語意、規則與P1–P22欄位對照。
+- [完整API Reference](API_REFERENCE.md)：72個operation、88個schema，逐一列必填、nullable、預設、enum及限制。
+- [線上Swagger](https://binsoon-api-887203439341.asia-east1.run.app/docs)／[線上OpenAPI](https://binsoon-api-887203439341.asia-east1.run.app/openapi.json)：已比對本分支快照一致（69 paths）。
+
+展示帳號為 `demo-citizen`、`demo-staff`、`demo-admin`。密碼僅存Secret Manager，維運私下交付；本次本機交接副本在 `/tmp/binsoon-product-credentials.env`（0600），不提交、不放前端bundle。三帳號共用角色示範資料，不當成多人正式登入。此檔清除後可由具權限維運者從對應Secret version取回。重跑seed不輪替帳號密碼。
+
+### 本次實際驗收
+
+- 本機Docker真實PostGIS完整pytest：**74 passed、61 warnings、177.59秒**。產品測試使用獨立schema，不再依賴本機展示帳號未初始化；一般資料與帳密保留。
+- health／Swagger／OpenAPI／地圖／Bin詳情／歷史正常；既有桶全市681／大安47，景點大安18。
+- 三角色登入、me、會員／回報／提案／認養／通知／獎品、隊員工單／站點／統計可讀；登出撤銷生效，市民讀staff為403、匿名回報為401。
+- 兩個允許origin的Authorization／Idempotency-Key／If-Match preflight正常。
+- 真實私有GCS圖片上傳、IAM SignBlob短效下載HTTP200、匿名物件讀取拒絕、未掛案件的市民照片隊員不可讀（404）。留存一張孤兒驗收照片 `8933d5d2-f05e-4dbc-9d7c-0314b8323550`，可於24小時後由既有maintenance CLI處理。
+- 明確以HTTP跑通 `check_product_demo --write-demo`：示範市民上傳照片及回報→隊員接單／到場→查證入帳→完工照→finish等待→管理員demo-clear→completed。永久保留明示「API展示驗收」案件及照片、合法查證台帳，不補造歷史基數。該桶留下simulated collection，其他桶未advance/reset。
+
+前端本次完全未修改，尚未對接／實體手機驗證。真實IoT、台北通、SMS／LINE、正式兌換及薪資仍未提供。
+
+### 下次重部署與回復
+
+從根目錄使用**新版設定**，避免舊範例把展示登入關閉：
+
+```sh
+set -a
+source backend/deploy/binsoon-product.env.example
+set +a
+export GCLOUD=/opt/homebrew/share/google-cloud-sdk/bin/gcloud
+bash backend/deploy/cloudrun.sh
+# 如果流量仍固定舊revision，確認新revision readiness及初始化成功後再切：
+gcloud run services update-traffic binsoon-api --project=binsoon --region=asia-east1 --to-latest
+```
+
+不要每次建置重新建立bucket、密碼或贈點；新環境需先配置資源／IAM。展示seed需明確執行既有 `binsoon-api-product-seed` Job，其映像應隨版本更新；不掛冷啟動。
+
+0004／0005與上一版程式相容，緊急可將流量切回00004以恢復舊Bin功能（新產品功能會消失，但資料表保留），不downgrade或刪除新產品表；DB還原需另規劃。舊版不得繼續用於已啟用真實感測／營運資料的環境。
+
+## API入口清理：2026-10-19 已部署
+
+依使用者確認，僅移除已deprecated的GET／POST `/api/v1/candidates`，現在均回404。市民新增點使用POST `/proposals`，維運直接建立使用POST `/bins`；其他六個舊資料／維運入口保留，詳見 [API全覽](API_INVENTORY.md)。同時刪除CandidateRead及專用距離／序列化helper，不刪任何Bin、來源、歷史或migration。
+
+| 項目 | 結果 |
+| --- | --- |
+| 程式commit | `02520dfdadd09eefe8b906fd20be1d73aea1cea6` |
+| 正式revision／流量 | `binsoon-api-00006-n96`／100% |
+| 上一版 | `binsoon-api-00005-kcw` |
+| Cloud Build | `5735c793-6add-4878-bc53-3ac6bca99e68`，SUCCESS |
+| 映像digest | `sha256:273003d199aa141534654cef6ea5571908f100c95316828329d0ca7ddafc76a0` |
+| 初始化execution | `binsoon-api-initialize-r8fqh`，成功；與HTTP使用同一digest |
+| Schema | 維持0005，無新migration |
+| 契約 | 68 paths／70 operations／87 schemas |
+| 本機完整測試 | 74 passed／61 warnings／187.11秒 |
+
+完整來源、映像與驗收metadata見 [release manifest](../deploy/releases/api-cleanup-20261019-02520df.json)。程式及前端交接文件已包含在上述commit，部署結果文件於線上驗收後另行commit。未push遠端。
+
+部署沿用既有Cloud SQL、Secret references、三角色帳號、私有媒體bucket、CORS及1 vCPU／512 MiB／min=0／max=2規格；沒有重新seed帳號、建立資源、輪替密碼、推進／reset模擬、清空桶或新增案件。初始化Job仍冪等upsert CSV，updated_at可能刷新。
+
+線上實際驗收：
+
+- 匿名及admin session呼叫已移除GET／POST路由皆404，OpenAPI無candidates／CandidateRead，且與本分支快照完全一致。
+- 部署前後692個Bin的ID集合、名稱、座標、行政區、類型、來源、設置狀態、推薦識別／排名／分數及current_usage逐筆一致；模擬時鐘完全一致，history可讀。
+- 舊唯讀驗收腳本已更新並實際通過：官方全市bins／hotspots=681／130、大安區=47／18；預設不建立測試點。
+- 三角色登入、me、會員／回報／認養／通知／提案／獎品、隊員工單／站點／統計、管理員認養清單正常；登出撤銷與市民不可讀staff檢查通過。
+- 本機兩個origin的CORS preflight正常；重用前次明示照片驗證GCS短效下載200及匿名物件拒絕，沒有新增照片。
+- 線上只新增並撤銷短效登入session及更新登入節流紀錄，沒有業務寫入；未對Cloud SQL跑pytest。前端完全未修改，實體手機與前端對接仍待驗證。
+
+目前唯一的滿度歷史仍為 `/bins/{id}/history`；沒有另加demo history。所有滿度依舊為simulated，不代表實測IoT。緊急回復可切流量回00005（會暫時恢復舊candidates入口），不需downgrade DB。
+
+
+## 雙種類桶槽：2026-10-19 已部署（目前正式版本）
+
+| 項目 | 結果 |
+| --- | --- |
+| 正式 revision／流量 | `binsoon-api-00008-v7k`／100% |
+| Schema／資料版本 | `0006`／`waste-streams-v2` |
+| Cloud Build | `fc0bdd3d-da0e-4f25-ac0a-dd23c5c1b064`，SUCCESS |
+| 映像 digest | `sha256:8981beab42767445c69a8993c282adf48f1fd9f1babd1644de436cd470b2d251` |
+| 維護 revision | `binsoon-api-00007-lzh`；確認GET／POST皆503，排空至少61秒 |
+| 升級前 Cloud SQL 備份 | `1792413961467`，SUCCESSFUL |
+| 初始化 execution | `binsoon-api-initialize-2ndsb`，成功；與API相同digest |
+| 資料保留 | 692個Bin，693筆舊Reading全部逐筆比對通過 |
+| 新增回收槽 | 692個獨立State及692筆reset Reading，初始0%、80L |
+| 契約 | 68 paths／70 operations／88 schemas，線上與快照完全一致 |
+
+本次部署使用尚未commit的工作樹，基底為 `38b67b8`；可重現來源由Cloud Build上傳物件及不可變映像digest識別，非宣稱該基底commit已包含雙種類變更。來源物件、逐檔SHA256、備份及驗收metadata見 [release manifest](../deploy/releases/waste-streams-20261019.json)。部署結果文件是在映像建置後更新；未push遠端。
+
+已沿用既有Cloud SQL、五個Secret references、帳號、CORS及私有GCS；沒有建立新付費資源。以新映像維護模式切流、排空舊請求、建立備份、執行初始化Job升級及補齊槽，再切新版API。手動 `binsoon-api-product-seed` Job也已同步同一digest與模擬設定，但未執行，避免未來使用不相容舊映像。API冷啟動仍不執行migration或匯入。
+
+線上實際驗收：
+
+- 全部692個Bin UUID、座標、名稱、來源、推薦排名／分數、設置狀態及原current_usage數值完整保留；一般槽分類標記為legacy_assumed_general。官方位置仍681，全市hotspots130。
+- 每點恰有general／recycling兩槽；回收槽初始0%、80L，速率為原一般槽的0.65倍，皆明示simulated及demo_assumption，非官方規格證據。
+- 全部693筆舊Reading逐欄位及ID比對一致，新增waste_type=null／legacy_unclassified；沒有複製或改分類成兩份。692筆新Reading皆為recycling／reset／0%。歷史類型篩選隔離正確。
+- 模擬時鐘、seed、generation及執行狀態不變，僅data_version更新為waste-streams-v2；未advance、reset或collect。
+- general／recycling列表、單點view、GeoJSON座標、優先清單、map、未授權collect拒絕、舊candidates404、Swagger及線上OpenAPI均通過。
+- 三角色登入／登出與角色隔離、市民／隊員／管理員既有讀取、CORS preflight、重用舊照片的GCS短效下載與匿名物件拒絕均通過。只建立並撤銷登入session，沒有新增照片或業務案件。
+- pytest僅使用本機PostGIS：81項完整回歸，加上2個後補不同案例分批驗證，合計83個案例實際通過；未在正式DB執行pytest。前端及實體手機尚未串接驗收。
+
+**回復限制：本節覆蓋上方歷史紀錄的直接切回舊版建議。0006不相容於0005／舊單槽映像，不可直接切回00006-n96或更早版本。** 若故障，先切維護，優先向前修復；需要還原時必須協調資料庫備份及對應舊程式，評估備份後寫入，不直接downgrade或丟棄回收歷史。後續同為0006相容版本可沿用一般部署流程。
+
+前端現在可使用 `GET /api/v1/bins/{id}?waste_type=recycling` 取得回收滿度，`GET /api/v1/bins/{id}/history?waste_type=recycling` 取得回收歷史。省略種類的目前滿度預設general；歷史省略種類則返回所有種類及未分類舊紀錄。完整語意見 [雙種類串接](WASTE_STREAMS.md)。
