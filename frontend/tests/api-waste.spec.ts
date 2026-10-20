@@ -364,3 +364,54 @@ test("expired recycling report restores the same waste draft and original comman
   expect(commands[0].body.waste_type).toBe("recycling");
   expect(commands[1]).toEqual(commands[0]);
 });
+
+test("arrow keys switch the report waste repeatedly, keep focus on the radio and keep each draft (N7)", async ({
+  page,
+}) => {
+  const f = wasteFixture();
+  await f.setup(page);
+  await login(page, "citizen", `report/${binId}?waste_type=general`);
+  const general = page.getByRole("radio", { name: "一般垃圾", exact: true });
+  const recycling = page.getByRole("radio", { name: "資源回收", exact: true });
+  const note = page.getByRole("textbox", { name: "說明", exact: true });
+  await expect(general).toBeChecked();
+  await note.fill("一般垃圾草稿");
+  await general.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(/waste_type=recycling/);
+  await expect(recycling).toBeChecked();
+  await expect(recycling).toBeFocused();
+  await expect(note).toHaveValue("");
+  await note.fill("資源回收草稿");
+  await recycling.focus();
+  // 連續按方向鍵：焦點一直在選中的那格，草稿每槽各自保存。
+  await page.keyboard.press("ArrowLeft");
+  await expect(general).toBeChecked();
+  await expect(general).toBeFocused();
+  await expect(note).toHaveValue("一般垃圾草稿");
+  await page.keyboard.press("ArrowRight");
+  await expect(recycling).toBeChecked();
+  await expect(recycling).toBeFocused();
+  await expect(note).toHaveValue("資源回收草稿");
+  await page.keyboard.press("ArrowLeft");
+  await expect(general).toBeFocused();
+  await expect(note).toHaveValue("一般垃圾草稿");
+});
+
+test("the navigation waste select keeps focus after the page reloads for the new waste (X5)", async ({
+  page,
+}) => {
+  const f = wasteFixture();
+  await f.setup(page);
+  await page.goto(`/#nav/${binId}?waste_type=general`);
+  const select = page.getByLabel("垃圾種類", { exact: true });
+  await expect(select).toBeVisible();
+  await select.focus();
+  await select.selectOption("recycling");
+  await expect(page).toHaveURL(/waste_type=recycling/);
+  await expect(
+    page.getByText("本次要丟：資源回收。", { exact: true }),
+  ).toBeVisible();
+  await expect(select).toBeFocused();
+  await expect(select).toHaveValue("recycling");
+});

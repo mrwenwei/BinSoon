@@ -444,7 +444,7 @@ export function MapPage({
           ) : (
             <>
               <div className="mx-filters">
-                {/* 搜尋框＋種類切換同一列（放不下時切換換到下一行），篩選膠囊自己一列。 */}
+                {/* 搜尋框、篩選膠囊各自一列；種類切換在上方標題列。 */}
                 <label className="search-field">
                   <span className="visually-hidden">搜尋地點</span>
                   <input
@@ -522,8 +522,8 @@ export function MapPage({
   );
 }
 
-// 清單列沿用 .location-row：電子雞（所選種類那一槽的狀態）、桶名、距離，
-// 每一槽一顆狀態膠囊（所選種類排第一），右側兩槽可丟數。
+// 清單列沿用 .location-row：電子雞（所選種類那一槽的狀態）、桶名（新設時旁邊
+// 一顆「新設」膠囊）、距離，下一行兩槽滿度條並排（所選種類在左），右側兩槽可丟數。
 function NearbyRow({
   item,
   wasteType,
@@ -552,7 +552,12 @@ function NearbyRow({
         <Mascot state={state} />
       </span>
       <span className="row-copy">
-        <strong>{item.label}</strong>
+        <span className="mx-row-title">
+          <strong>{item.label}</strong>
+          {!proposed && item.bin_status?.is_new && (
+            <span className="status-pill">新設</span>
+          )}
+        </span>
         <small>
           {distanceText(item)}
           {walk && ` · ${walk}`}
@@ -561,9 +566,6 @@ function NearbyRow({
           <small>建議點／待現勘，尚未設置</small>
         ) : (
           <span className="mx-slots">
-            {item.bin_status?.is_new && (
-              <span className="status-pill">新設</span>
-            )}
             {ordered.map((part) => (
               <SlotBar key={part.waste_type} part={part} />
             ))}

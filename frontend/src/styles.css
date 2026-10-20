@@ -5894,7 +5894,21 @@ input[type="file"]::file-selector-button {
   padding: 0;
   border-top: 2px solid var(--divider);
 }
-/* 清單列的兩槽：同一行並排（所選種類在左），每槽是圖示＋短滿度條＋百分比。 */
+/* 桶名一行：「新設」膠囊放在桶名旁邊，不佔滿度條那一行。 */
+.mx-row-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.mx-row-title strong {
+  min-width: 0;
+}
+.mx-row-title .status-pill {
+  flex: none;
+}
+/* 清單列的兩槽：同一行並排（所選種類在左），每槽是圖示＋短滿度條＋百分比。
+   圖示和數值欄寬固定，所以每一列的滿度條起點和長度都一樣。 */
 .mx-slots {
   display: flex;
   flex-wrap: wrap;
@@ -5909,11 +5923,18 @@ input[type="file"]::file-selector-button {
   align-items: center;
   gap: var(--space-2);
 }
+/* 垃圾桶（SVG 線條）和 ♻（文字字形）份量一致：同色、同大小的框、線條圖示放大一點。 */
 .mx-slot .waste-icon {
   width: 16px;
   height: 16px;
   border: 0;
-  color: var(--text-muted);
+  color: var(--text-body);
+  font: var(--text-caption);
+}
+.mx-slot .waste-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 3;
 }
 .mx-slot .fill-bar {
   flex: 1 1 auto;
@@ -5921,6 +5942,7 @@ input[type="file"]::file-selector-button {
 }
 .mx-slot-value {
   flex: none;
+  width: 3em;
   font: var(--text-caption);
   font-weight: 700;
   color: var(--text-body);
@@ -5943,6 +5965,7 @@ input[type="file"]::file-selector-button {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  min-width: 3em;
   text-align: right;
 }
 .mx-usable.state-hungry .numeral-sm {
@@ -6104,9 +6127,11 @@ input[type="file"]::file-selector-button {
   color: inherit;
   font: var(--text-numeral-sm);
 }
+/* 線條垃圾桶比實心的 ♻ 字形看起來小又淡：放大到 24px、線條加粗，兩者份量一致。 */
 .waste-picker.icon-only .waste-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.8;
 }
 /* 地圖標記：地標旗子、建議點虛線方框、示意起點。 */
 .mx-landmark .marker-body svg {

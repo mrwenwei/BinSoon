@@ -909,3 +909,66 @@ test("the legend popover avoids the zoom buttons and closes when focus or the vi
   });
   await expect(page.locator(".mx-legend-popover")).toHaveCount(0);
 });
+
+test("fill bars line up across rows, including a new bin whose tag sits beside the name (L-f)", async ({
+  page,
+}) => {
+  await setup(page);
+  const fresh = {
+    ...generalOk,
+    id: "10000000-0000-4000-8000-000000000006",
+    label: "新設的桶",
+    bin_status: { ...generalOk.bin_status, is_new: true },
+  };
+  const removed = {
+    ...bin(
+      "10000000-0000-4000-8000-000000000007",
+      "撤除的桶",
+      [0, "unknown"],
+      [100, "full"],
+      300,
+    ),
+  };
+  removed.compartments[0] = {
+    ...removed.compartments[0],
+    fill_level_pct: null as unknown as number,
+    operational_status: "removed",
+  } as (typeof removed.compartments)[number];
+  await page.route("**/api/v1/map/locations**", (route) =>
+    route.fulfill({ json: envelope([generalFull, fresh, removed, bothFull]) }),
+  );
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/#map");
+    await page.reload();
+    const rows = page.locator(".mx-list .location-row");
+    await expect(rows).toHaveCount(4);
+    const geometry = await page.evaluate(() =>
+      [...document.querySelectorAll(".mx-list .location-row")].map((row) =>
+        [...row.querySelectorAll(".mx-slot .fill-bar")].map((bar) => {
+          const r = bar.getBoundingClientRect();
+          return [r.left, r.width];
+        }),
+      ),
+    );
+    for (const bars of geometry) {
+      expect(bars).toHaveLength(2);
+      for (const i of [0, 1]) {
+        expect(Math.abs(bars[i][0] - geometry[0][i][0])).toBeLessThan(0.5);
+        expect(Math.abs(bars[i][1] - geometry[0][i][1])).toBeLessThan(0.5);
+      }
+    }
+    // 「新設」在桶名旁邊，不在滿度條那一行
+    const newRow = rows.filter({ hasText: "新設的桶" });
+    const tag = (await newRow
+      .locator(".status-pill", { hasText: "新設" })
+      .boundingBox())!;
+    const name = (await newRow.locator("strong").boundingBox())!;
+    const slots = (await newRow.locator(".mx-slots").boundingBox())!;
+    expect(
+      Math.abs(tag.y + tag.height / 2 - (name.y + name.height / 2)),
+    ).toBeLessThan(3);
+    expect(tag.y + tag.height).toBeLessThanOrEqual(slots.y);
+    await expect(newRow.locator(".mx-slots .status-pill")).toHaveCount(0);
+  }
+});

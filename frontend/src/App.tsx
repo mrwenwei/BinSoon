@@ -36,9 +36,21 @@ function AppContent() {
   const workCommands = useWorkCommands();
   const main = useRef<HTMLDivElement>(null);
   const { session, logout, notice, clearNotice } = useSession();
+  // 只換 ?waste_type= 時（例如在種類單選或下拉按方向鍵），頁面若因 key 重建，
+  // 原本聚焦的控制項會被換掉、焦點掉到 BODY。換之前記下控制項，換完把焦點
+  // 放回新畫面上同一個控制項（單選：目前選中的那格）。
+  const routeRef = useRef(route);
+  const wasteFocus = useRef<string | null>(null);
   useEffect(() => {
     const change = () => {
-      setRoute(location.hash.slice(1) || "map");
+      const next = location.hash.slice(1) || "map";
+      const el = document.activeElement;
+      wasteFocus.current =
+        onlyWasteChanged(routeRef.current, next) && el
+          ? wasteControlSelector(el)
+          : null;
+      routeRef.current = next;
+      setRoute(next);
       window.scrollTo(0, 0);
     };
     window.addEventListener("hashchange", change);
@@ -57,6 +69,12 @@ function AppContent() {
     h?.setAttribute("tabindex", "-1");
     h?.focus({ preventScroll: true });
   }, [focusKey]);
+  useEffect(() => {
+    const selector = wasteFocus.current;
+    wasteFocus.current = null;
+    if (!selector || !main.current) return;
+    return restoreFocus(main.current, selector);
+  }, [route]);
   const [vehicle, setVehicle] = useState<CrewVehicle>("scooter");
   const [lastWaste, setLastWaste] = useState<WasteType>("general");
   const routeWaste = params.get("waste_type");
@@ -271,6 +289,51 @@ function AppContent() {
     </div>
   );
 }
+function routeWithoutWaste(route: string) {
+  const [path, search] = route.split("?");
+  const params = new URLSearchParams(search);
+  params.delete("waste_type");
+  return `${path}?${params}`;
+}
+function onlyWasteChanged(previous: string, next: string) {
+  return (
+    previous !== next && routeWithoutWaste(previous) === routeWithoutWaste(next)
+  );
+}
+function wasteControlSelector(el: Element) {
+  if (el instanceof HTMLInputElement && el.type === "radio" && el.name)
+    return `input[type="radio"][name="${CSS.escape(el.name)}"]`;
+  if (el instanceof HTMLSelectElement && el.getAttribute("aria-label"))
+    return `select[aria-label="${CSS.escape(el.getAttribute("aria-label")!)}"]`;
+  return null;
+}
+// 焦點還在（元件沒重建）就不動；否則等新畫面出現同一個控制項（頁面可能還在
+// 載入），最多等 5 秒，期間使用者自己移了焦點也不搶。
+function restoreFocus(root: HTMLElement, selector: string) {
+  const lost = () =>
+    !document.activeElement || document.activeElement === document.body;
+  const attempt = () => {
+    if (!lost()) return true;
+    const target =
+      root.querySelector<HTMLElement>(`${selector}:checked`) ??
+      root.querySelector<HTMLElement>(selector);
+    if (!target) return false;
+    target.focus({ preventScroll: true });
+    return true;
+  };
+  if (attempt()) return;
+  const observer = new MutationObserver(() => {
+    if (attempt()) stop();
+  });
+  const timer = window.setTimeout(() => stop(), 5000);
+  const stop = () => {
+    observer.disconnect();
+    window.clearTimeout(timer);
+  };
+  observer.observe(root, { childList: true, subtree: true });
+  return stop;
+}
+
 export default function App() {
   return (
     <SessionProvider>
