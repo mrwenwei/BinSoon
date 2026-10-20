@@ -1,5 +1,4 @@
 import type { LocationRecord } from "./locations";
-import { demoOrigin } from "./binDemo";
 
 export type CrewVehicle = "scooter" | "car";
 export const vehicleLabels: Record<CrewVehicle, string> = {
@@ -197,10 +196,12 @@ export function parseCrewRoute(
 
 export async function requestCrewRoute(
   vehicle: CrewVehicle,
-  stops: LocationRecord[],
+  stops: Pick<LocationRecord, "kind" | "latitude" | "longitude">[],
   signal: AbortSignal,
+  origin: readonly [number, number],
 ): Promise<CrewRoute> {
   if (
+    !validCoordinate(origin[0], origin[1]) ||
     !stops.length ||
     stops.some(
       (stop) =>
@@ -218,7 +219,7 @@ export async function requestCrewRoute(
     },
     body: JSON.stringify({
       locations: [
-        { lat: demoOrigin[0], lon: demoOrigin[1], type: "break" },
+        { lat: origin[0], lon: origin[1], type: "break" },
         ...stops.map((stop) => ({
           lat: stop.latitude,
           lon: stop.longitude,

@@ -50,7 +50,11 @@ test("staff attaches completion evidence before finishing and waits for administ
   const citizen = await context.newPage();
   await fixture.setup(citizen);
   await login(citizen, "citizen", `bin/${binId}`);
-  await expect(citizen.getByText("餓了 · 0%", { exact: true })).toBeVisible();
+  await expect(
+    citizen
+      .locator(".bin-action-panel .status-pill")
+      .filter({ hasText: "餓了 · 0%" }),
+  ).toBeVisible();
   await citizen
     .getByRole("button", { name: "謝謝清潔隊", exact: true })
     .click();
@@ -59,7 +63,9 @@ test("staff attaches completion evidence before finishing and waits for administ
   ).toBeDisabled();
   expect(fixture.state.likeCount).toBe(1);
   await citizen.getByRole("link", { name: "導航過去", exact: true }).click();
-  // 原斷言在換頁前就可能命中桶詳情的 h1（競態）；改為確認導航頁與目的桶。
+  await expect(citizen).toHaveURL(
+    (url) => url.hash === `#nav/${binId}?waste_type=general`,
+  );
   await expect(
     citizen.getByRole("heading", { name: "步行導航", level: 1, exact: true }),
   ).toBeVisible();
@@ -104,7 +110,11 @@ test("clearing before evidence changes capacity but never implies completion", a
   const citizen = await context.newPage();
   await f.setup(citizen);
   await login(citizen, "citizen", `bin/${binId}`);
-  await expect(citizen.getByText("餓了 · 0%", { exact: true })).toBeVisible();
+  await expect(
+    citizen
+      .locator(".bin-action-panel .status-pill")
+      .filter({ hasText: "餓了 · 0%" }),
+  ).toBeVisible();
   await expect(citizen.getByText("尚無可驗證清運完成紀錄")).toBeVisible();
   await expect(
     citizen.getByRole("button", { name: "謝謝清潔隊", exact: true }),
@@ -117,7 +127,10 @@ test("clearing before evidence changes capacity but never implies completion", a
     citizen.getByRole("button", { name: /滿桶流程測試桶/ }).first(),
   ).toBeVisible();
   await expect(
-    citizen.getByText("餓了 · 0%", { exact: true }).first(),
+    citizen
+      .locator(".bin-action-panel .status-pill")
+      .filter({ hasText: "餓了 · 0%" })
+      .first(),
   ).toBeVisible();
   await citizen.evaluate((id) => {
     window.location.hash = `review/${id}`;

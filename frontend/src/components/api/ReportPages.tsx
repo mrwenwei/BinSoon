@@ -1,4 +1,11 @@
 import {
+  wasteName,
+  wasteHref,
+  type WasteType,
+  type WasteControls,
+} from "../../data/waste";
+import { WasteSelect, WasteInfo } from "./Waste";
+import {
   createContext,
   useContext,
   useEffect,
@@ -25,7 +32,6 @@ import {
   type PointEntry,
   type Problem,
   type Report,
-  type WasteType,
 } from "../../data/api";
 import { useSession } from "./SessionContext";
 import { WastePicker, WasteTag } from "../WasteType";
@@ -35,8 +41,6 @@ import { useApi, useCooldown } from "./useApi";
 
 type Draft = {
   type: Problem;
-  // 後端照片回報依 waste_type 指定是哪一槽，預設一般垃圾。
-  wasteType: WasteType;
   description: string;
   latitude: string;
   longitude: string;
@@ -47,9 +51,8 @@ type Draft = {
   ownerId?: string;
 };
 type DraftState = Record<string, Draft>;
-const emptyDraft = (wasteType: WasteType = "general"): Draft => ({
+const emptyDraft = (): Draft => ({
   type: "full",
-  wasteType,
   description: "",
   latitude: "",
   longitude: "",
@@ -78,7 +81,7 @@ export function ReportDraftProvider({ children }: { children: ReactNode }) {
         update: (id, patch) =>
           setDrafts((old) => ({
             ...old,
-            [id]: { ...(old[id] || emptyDraft(patch.wasteType)), ...patch },
+            [id]: { ...(old[id] || emptyDraft()), ...patch },
           })),
         clear: () => setDrafts({}),
         remove: (id) =>
@@ -121,22 +124,18 @@ export function RequireCitizen({
 }
 export function ReportForm({
   id,
-  wasteType: initialWaste = "general",
-}: {
-  id: string;
-  wasteType?: WasteType;
-}) {
+  wasteType,
+  onWasteChange,
+}: { id: string } & WasteControls) {
   const { session, invalidate } = useSession();
   const { drafts, update, remove } = useReportDrafts();
   const cooldown = useCooldown();
-  const saved = drafts[id];
+  const draftKey = `${id}/${wasteType}`;
+  const saved = drafts[draftKey];
   const draft =
     saved && (!saved.ownerId || saved.ownerId === session?.user.id)
       ? saved
-      : emptyDraft(initialWaste);
-  // 每次寫入都帶上目前的種類，避免第一次編輯時遺失從導航帶進來的 waste_type。
-  const edit = (patch: Partial<Draft>) =>
-    update(id, { wasteType: draft.wasteType, ...patch });
+      : emptyDraft();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -163,7 +162,9 @@ export function ReportForm({
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [draft.file]);
-  const path = `/bins/${encodeURIComponent(id)}/view`;
+  const path = query(`/bins/${encodeURIComponent(id)}/view`, {
+    waste_type: wasteType,
+  });
   const view = useApi(
     path,
     (signal) =>
@@ -183,7 +184,7 @@ export function ReportForm({
     const version = ++selection.current;
     const token = session?.access_token;
     setError("");
-    edit({ file: undefined, mediaId: undefined });
+    update(draftKey, { file: undefined, mediaId: undefined });
     if (!file) return;
     setValidating(true);
     try {
@@ -193,7 +194,7 @@ export function ReportForm({
         actor.current?.access_token === token &&
         version === selection.current
       )
-        edit({ file });
+        update(draftKey, { file });
     } catch (e) {
       if (
         alive.current &&
@@ -249,13 +250,13 @@ export function ReportForm({
           });
           if (!isCurrent()) return;
           mediaId = data.id;
-          edit({ mediaId, ownerId: current.user.id });
+          update(draftKey, { mediaId, ownerId: current.user.id });
         }
         operation = command(
           "/reports",
           {
             bin_id: id,
-            waste_type: draft.wasteType,
+            waste_type: wasteType,
             type: draft.type,
             description: draft.description,
             photo_ids: [mediaId],
@@ -264,11 +265,11 @@ export function ReportForm({
           },
           current.user.id,
         );
-        edit({ operation, ownerId: current.user.id });
+        update(draftKey, { operation, ownerId: current.user.id });
       }
       const { data } = await sendCommand<Report>(operation, current);
       if (!isCurrent()) return;
-      remove(id);
+      remove(draftKey);
       window.location.hash = `report-done/${data.id}`;
     } catch (e) {
       if (!isCurrent()) return;
@@ -277,7 +278,7 @@ export function ReportForm({
       if (e instanceof ApiError && e.status === 401)
         invalidate(current.access_token);
       else if (e instanceof ApiError && e.status < 500 && e.status !== 429) {
-        edit({ operation: undefined });
+        update(draftKey, { operation: undefined });
         view.reload();
       }
     } finally {
@@ -287,10 +288,11 @@ export function ReportForm({
   }
   return (
     <main className="page api-narrow">
-      <a className="back-link" href={`#bin/${id}`}>
+      <a className="back-link" href={wasteHref(`bin/${id}`, wasteType)}>
         返回桶詳情
       </a>
       <h1>回報問題</h1>
+      <p className="tiny">每一種類的照片與草稿分開保留；重試沿用原回報種類。</p>
       <p>{view.data?.location.label}</p>
       <LoadState {...view} />
       {session?.user.roles.includes("citizen") &&
@@ -312,9 +314,9 @@ export function ReportForm({
       >
         <WastePicker
           name="report-waste-type"
-          value={draft.wasteType}
+          value={wasteType}
           disabled={frozen}
-          onChange={(wasteType) => edit({ wasteType })}
+          onChange={onWasteChange}
         />
         <fieldset disabled={frozen}>
           <legend>現場問題</legend>
@@ -322,7 +324,9 @@ export function ReportForm({
             問題類型
             <select
               value={draft.type}
-              onChange={(e) => edit({ type: e.target.value as Problem })}
+              onChange={(e) =>
+                update(draftKey, { type: e.target.value as Problem })
+              }
             >
               {Object.entries(problemLabels).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -337,7 +341,9 @@ export function ReportForm({
               value={draft.description}
               maxLength={500}
               required={draft.type === "other"}
-              onChange={(e) => edit({ description: e.target.value })}
+              onChange={(e) =>
+                update(draftKey, { description: e.target.value })
+              }
             />
           </label>
           <label>
@@ -377,7 +383,7 @@ export function ReportForm({
                     !lock.current &&
                     actor.current?.access_token === token
                   )
-                    edit({
+                    update(draftKey, {
                       latitude: String(p.coords.latitude),
                       longitude: String(p.coords.longitude),
                       confirmed: false,
@@ -403,7 +409,7 @@ export function ReportForm({
               max="90"
               value={draft.latitude}
               onChange={(e) =>
-                edit({ latitude: e.target.value, confirmed: false })
+                update(draftKey, { latitude: e.target.value, confirmed: false })
               }
             />
           </label>
@@ -416,7 +422,10 @@ export function ReportForm({
               max="180"
               value={draft.longitude}
               onChange={(e) =>
-                edit({ longitude: e.target.value, confirmed: false })
+                update(draftKey, {
+                  longitude: e.target.value,
+                  confirmed: false,
+                })
               }
             />
           </label>
@@ -424,7 +433,9 @@ export function ReportForm({
             <input
               type="checkbox"
               checked={draft.confirmed}
-              onChange={(e) => edit({ confirmed: e.target.checked })}
+              onChange={(e) =>
+                update(draftKey, { confirmed: e.target.checked })
+              }
             />
             確認這是我提供的現場位置
           </label>
@@ -436,7 +447,7 @@ export function ReportForm({
         {!session?.user.roles.includes("citizen") ? (
           <a
             className="button primary"
-            href={`#login?next=${encodeURIComponent(`report/${id}`)}`}
+            href={`#login?next=${encodeURIComponent(wasteHref(`report/${id}`, wasteType).slice(1))}`}
           >
             登入後繼續回報
           </a>
@@ -526,7 +537,8 @@ export function ReportSummary({ report }: { report: Report }) {
   return (
     <section className="card report-summary-card">
       <h2>{problemLabels[report.type]}</h2>
-      <WasteTag type={report.waste_type || "general"} />
+      <WasteTag type={report.waste_type} />
+      <WasteInfo value={report} />
       <p>查證狀態：{reportLabels[report.status]}</p>
       <p>
         工單進度：
@@ -554,7 +566,10 @@ export function ReportSummary({ report }: { report: Report }) {
       {report.photo_ids.map((id) => (
         <PrivatePhoto key={id} id={id} />
       ))}
-      <a className="back-link" href={`#bin/${report.bin_id}`}>
+      <a
+        className="back-link"
+        href={wasteHref(`bin/${report.bin_id}`, report.waste_type)}
+      >
         查看這個桶
       </a>
     </section>
@@ -597,7 +612,12 @@ export function ReportDetail({
 export function ReportsList() {
   const { session } = useSession();
   const [offset, setOffset] = useState(0);
-  const path = query("/me/reports", { limit: 20, offset });
+  const [wasteFilter, setWasteFilter] = useState<WasteType | "">("");
+  const path = query("/me/reports", {
+    limit: 20,
+    offset,
+    ...(wasteFilter ? { waste_type: wasteFilter } : {}),
+  });
   const result = useApi(
     path,
     (signal) =>
@@ -610,6 +630,14 @@ export function ReportsList() {
   return (
     <main className="page api-narrow">
       <h1>我的回報</h1>
+      <WasteSelect
+        value={wasteFilter}
+        all
+        onChange={(value) => {
+          setWasteFilter(value);
+          setOffset(0);
+        }}
+      />
       <LoadState {...result} />
       {result.data?.items.length === 0 && <p>尚無回報</p>}
       <ul className="api-items">
@@ -618,6 +646,7 @@ export function ReportsList() {
             <a href={`#review/${r.id}`}>
               {problemLabels[r.type]} · {reportLabels[r.status]}
             </a>
+            <WasteInfo value={r} />
             <p>
               {r.work_status ? workLabels[r.work_status] : "尚未派工"} ·{" "}
               {time(r.created_at)}

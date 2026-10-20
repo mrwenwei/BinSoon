@@ -5503,3 +5503,303 @@ input[type="file"]::file-selector-button {
   align-items: center;
   min-height: 44px;
 }
+
+/* The public selector describes a stream, not an additional map location. */
+.api-waste-select {
+  display: grid;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px 0;
+}
+.api-waste-select select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--chrome);
+}
+.api-compartments {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  text-align: left;
+  margin: 16px 0;
+}
+.api-compartments small {
+  display: block;
+}
+.api-app .api-detail-map {
+  position: relative;
+}
+
+/* API bin detail: compare streams before choosing an action. */
+.api-bin-detail .bin-heading {
+  align-items: center;
+}
+.bin-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.bin-avatar {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 72px;
+  flex: 0 0 64px;
+  border-radius: var(--radius-md);
+  background: var(--field);
+}
+.bin-avatar svg {
+  width: 48px;
+  height: 56px;
+}
+.bin-title h1 {
+  margin: 0;
+}
+.bin-title p {
+  margin: 6px 0 0;
+}
+.api-bin-detail .bin-overview {
+  padding: 24px;
+}
+.bin-overview-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.bin-overview-heading h2 {
+  margin: 0;
+}
+.bin-overview-heading p {
+  margin: 6px 0 0;
+}
+.bin-overview-heading .api-waste-select {
+  margin: 0;
+  font: var(--text-caption);
+}
+.compartment-choice {
+  font: var(--text-caption);
+  color: var(--text-body);
+}
+.compartment-sources {
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.compartment-sources summary {
+  cursor: pointer;
+  width: fit-content;
+  min-height: 44px;
+}
+.bin-action-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+.bin-action-panel p {
+  margin: 8px 0 0;
+  font: var(--text-caption);
+}
+.bin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.bin-adoption {
+  padding-top: 16px;
+  margin: 16px 0 0;
+  border-top: 1px solid var(--line);
+}
+.bin-support-grid,
+.bin-location-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+  margin-top: 20px;
+}
+.api-bin-detail .bin-support-grid h2 {
+  margin-top: 0;
+}
+.api-bin-detail .api-history {
+  max-height: 240px;
+}
+.api-bin-detail .bin-community .api-thanks {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.api-bin-detail .bin-community h3 {
+  margin-top: 0;
+}
+.api-app .api-bin-detail .bin-location-grid .details {
+  position: relative;
+  max-height: none;
+  overflow: visible;
+  z-index: auto;
+  inset: auto;
+  margin: 0;
+  width: 100%;
+  box-shadow: none;
+}
+.api-bin-detail .bin-location-grid .api-detail-map {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 0;
+  height: 340px;
+}
+.api-bin-detail .button {
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.api-bin-detail .button:active:not(:focus-visible) {
+  transform: scale(0.98);
+}
+@media (max-width: 760px) {
+  .api-bin-detail .bin-overview {
+    padding: 16px;
+  }
+  .bin-avatar {
+    width: 48px;
+    height: 58px;
+    flex-basis: 48px;
+    border-radius: var(--radius-md);
+  }
+  .bin-avatar svg {
+    width: 36px;
+    height: 44px;
+  }
+  .bin-title {
+    gap: 10px;
+  }
+  .bin-overview-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .bin-overview-heading .api-waste-select {
+    width: 100%;
+  }
+  .compartment-choice {
+    font: var(--text-caption);
+  }
+  .bin-action-panel {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .bin-actions {
+    flex-wrap: wrap;
+  }
+  .bin-actions .button {
+    flex: 1 1 auto;
+  }
+  .bin-support-grid,
+  .bin-location-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .api-bin-detail .button {
+    transition: none;
+  }
+  .api-bin-detail .button:active {
+    transform: none;
+  }
+}
+
+.api-route-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.api-route-refresh > div {
+  text-align: right;
+}
+.api-route-refresh .tiny {
+  margin-top: 0;
+}
+.api-route-page .crew-route-map-panel {
+  top: 16px;
+}
+.crew-route-origin small {
+  display: block;
+  font: var(--text-caption);
+}
+@media (max-width: 760px) {
+  .api-route-refresh {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .api-route-refresh > div {
+    text-align: left;
+  }
+  .api-route-refresh .api-waste-select {
+    width: 100%;
+  }
+}
+
+.bin-compartment-overview {
+  margin-block: var(--space-4);
+}
+.station-card .compartment.selectable {
+  display: block;
+  padding: 0;
+}
+.compartment-select {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.compartment-select .fill-bar,
+.compartment-select .compartment-choice {
+  grid-column: 1 / -1;
+}
+.compartment-select[aria-pressed="true"] {
+  outline: 2px solid var(--teal);
+  outline-offset: -2px;
+  background: var(--field);
+}
+.compartment-select .compartment-choice {
+  color: var(--text-body);
+}
+
+.api-bin-detail .api-history li {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 760px) {
+  .compartment-select {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-3);
+  }
+  .compartment-select .compartment-pct {
+    grid-row: 2;
+  }
+  .compartment-select .compartment-name {
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+  .compartment-select .compartment-name .compartment-status {
+    width: 100%;
+  }
+}

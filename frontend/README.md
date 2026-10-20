@@ -1,6 +1,6 @@
-# BinSoon 前端：API 地圖、回報、查證與滿桶完工
+# BinSoon 前端：API 地圖、回報、查證與現場處理
 
-React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)。
+React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)。
 
 ## 目前可操作範圍
 
@@ -8,9 +8,22 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 市民：帳號密碼登入、照片檔案／相機入口、定位或明確輸入現場座標、五類回報、案件進度、會員摘要與點數台帳。
 - 隊員：責任區工單分類／篩選、接單、到場、逐筆查證。工單每步讀最新版本，衝突重讀後再次確認；查證入帳與完工分開。
 - 隊員滿桶完工：到場後上傳 purpose=completion 照片、掛 evidence，再提交 finish。缺查證時不能提交；未收到清空回傳時為 waiting_sensor，不能視為結案。
+- 隊員非滿桶處理：dirty／dumping／other 具備全部查證與完成照後提交 finish，不要求清空；broken 可填原因留待修繕，再依最新版本掛照及提交完成修復。桶況是否恢復可用由後端決定，不自行歸零或解除其他工單的維修限制。
+- 無需處理：到場後上傳 purpose=site 的獨立現況照、掛 evidence、完成全部查證、填原因後 dismiss；與完成照草稿分開。顯示無需處理的原因與證據，不計 completed、不產生本次可讚成果。回報不實仍可有現場工作，不自行結案或關閉其他工單。
 - 管理員：`/#admin` 輸入工單 UUID，或使用隊員工單提供的另開分頁連結；以獨立 admin session 讀版本、確認「非真實 IoT」後送出 demo-clear。清空先到仍須完成照、全部查證與明確 finish 才能結案。每次保留 reading_id 與命令識別供未知結果重試。
 - 市民：桶詳情只呈現後端有效完成紀錄；對最新 completion.id 感謝一次，顯示後端 like_count／liked_by_me，不增加點數或排名。桶況、歷史、最近桶、導航及案件持續重新讀取後端，容量歸零本身不代表完工。
-- 道路站點、兌換、成果統計、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
+- 隊員道路指引：`#staff/route` 讀後端 origin 與有序站點，同桶合站、工單 UUID 各自保留；可篩一般／回收並選機車／汽車，手動請求既有 Valhalla 道路幾何與逐段指引。前景每 10 秒重讀站點、背景停止；工單／站點／車種變動取消舊指引，不以直線替代。起點固定示範，沒有即時 GPS、交通或順序最佳化。
+- 兌換、成果統計、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
+
+## 一般垃圾／資源回收
+
+- 找桶、詳情、導航與回報可選一般垃圾（general）或資源回收（recycling）；預設一般垃圾。同一 Bin UUID 仍是一個位置，兩槽不增加公布桶位置數。
+- 地圖、最近桶、詳情與歷史查詢帶 waste_type，切換後重新讀取，不沿用另一槽的滿度或維修限制。詳情列出後端 compartments，未知仍為未知，不平均、累加或複製滿度。
+- 導航、回報與 QR 深連結保留所選種類。回報 body 明確送 waste_type，照片／草稿按 bin_id 與種類隔離；未知結果及同帳號重登入沿用原 key／body，不改成另一槽重送。
+- 歷史預設只查所選槽；「歷史種類」可選舊未分類（legacy_unknown），保留 waste_type=null，不混成一般垃圾。classification_source 與 simulated 讀值來源分開顯示；CSV 沒有分類證據，兩槽是展示假設。
+- 回報清單與隊員工單可篩種類，案件、工作證據及完成紀錄顯示後端種類。管理員清空依 work_order_id 的種類，不讓前端覆寫；最新完成與按讚待重試命令按種類分開，會員點數不乘二。
+
+新契約與資料限制見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。通知等尚未串接的票單仍待後續實作。
 
 ## API 設定與身份
 

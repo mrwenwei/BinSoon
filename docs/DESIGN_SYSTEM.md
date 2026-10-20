@@ -90,7 +90,7 @@
 | `full` | 吃飽了 | 80% 以上 | `status-full` 橘，滿度條加斜紋 |
 | `offline` | 失聯 | 沒有讀值、維修中或撤除 | `status-offline` 灰＋虛線外框 |
 
-**後端 API 仍回四態 `fill_status`**（hungry <50、half 50–79、full ≥80、unknown＝未知／維修／撤除）。前端只在 API 轉接層對照，不改後端與 API 契約：`src/data/api.ts` 的 `apiBinState()`：`hungry`、`half` → hungry；`full` → full；`unknown` → offline。狀態列文字由 `components/api/MapPages.tsx` 的 `statusText()` 產生（撤除→「已撤除」、維修→「維修中」、無讀值→「失聯」、其餘「餓了 · 62%」）。視覺對照（token、虛線、class）集中在 `src/components/binVisual.ts` 的 `stateVisual`，CSS 用 `.state-hungry/.state-full/.state-offline`。
+**後端 API 仍回四態 `fill_status`**（hungry <50、half 50–79、full ≥80、unknown＝未知／維修／撤除）。前端只在 API 轉接層對照，不改後端與 API 契約：`src/data/api.ts` 的 `apiBinState()`：`hungry`、`half` → hungry；`full` → full；`unknown` → offline。狀態列文字由 `components/api/Waste.tsx` 的 `statusText()` 產生（撤除→「已撤除」、維修→「維修中」、無讀值→「失聯」、其餘「餓了 · 62%」）。視覺對照（token、虛線、class）集中在 `src/components/binVisual.ts` 的 `stateVisual`，CSS 用 `.state-hungry/.state-full/.state-offline`。
 
 **一個點兩個桶**（與 `backend/docs/WASTE_STREAMS.md` 一致）：
 
@@ -141,7 +141,7 @@
 1. 地圖首頁：設計稿選桶後在地圖右上（桌面）或地圖下方（手機）浮出桶況卡；目前沿用現有流程，點桶進入獨立的桶詳情頁（場所代表點仍在地圖上浮出詳情）。
 2. 頂欄分頁「要桶投票」：正式入口的提案／投票尚未串接，分頁連到「功能尚未開放」頁。
 3. 桌面主選單：設計稿為找垃圾桶／這裡需要桶／認養電子雞／清潔隊榮譽榜；正式入口保留現有的找垃圾桶／我的回報／會員中心／清潔隊工作台／管理員（後三項設計稿未涵蓋但不可移除）。
-4. 「最近的可用小夥伴」依後端 nearest-usable 預設的一般垃圾槽判斷，尚未合併回收槽；面板上已註明。
+4. 「最近的可用小夥伴」依所選一般垃圾／資源回收種類查後端 nearest-usable，不將兩槽滿度平均；面板註明目前查詢種類。
 5. 會員中心、回報完成、認養、獎勵頁：設計稿的等級徽章、+1 點色塊、月報等版面只在歷史展示頁有完整對應；正式入口的會員中心與回報完成頁目前只換視覺（等級卡改薄荷色塊、加電子雞），資料欄位維持 API 現有內容。
 6. 設計稿 Adopt 頁的「一鍵通報附近清潔隊」是橘色按鈕，違反「橘色不做按鈕」；實作一律用 teal／外框按鈕。
 7. 設計稿 Stamps 頁仍有底部導覽列，與 README「手機沒有底部導覽列」衝突；依 README 拿掉，改用漢堡選單。
@@ -149,3 +149,9 @@
 9. 頁尾的 simulated 說明、桶詳情的來源／座標詳情與歷史清單是資料揭露需求，設計稿沒有，保留但用小字。
 10. SingleBinCard 的「提醒最近的另一種桶」：目前所有桶點都是兩槽，沒有實作；若未來後端出現單槽點需補上。
 11. 回報表單仍是 API 版的下拉選單與座標欄位；設計稿的五格問題類型按鈕與頁內相機只在歷史展示頁。
+
+## 與 API 流程整合（#10／#11）
+
+StationCard 在正式桶詳情可選取各槽（原生 button、aria-pressed），維持本站整體可用數與三態視覺，導航、回報、歷史及清運感謝以目前種類查詢。回報 WastePicker 切換種類時保留各槽獨立照片草稿，重試不改原命令種類。一般槽不可用但回收可用時，另提供明確「導航過去丟回收」選項，不將一般垃圾需求默默改成回收。API 三態對照先依營運狀態、未知讀值及 is_usable 排除不可使用的餓了狀態，避免未設置／維修桶被描述成能丟。
+
+清運道路入口已開放，手機與桌面的側邊選單可進入；後端有序站點與兩車種道路指引使用相同 token。桶詳情的歷史、來源及地圖保留分區，窄螢幕可用，分類假設／simulated 提示不移除。
