@@ -2,6 +2,24 @@ import { test, expect } from "@playwright/test";
 import { binId, reportId, workId, login } from "./api-fixtures";
 import { wasteFixture, wasteCompletion } from "./api-waste-fixture";
 import { photoFile } from "./api-completion-fixture";
+import type { Page } from "@playwright/test";
+
+// 桶面板不再有種類選單：回清單，在地圖篩選列換種類，再點回同一個桶。
+async function switchWaste(page: Page, value: "general" | "recycling") {
+  await page.getByRole("link", { name: "← 返回清單", exact: true }).click();
+  await page
+    .getByRole("radio", {
+      name: value === "general" ? "一般垃圾" : "資源回收",
+      exact: true,
+    })
+    .click();
+  await page
+    .locator(".mx-list .location-row")
+    .filter({ hasText: "雙槽測試桶" })
+    .click();
+}
+const compartment = (page: Page, name: string) =>
+  page.locator(".mx-panel .compartment").filter({ hasText: name });
 
 test("one map point exposes independent general and recycling availability and preserves the choice in navigation", async ({
   page,
@@ -10,25 +28,24 @@ test("one map point exposes independent general and recycling availability and p
   await f.setup(page);
   await page.goto("/#map");
   await expect(
-    page.locator(".location-list").getByRole("button", { name: /雙槽測試桶/ }),
+    page.locator(".mx-list").getByRole("button", { name: /雙槽測試桶/ }),
   ).toHaveCount(1);
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
+  await page.getByRole("radio", { name: "資源回收", exact: true }).click();
+  // 「最近的可用小夥伴」併入「附近的桶」：列上每一槽一條滿度條（無障礙名稱寫完整）。
   await expect(
-    page.getByRole("list", { name: "最近三個可用桶" }),
-  ).toContainText("雙槽測試桶");
+    page
+      .getByRole("list", { name: "附近的桶" })
+      .getByRole("img", { name: "資源回收，餓了，20%" }),
+  ).toBeVisible();
   await page
-    .locator(".location-list")
+    .locator(".mx-list")
     .getByRole("button", { name: /雙槽測試桶/ })
     .click();
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "選擇一般垃圾", exact: true }),
-  ).toContainText("95%");
-  await expect(
-    page.getByRole("button", { name: "選擇資源回收", exact: true }),
-  ).toContainText("20%");
+  await expect(compartment(page, "一般垃圾")).toContainText("95%");
+  await expect(compartment(page, "資源回收")).toContainText("20%");
   await page.getByRole("link", { name: "導航過去", exact: true }).click();
   await expect(page).toHaveURL(/waste_type=recycling/);
   await expect(
@@ -79,7 +96,7 @@ test("pending thanks for general waste never block or retarget recycling thanks"
   await expect(
     page.getByRole("button", { name: "重試原按讚", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
+  await switchWaste(page, "recycling");
   await expect(
     page.getByRole("button", { name: "謝謝清潔隊", exact: true }),
   ).toBeEnabled();
@@ -90,7 +107,7 @@ test("pending thanks for general waste never block or retarget recycling thanks"
   await expect(
     page.getByRole("button", { name: "已感謝", exact: true }),
   ).toBeDisabled();
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("general");
+  await switchWaste(page, "general");
   await page.getByRole("button", { name: "重試原按讚", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "已感謝", exact: true }),
@@ -163,7 +180,7 @@ test("history keeps selected waste separate from null legacy history and never d
     "舊未分類 · 舊讀值未分類",
   );
   await expect(page.locator(".api-history")).not.toContainText("一般垃圾");
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("general");
+  await switchWaste(page, "general");
   await expect(page.getByLabel("歷史種類", { exact: true })).toHaveValue(
     "general",
   );
@@ -221,12 +238,12 @@ test("switching waste preserves separate photo drafts and does not expose a stal
     page.getByRole("heading", { name: "雙槽測試桶", level: 1, exact: true }),
   ).toBeVisible();
   f.state.repairRecycling = true;
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("general");
+  await switchWaste(page, "general");
   await expect(page.locator(".bin-action-panel .status-pill")).toHaveText(
     "吃飽了 · 95%",
   );
   f.state.delayRecycling = 400;
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
+  await switchWaste(page, "recycling");
   await expect(
     page
       .locator(".bin-action-panel .status-pill")
@@ -257,25 +274,23 @@ test("report list filtering and waste choice stay usable on desktop and 320px sc
   await page.evaluate((id) => {
     location.hash = `bin/${id}?waste_type=recycling`;
   }, binId);
+  await expect(compartment(page, "資源回收")).toContainText("20%");
+  // 桶面板的槽只顯示、不能點；種類從地圖篩選列切換（鍵盤也能操作）。
+  await expect(page.locator(".mx-panel .compartment-select")).toHaveCount(0);
+  await page.getByRole("link", { name: "← 返回清單", exact: true }).click();
+  await page.getByRole("radio", { name: "資源回收", exact: true }).focus();
+  await page.keyboard.press("ArrowLeft");
   await expect(
-    page.getByRole("button", { name: "選擇資源回收", exact: true }),
-  ).toContainText("20%");
-  const general = page.getByRole("button", {
-    name: "選擇一般垃圾",
-    exact: true,
-  });
-  await general.focus();
-  await general.press("Enter");
-  await expect(
-    page.getByRole("button", { name: "選擇一般垃圾", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("radio", { name: "一般垃圾", exact: true }),
+  ).toBeChecked();
+  await page
+    .locator(".mx-list .location-row")
+    .filter({ hasText: "雙槽測試桶" })
+    .press("Enter");
   await expect(
     page.getByRole("link", { name: "尋找可用桶並導航", exact: true }),
   ).toHaveAttribute("href", `#nav/${binId}?waste_type=general`);
-  await page.getByRole("button", { name: "選擇資源回收", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "選擇資源回收", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await switchWaste(page, "recycling");
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
   ).toHaveAttribute("href", `#nav/${binId}?waste_type=recycling`);
@@ -286,8 +301,11 @@ test("report list filtering and waste choice stay usable on desktop and 320px sc
       page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     )
     .toBe(true);
-  const mapBox = await page.locator(".api-detail-map").boundingBox();
-  const noteBox = await page.locator(".api-detail-map .map-note").boundingBox();
+  // 桶資訊改在地圖旁的面板，不再有小地圖；地圖提示也拿掉了，改驗圖例按鈕在主地圖內。
+  const mapBox = await page.locator(".mx-map").boundingBox();
+  const noteBox = await page
+    .getByRole("button", { name: "圖例", exact: true })
+    .boundingBox();
   expect(noteBox!.y).toBeGreaterThanOrEqual(mapBox!.y);
   expect(noteBox!.y + noteBox!.height).toBeLessThanOrEqual(
     mapBox!.y + mapBox!.height,
@@ -309,8 +327,8 @@ test("all map pages retain recycling and render one result per location", async 
   f.state.multiPage = true;
   await f.setup(page);
   await page.goto("/#map?waste_type=recycling");
-  await expect(page.locator(".location-list > button")).toHaveCount(2);
-  await expect(page.locator(".location-list")).toContainText("另一個位置");
+  await expect(page.locator(".mx-list .location-row")).toHaveCount(2);
+  await expect(page.locator(".mx-list")).toContainText("另一個位置");
   const reads = f.requests.filter((r) => r.path === "/map/locations");
   expect(reads.every((r) => r.waste === "recycling")).toBe(true);
   expect(reads.some((r) => r.offset === "1")).toBe(true);
@@ -345,4 +363,55 @@ test("expired recycling report restores the same waste draft and original comman
   expect(commands).toHaveLength(2);
   expect(commands[0].body.waste_type).toBe("recycling");
   expect(commands[1]).toEqual(commands[0]);
+});
+
+test("arrow keys switch the report waste repeatedly, keep focus on the radio and keep each draft (N7)", async ({
+  page,
+}) => {
+  const f = wasteFixture();
+  await f.setup(page);
+  await login(page, "citizen", `report/${binId}?waste_type=general`);
+  const general = page.getByRole("radio", { name: "一般垃圾", exact: true });
+  const recycling = page.getByRole("radio", { name: "資源回收", exact: true });
+  const note = page.getByRole("textbox", { name: "說明", exact: true });
+  await expect(general).toBeChecked();
+  await note.fill("一般垃圾草稿");
+  await general.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(/waste_type=recycling/);
+  await expect(recycling).toBeChecked();
+  await expect(recycling).toBeFocused();
+  await expect(note).toHaveValue("");
+  await note.fill("資源回收草稿");
+  await recycling.focus();
+  // 連續按方向鍵：焦點一直在選中的那格，草稿每槽各自保存。
+  await page.keyboard.press("ArrowLeft");
+  await expect(general).toBeChecked();
+  await expect(general).toBeFocused();
+  await expect(note).toHaveValue("一般垃圾草稿");
+  await page.keyboard.press("ArrowRight");
+  await expect(recycling).toBeChecked();
+  await expect(recycling).toBeFocused();
+  await expect(note).toHaveValue("資源回收草稿");
+  await page.keyboard.press("ArrowLeft");
+  await expect(general).toBeFocused();
+  await expect(note).toHaveValue("一般垃圾草稿");
+});
+
+test("the navigation waste select keeps focus after the page reloads for the new waste (X5)", async ({
+  page,
+}) => {
+  const f = wasteFixture();
+  await f.setup(page);
+  await page.goto(`/#nav/${binId}?waste_type=general`);
+  const select = page.getByLabel("垃圾種類", { exact: true });
+  await expect(select).toBeVisible();
+  await select.focus();
+  await select.selectOption("recycling");
+  await expect(page).toHaveURL(/waste_type=recycling/);
+  await expect(
+    page.getByText("本次要丟：資源回收。", { exact: true }),
+  ).toBeVisible();
+  await expect(select).toBeFocused();
+  await expect(select).toHaveValue("recycling");
 });

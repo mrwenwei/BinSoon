@@ -34,6 +34,21 @@ interface Props {
     west: number;
     east: number;
   };
+  // 地圖瀏覽模式（MapPage）專用，其他頁不傳時維持原行為。
+  /** 初始中心（zoom 15）；有給時，位置清單變動不自動 fitBounds（除非 autoFit）。 */
+  initialCenter?: [number, number];
+  autoFit?: boolean;
+  /** 瀏覽模式：這個字串變了（例如搜尋字）且有資料時，框住目前的點一次；輪詢不會再框。 */
+  fitKey?: string;
+  /** 自訂標記圖示與無障礙名稱。 */
+  markerIcon?: (location: LocationRecord, selected: boolean) => L.DivIcon;
+  markerLabel?: (location: LocationRecord) => string;
+  /** 固定示意起點標記（不可點、不影響視野）。 */
+  origin?: { latitude: number; longitude: number; label: string };
+  /** 有給時：只在選取對象改變時置中，並把選取點往上移這麼多像素（手機抽屜遮住下半部）。 */
+  focusOffsetY?: number;
+  /** 瀏覽模式：數字變了就把目前選取重新置中（例如抽屜從全開回到半開）。 */
+  focusKey?: number;
 }
 export function LocationMap({
   locations,
@@ -52,7 +67,23 @@ export function LocationMap({
   removedIds,
   operations,
   binMarkerLabel,
+  initialCenter,
+  autoFit,
+  markerIcon,
+  markerLabel,
+  origin,
+  focusOffsetY,
+  focusKey,
+  fitKey,
 }: Props) {
+  const fittedKey = useRef<string | undefined>(undefined);
+  const browse = focusOffsetY !== undefined;
+  const offsetRef = useRef(focusOffsetY ?? 0);
+  offsetRef.current = focusOffsetY ?? 0;
+  const iconFor = (location: LocationRecord, active: boolean) =>
+    markerIcon
+      ? markerIcon(location, active)
+      : locationMarkerIcon(location, active, removedIds, operations);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
@@ -66,7 +97,7 @@ export function LocationMap({
       zoomControl: false,
       minZoom: 8,
       maxZoom: 19,
-    }).setView([25.04, 121.54], 13);
+    }).setView(initialCenter || [25.04, 121.54], initialCenter ? 15 : 13);
     map.current = instance;
     L.control.zoom({ position: "bottomright" }).addTo(instance);
     L.control
@@ -116,6 +147,11 @@ export function LocationMap({
       markerPositions.current = "";
     };
   }, []);
+  // 標記依 kind/id 增量更新：背景輪詢不重建標記，位置、圖示、名稱沒變就不動，
+  // 停在標記上的鍵盤焦點、選取高亮與使用者目前的平移縮放都不會因為輪詢而遺失。
+  // 瀏覽模式（MapPage）與其他頁共用這一套，只有自動框選的時機不同。
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
   useEffect(() => {
     const instance = map.current!;
     const previous = new Map(
@@ -127,26 +163,28 @@ export function LocationMap({
     const next: typeof markerRecords.current = [];
     for (const location of locations) {
       const key = `${location.kind}/${location.id}`;
-      const label = `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`;
-      const icon = locationMarkerIcon(
-        location,
-        location.id === selected?.id,
-        removedIds,
-        operations,
-      );
+      const active = location.id === selected?.id;
+      const label = markerLabel
+        ? markerLabel(location)
+        : `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`;
+      const icon = iconFor(location, active);
       const iconSignature = JSON.stringify(icon.options);
       let record = previous.get(key);
       if (!record) {
-        record = {
+        const created = {
           marker: L.marker([location.latitude, location.longitude], {
             icon,
             title: label,
             alt: label,
             riseOnHover: true,
-          }).addTo(markers.current!),
+          }),
           location,
           iconSignature,
         };
+        created.marker
+          .on("click", () => onSelectRef.current(created.location))
+          .addTo(markers.current!);
+        record = created;
       } else {
         if (
           !record.marker
@@ -155,30 +193,48 @@ export function LocationMap({
         )
           record.marker.setLatLng([location.latitude, location.longitude]);
         if (record.iconSignature !== iconSignature) record.marker.setIcon(icon);
+        record.marker.options.title = label;
         record.location = location;
         record.iconSignature = iconSignature;
       }
-      record.marker.off("click").on("click", () => onSelect(location));
       const element = record.marker.getElement();
       element?.setAttribute("aria-label", label);
       element?.setAttribute("title", label);
-      record.marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
+      record.marker.setZIndexOffset(active ? 1000 : 0);
       next.push(record);
       previous.delete(key);
     }
     for (const record of previous.values())
       markers.current!.removeLayer(record.marker);
     markerRecords.current = next;
-    // Only a different set of positions reframes results. Status polls must
-    // preserve the user's current pan and zoom, even when DTO objects are new.
+    // 只有點位集合真的變了才重新框選；輪詢回來的 DTO 即使是新物件，
+    // 也要保留使用者目前的平移與縮放。
     const positions = locations
       .map((p) => JSON.stringify([p.kind, p.id, p.latitude, p.longitude]))
       .sort()
       .join(";");
-    if (
+    if (browse) {
+      // 瀏覽模式：只在 fitKey（例如搜尋字）變了且有資料時框一次。
+      if (!fitKey) fittedKey.current = undefined;
+      else if (fittedKey.current !== fitKey && locations.length) {
+        fittedKey.current = fitKey;
+        // 手機抽屜蓋住下半部：下方留白加上半開抽屜的高度（offset 的兩倍）。
+        if (!selectionBounds)
+          instance.fitBounds(
+            L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
+            {
+              paddingTopLeft: [50, 45],
+              paddingBottomRight: [50, 45 + offsetRef.current * 2],
+              maxZoom: 15,
+              animate: false,
+            },
+          );
+      }
+    } else if (
       positions !== markerPositions.current &&
       locations.length &&
-      !selectionBounds
+      !selectionBounds &&
+      (autoFit ?? !initialCenter)
     )
       instance.fitBounds(
         L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
@@ -186,21 +242,85 @@ export function LocationMap({
       );
     markerPositions.current = positions;
   }, [
+    browse,
     locations,
-    onSelect,
+    selected?.id,
     removedIds,
+    operations,
     selectionBounds,
     binMarkerLabel,
-    operations,
-    selected?.id,
+    markerIcon,
+    markerLabel,
+    autoFit,
+    fitKey,
   ]);
+  // 瀏覽模式：標記可用鍵盤 Enter／空白鍵選取（Leaflet 預設不會觸發 click）。
   useEffect(() => {
-    if (!selected) return;
-    const point: L.LatLngExpression = [selected.latitude, selected.longitude];
-    map.current!.setView(point, Math.max(map.current!.getZoom(), 16), {
+    if (!browse || !container.current) return;
+    const element = container.current;
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const icon = (event.target as HTMLElement).closest?.(
+        ".leaflet-marker-icon",
+      );
+      const record = icon
+        ? markerRecords.current.find((r) => r.marker.getElement() === icon)
+        : undefined;
+      if (!record) return;
+      event.preventDefault();
+      onSelectRef.current(record.location);
+    };
+    element.addEventListener("keydown", keydown);
+    return () => element.removeEventListener("keydown", keydown);
+  }, [browse]);
+  // 只在選取對象換了（或瀏覽模式的 focusKey 變了）才置中，輪詢更新不會把地圖拉回來。
+  // 瀏覽模式在手機上再把選取點往上移，避開半開的抽屜。
+  useEffect(() => {
+    if (!selected || !map.current) return;
+    const instance = map.current;
+    instance.setView(
+      [selected.latitude, selected.longitude],
+      Math.max(instance.getZoom(), 16),
+      { animate: false },
+    );
+    if (browse && offsetRef.current)
+      instance.panBy([0, offsetRef.current], { animate: false });
+  }, [browse, selected?.id, selected?.latitude, selected?.longitude, focusKey]);
+  // 瀏覽模式第一次量到抽屜高度時，把初始中心移到抽屜上方的可見區（只做一次）。
+  const initialOffsetDone = useRef(false);
+  useEffect(() => {
+    if (
+      !browse ||
+      initialOffsetDone.current ||
+      !initialCenter ||
+      !focusOffsetY ||
+      !map.current
+    )
+      return;
+    initialOffsetDone.current = true;
+    if (selected) return;
+    map.current.setView(initialCenter, map.current.getZoom(), {
       animate: false,
     });
-  }, [selected?.id, selected?.latitude, selected?.longitude]);
+    map.current.panBy([0, focusOffsetY], { animate: false });
+  }, [browse, focusOffsetY]);
+  useEffect(() => {
+    if (!origin || !map.current) return;
+    const marker = L.marker([origin.latitude, origin.longitude], {
+      icon: L.divIcon({
+        className: "mx-origin",
+        html: `<span class="mx-origin-pin" aria-hidden="true">起</span><span class="mx-origin-label">${origin.label}</span>`,
+        iconSize: [112, 32],
+        iconAnchor: [16, 16],
+      }),
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: -500,
+    }).addTo(map.current);
+    return () => {
+      marker.remove();
+    };
+  }, [origin?.latitude, origin?.longitude, origin?.label]);
   useEffect(() => {
     const points = roadRoute || demoRoute;
     const start = routeOrigin || points?.[0];
@@ -344,19 +464,21 @@ export function LocationMap({
           底圖暫時無法完整載入，請確認網路後重新整理。位置標記與清單仍可查看。
         </p>
       )}
-      <span className="map-note">
-        {onPointChange
-          ? "點擊地圖或拖曳＋選點 · 方塊為市民提案"
-          : selected
-            ? "已選取位置 · 可縮放地圖查看周邊"
-            : roadRoute
-              ? routeLabel || "沿道路規劃的路線"
-              : demoRoute
-                ? "虛線為示意路線 · 未依實際道路規劃"
-                : routeOrigin
-                  ? "選擇交通方式後，產生道路路線"
-                  : "點選像素小夥伴，查看位置詳情"}
-      </span>
+      {!browse && (
+        <span className="map-note">
+          {onPointChange
+            ? "點擊地圖或拖曳＋選點 · 方塊為市民提案"
+            : selected
+              ? "已選取位置 · 可縮放地圖查看周邊"
+              : roadRoute
+                ? routeLabel || "沿道路規劃的路線"
+                : demoRoute
+                  ? "虛線為示意路線 · 未依實際道路規劃"
+                  : routeOrigin
+                    ? "選擇交通方式後，產生道路路線"
+                    : "點選像素小夥伴，查看位置詳情"}
+        </span>
+      )}
     </div>
   );
 }

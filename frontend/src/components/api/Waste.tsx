@@ -12,15 +12,22 @@ export function WasteSelect({
   onChange,
   all = false,
   disabled = false,
+  hideLabel = false,
 }: {
   value: WasteType | "";
   onChange: (value: WasteType | "") => void;
   all?: boolean;
   disabled?: boolean;
+  // 選用：標籤文字只給輔助科技（地圖篩選列空間不夠時用）。
+  hideLabel?: boolean;
 }) {
   return (
     <label className="api-waste-select">
-      垃圾種類
+      {hideLabel ? (
+        <span className="visually-hidden">垃圾種類</span>
+      ) : (
+        "垃圾種類"
+      )}
       <select
         aria-label="垃圾種類"
         value={value}

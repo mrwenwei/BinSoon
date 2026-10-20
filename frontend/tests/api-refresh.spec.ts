@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { apiFixture, binId, location, status } from "./api-fixtures";
 
+// #bin/<id> 開在地圖瀏覽模式（面板＋旁邊的地圖），沒有獨立桶頁的小地圖；
+// 這裡看的是地圖上「已選取」的那個桶標記。
+
 test("bin background refresh keeps card position and existing map marker while data is unchanged", async ({
   page,
 }) => {
@@ -34,10 +37,10 @@ test("bin background refresh keeps card position and existing map marker while d
   await page.goto(`/#bin/${binId}`);
   await expect(page.getByText("載入中…", { exact: true })).toHaveCount(0);
   await expect(
-    page.locator(".api-detail-map .leaflet-marker-icon"),
+    page.locator(".mx-map .leaflet-marker-icon.selected"),
   ).toHaveCount(1);
   const marker = await page
-    .locator(".api-detail-map .leaflet-marker-icon")
+    .locator(".mx-map .leaflet-marker-icon.selected")
     .elementHandle();
   const top = await page
     .locator(".bin-overview")
@@ -94,12 +97,12 @@ test("new fullness is applied without resetting zoom or replacing an unchanged m
   await page.goto(`/#bin/${binId}`);
   await expect(page.getByText("20%", { exact: true }).first()).toBeVisible();
   const marker = await page
-    .locator(".api-detail-map .leaflet-marker-icon")
+    .locator(".mx-map .leaflet-marker-icon.selected")
     .elementHandle();
-  await page.locator(".api-detail-map .leaflet-control-zoom-in").click();
+  await page.locator(".mx-map .leaflet-control-zoom-in").click();
   await page.clock.runFor(500);
   const transform = await page
-    .locator(".api-detail-map .leaflet-proxy")
+    .locator(".mx-map .leaflet-proxy")
     .evaluate((node) => (node as HTMLElement).style.transform);
   fill = 30;
   await page.clock.fastForward(10001);
@@ -107,7 +110,7 @@ test("new fullness is applied without resetting zoom or replacing an unchanged m
   expect(await marker!.evaluate((node) => node.isConnected)).toBe(true);
   expect(
     await page
-      .locator(".api-detail-map .leaflet-proxy")
+      .locator(".mx-map .leaflet-proxy")
       .evaluate((node) => (node as HTMLElement).style.transform),
   ).toBe(transform);
   await page.screenshot({

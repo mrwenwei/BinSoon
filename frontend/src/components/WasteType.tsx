@@ -22,23 +22,34 @@ export function WasteIcon({ type }: { type: WasteType }) {
   );
 }
 
+// 選用：legend 換題目文字；iconOnly＝純圖示（兩格 44×44 相連，題目與每格文字
+// 只給輔助科技，桌面另有 title 提示），給地圖標題列用。預設樣式不變。
 export function WastePicker({
   value,
   onChange,
   name,
   disabled,
+  legend = "回報哪一桶？",
+  iconOnly = false,
 }: {
   value: WasteType;
   onChange: (value: WasteType) => void;
   name: string;
   disabled?: boolean;
+  legend?: string;
+  iconOnly?: boolean;
 }) {
   return (
-    <fieldset className="waste-picker" disabled={disabled}>
-      <legend>回報哪一桶？</legend>
+    <fieldset
+      className={`waste-picker${iconOnly ? " icon-only" : ""}`}
+      disabled={disabled}
+    >
+      <legend className={iconOnly ? "visually-hidden" : undefined}>
+        {legend}
+      </legend>
       <div className="segmented">
         {wasteTypes.map((type) => (
-          <label key={type}>
+          <label key={type} title={iconOnly ? wasteLabels[type] : undefined}>
             <input
               type="radio"
               name={name}
@@ -47,7 +58,11 @@ export function WastePicker({
               onChange={() => onChange(type)}
             />
             <WasteIcon type={type} />
-            {wasteLabels[type]}
+            {iconOnly ? (
+              <span className="visually-hidden">{wasteLabels[type]}</span>
+            ) : (
+              wasteLabels[type]
+            )}
           </label>
         ))}
       </div>

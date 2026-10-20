@@ -9,7 +9,8 @@ import {
   useSession,
 } from "./components/api/SessionContext";
 import { AdminPage } from "./components/api/CompletionPages";
-import { MapPage, BinPage } from "./components/api/MapPages";
+import { MapPage } from "./components/api/MapPage";
+import { NavigationPage } from "./components/api/NavigationPage";
 
 import {
   ReportDraftProvider,
@@ -52,22 +53,45 @@ function AppContent() {
   const workCommands = useWorkCommands();
   const main = useRef<HTMLDivElement>(null);
   const { session, logout, notice, clearNotice } = useSession();
+  // 只換 ?waste_type= 時（例如在種類單選或下拉按方向鍵），頁面若因 key 重建，
+  // 原本聚焦的控制項會被換掉、焦點掉到 BODY。換之前記下控制項，換完把焦點
+  // 放回新畫面上同一個控制項（單選：目前選中的那格）。
+  const routeRef = useRef(route);
+  const wasteFocus = useRef<string | null>(null);
   useEffect(() => {
     const change = () => {
-      setRoute(location.hash.slice(1) || "map");
+      const next = location.hash.slice(1) || "map";
+      const el = document.activeElement;
+      wasteFocus.current =
+        onlyWasteChanged(routeRef.current, next) && el
+          ? wasteControlSelector(el)
+          : null;
+      routeRef.current = next;
+      setRoute(next);
       window.scrollTo(0, 0);
     };
     window.addEventListener("hashchange", change);
     return () => window.removeEventListener("hashchange", change);
   }, []);
+  const [path, search] = route.split("?");
+  const [page, id, workId] = path.split("/");
+  const params = new URLSearchParams(search);
+  // 換頁時把焦點移到頁面標題；只有 ?waste_type= 變了（例如用方向鍵切換種類）
+  // 不算換頁，焦點留在原處，才能連續切換。
+  const focusParams = new URLSearchParams(search);
+  focusParams.delete("waste_type");
+  const focusKey = `${path}?${focusParams}`;
   useEffect(() => {
     const h = main.current?.querySelector("h1");
     h?.setAttribute("tabindex", "-1");
     h?.focus({ preventScroll: true });
+  }, [focusKey]);
+  useEffect(() => {
+    const selector = wasteFocus.current;
+    wasteFocus.current = null;
+    if (!selector || !main.current) return;
+    return restoreFocus(main.current, selector);
   }, [route]);
-  const [path, search] = route.split("?");
-  const [page, id, workId] = path.split("/");
-  const params = new URLSearchParams(search);
   const [vehicle, setVehicle] = useState<CrewVehicle>("scooter");
   const [lastWaste, setLastWaste] = useState<WasteType>("general");
   const routeWaste = params.get("waste_type");
@@ -88,6 +112,8 @@ function AppContent() {
   const loginRoute = role === "citizen" ? "login" : `${role}/login`;
   const loginHref = `#${loginRoute}?next=${encodeURIComponent(route)}`;
   const isLogin = page === "login" || id === "login";
+  // 地圖瀏覽模式（#map、#bin/<id>）是一屏 app，不接頁尾；揭露句改在面板底部。
+  const isMapView = !isLogin && (page === "map" || (page === "bin" && !!id));
   const signOut = () => {
     drafts.clear();
     proposalDraft.clear();
@@ -251,13 +277,20 @@ function AppContent() {
             key={workId || "admin"}
             id={id === "work-orders" ? workId : undefined}
           />
-        ) : page === "map" ? (
-          <MapPage {...wasteControls} />
-        ) : (page === "bin" || page === "nav") && id ? (
-          <BinPage
+        ) : page === "map" || (page === "bin" && id) ? (
+          // 地圖與桶資訊同一個元件：#bin/<id> 是「地圖＋已選該桶的面板」，
+          // 切換時地圖不重建。
+          <MapPage
+            {...wasteControls}
+            binId={page === "bin" ? id : undefined}
+            placeId={
+              page === "map" ? params.get("place") || undefined : undefined
+            }
+          />
+        ) : page === "nav" && id ? (
+          <NavigationPage
             key={`${page}/${id}/${wasteType}`}
             id={id}
-            navigation={page === "nav"}
             {...wasteControls}
           />
         ) : page === "quick-report" && id ? (
@@ -335,14 +368,61 @@ function AppContent() {
           </main>
         )}
       </div>
-      <footer className="api-footer">
-        所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。
-        <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}
-        <a href="#rewards">兌換</a>
-      </footer>
+      {!isMapView && (
+        <footer className="api-footer">
+          所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。
+          <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}
+          <a href="#rewards">兌換</a>
+        </footer>
+      )}
     </div>
   );
 }
+function routeWithoutWaste(route: string) {
+  const [path, search] = route.split("?");
+  const params = new URLSearchParams(search);
+  params.delete("waste_type");
+  return `${path}?${params}`;
+}
+function onlyWasteChanged(previous: string, next: string) {
+  return (
+    previous !== next && routeWithoutWaste(previous) === routeWithoutWaste(next)
+  );
+}
+function wasteControlSelector(el: Element) {
+  if (el instanceof HTMLInputElement && el.type === "radio" && el.name)
+    return `input[type="radio"][name="${CSS.escape(el.name)}"]`;
+  if (el instanceof HTMLSelectElement && el.getAttribute("aria-label"))
+    return `select[aria-label="${CSS.escape(el.getAttribute("aria-label")!)}"]`;
+  return null;
+}
+// 焦點還在（元件沒重建）就不動；否則等新畫面出現同一個控制項（頁面可能還在
+// 載入），最多等 5 秒，期間使用者自己移了焦點也不搶。
+function restoreFocus(root: HTMLElement, selector: string) {
+  const lost = () =>
+    !document.activeElement || document.activeElement === document.body;
+  const attempt = () => {
+    if (!lost()) return true;
+    const target =
+      root.querySelector<HTMLElement>(`${selector}:checked`) ??
+      root.querySelector<HTMLElement>(selector);
+    if (!target) return false;
+    target.focus({ preventScroll: true });
+    return true;
+  };
+  if (attempt()) return;
+  const observer = new MutationObserver(() => {
+    if (attempt()) stop();
+  });
+  const timer = window.setTimeout(() => stop(), 5000);
+  const stop = () => {
+    observer.disconnect();
+    window.clearTimeout(timer);
+  };
+  observer.observe(root, { childList: true, subtree: true });
+  return stop;
+}
+
 export default function App() {
   return (
     <SessionProvider>

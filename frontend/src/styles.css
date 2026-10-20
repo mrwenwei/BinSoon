@@ -5567,22 +5567,6 @@ input[type="file"]::file-selector-button {
 .api-bin-detail .bin-overview {
   padding: 24px;
 }
-.bin-overview-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-.bin-overview-heading h2 {
-  margin: 0;
-}
-.bin-overview-heading p {
-  margin: 6px 0 0;
-}
-.bin-overview-heading .api-waste-select {
-  margin: 0;
-  font: var(--text-caption);
-}
 .compartment-choice {
   font: var(--text-caption);
   color: var(--text-body);
@@ -5679,13 +5663,6 @@ input[type="file"]::file-selector-button {
   }
   .bin-title {
     gap: 10px;
-  }
-  .bin-overview-heading {
-    align-items: start;
-    flex-direction: column;
-  }
-  .bin-overview-heading .api-waste-select {
-    width: 100%;
   }
   .compartment-choice {
     font: var(--text-caption);
@@ -5801,6 +5778,492 @@ input[type="file"]::file-selector-button {
   }
   .compartment-select .compartment-name .compartment-status {
     width: 100%;
+  }
+}
+/* ── 地圖瀏覽模式（components/api/MapPage.tsx） ──────────────────────
+   手機（≤760px）：地圖滿版＋下方抽屜（收起／半開／全開，高度由
+   --mx-drawer-h 控制）；桌面：左側面板＋右側地圖。清單列、篩選膠囊、
+   狀態膠囊、圖例、圖示按鈕沿用既有元件；這裡只放沒有現成元件的部分
+   （mx- 前綴），以及既有元件放進面板時的版面調整（限定在 .mx-* 底下）。
+   不沿用舊地圖首頁的 .explore-layout／.explorer／.map-section：那組是
+   「地圖在上、面板在下、整頁捲動」的版面（目前只剩 tests/legacy 使用），
+   和這裡的固定一屏＋可拖曳抽屜行為不同，改它會影響舊展示頁。 */
+.mx-layout {
+  --mx-panel-w: clamp(360px, 32vw, 440px);
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--mx-panel-w) minmax(0, 1fr);
+  height: calc(100dvh - var(--topbar-h));
+  min-height: 480px;
+  /* clip（不是 hidden）：聚焦到邊緣元素時不會把整個版面捲動 1px。 */
+  overflow: clip;
+  background: var(--map);
+}
+.mx-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+.mx-handle-wrap {
+  display: none;
+  flex: none;
+  justify-content: center;
+  touch-action: none;
+}
+.mx-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: grab;
+}
+.mx-handle span {
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-xs);
+  background: var(--line);
+}
+.mx-panel-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  min-height: 60px;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 2px solid var(--divider);
+}
+.mx-panel-head .back-link {
+  margin: 0;
+}
+.mx-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: var(--text-card-title);
+}
+.mx-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--space-6) var(--space-6);
+}
+.mx-filters {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-4);
+}
+.mx-filters .search-field input {
+  min-height: 44px;
+}
+/* 「包含所有撤除紀錄」勾選＋說明小字：放在清單（或空狀態）下方，兩者靠緊。 */
+.mx-removed {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+.mx-removed .check-field {
+  min-height: 44px;
+}
+.mx-removed p {
+  margin: 0;
+}
+/* 標題列：左邊「附近的桶」＋下方小字（數量・排序依據），右邊純圖示種類切換、
+   垂直置中。標題區可縮（小字會換行），但不小於標題本身；連這樣都放不下時，
+   切換換到下一行並靠右。 */
+.mx-head-title {
+  flex: 1 1 0;
+  min-width: min-content;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.mx-head-title .mx-title {
+  flex: none;
+  white-space: nowrap;
+}
+
+.mx-panel-head .waste-picker {
+  flex: none;
+  margin-left: auto;
+}
+/* 清單：.location-row 自帶左右內距，所以清單左右貼齊面板邊。 */
+.mx-list {
+  list-style: none;
+  margin: 0 calc(var(--space-6) * -1) 0;
+  padding: 0;
+  border-top: 2px solid var(--divider);
+}
+/* 桶名一行：「新設」膠囊放在桶名旁邊，不佔滿度條那一行。 */
+.mx-row-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.mx-row-title strong {
+  min-width: 0;
+}
+.mx-row-title .status-pill {
+  flex: none;
+}
+/* 已撤除的桶：一顆狀態膠囊取代兩槽滿度條。 */
+.mx-row-status {
+  display: flex;
+  margin-top: var(--space-1);
+}
+/* 清單列的兩槽：同一行並排（所選種類在左），每槽是圖示＋短滿度條＋百分比。
+   圖示和數值欄寬固定，所以每一列的滿度條起點和長度都一樣。 */
+.mx-slots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-1);
+}
+.mx-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* 垃圾桶（SVG 線條）和 ♻（文字字形）份量一致：同色、同大小的框、線條圖示放大一點。 */
+.mx-slot .waste-icon {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  color: var(--text-body);
+  font: var(--text-caption);
+}
+.mx-slot .waste-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 3;
+}
+.mx-slot .fill-bar {
+  flex: 1 1 auto;
+  min-width: var(--space-6);
+}
+.mx-slot-value {
+  flex: none;
+  width: 3em;
+  font: var(--text-caption);
+  font-weight: 700;
+  color: var(--text-body);
+}
+.mx-slot.state-full .mx-slot-value {
+  color: var(--signal);
+}
+.mx-slot.state-offline .mx-slot-value {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+/* 清單列放進面板時：列的上下內距、桶名／距離／膠囊之間鬆一點。 */
+.mx-list .location-row {
+  padding-block: var(--space-4);
+}
+.mx-list .row-copy {
+  gap: var(--space-1);
+}
+.mx-usable {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 3em;
+  text-align: right;
+}
+.mx-usable.state-hungry .numeral-sm {
+  color: var(--teal);
+}
+.mx-usable.state-full .numeral-sm {
+  color: var(--signal);
+}
+.mx-empty {
+  padding: var(--space-5) var(--space-1);
+  color: var(--text-body);
+}
+.mx-empty p {
+  margin: 0 0 var(--space-1);
+}
+.mx-disclosure {
+  margin: var(--space-5) 0 0;
+}
+.mx-note {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
+  border-left: 3px solid var(--mint);
+  background: var(--field);
+  color: var(--text);
+  font: var(--text-caption);
+}
+/* 面板裡的既有內容：位置詳情改成一般區塊；桶資訊收成單欄。 */
+.api-app .mx-panel .details {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  margin-top: var(--space-4);
+  overflow: visible;
+  border: 1px solid var(--line);
+}
+.mx-bin {
+  padding-top: var(--space-4);
+}
+.mx-bin h1 {
+  margin: 0;
+  font: var(--text-card-title);
+}
+.mx-panel .bin-heading {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.mx-panel .api-bin-detail .bin-overview {
+  padding: var(--space-4);
+}
+.mx-panel .bin-action-panel {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+.mx-panel .bin-actions {
+  flex-wrap: wrap;
+}
+.mx-panel .bin-actions .button {
+  flex: 1 1 auto;
+}
+.mx-panel .bin-support-grid,
+.mx-panel .bin-location-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+.mx-map {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 0;
+  background: var(--map);
+}
+/* 圖例：地圖右上角一顆 .menu-button 圖示按鈕，點開在下方顯示 popover。
+   外框底色用 chrome，讓透明的圖示按鈕在淺色地圖上看得清楚。 */
+.mx-legend {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 1000;
+  border-radius: var(--radius-sm);
+  background: var(--chrome);
+}
+.mx-legend-popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--chrome);
+}
+/* MapLegend 的擴充：直式排列（放進 popover）、標題、地標旗子、建議點。 */
+.map-legend.stacked {
+  position: static;
+  height: auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+.map-legend-title {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.map-legend-flag {
+  display: inline-flex;
+}
+.map-legend-flag svg {
+  width: 14px;
+  height: 16px;
+}
+.map-legend-proposed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1.5px dashed var(--text-muted);
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  font: var(--text-label);
+  font-style: normal;
+}
+/* WastePicker 純圖示版（iconOnly prop）：兩格 44×44 相連，圖示放大。 */
+.waste-picker.icon-only .segmented {
+  display: inline-grid;
+  grid-template-columns: repeat(2, 44px);
+  gap: 0;
+}
+.waste-picker.icon-only .segmented label {
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0;
+  gap: 0;
+}
+.waste-picker.icon-only .segmented label:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.waste-picker.icon-only .segmented label:last-child {
+  margin-left: -1px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.waste-picker.icon-only .segmented label:has(input:checked) {
+  z-index: 1;
+}
+.waste-picker.icon-only .waste-icon {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  color: inherit;
+  font: var(--text-numeral-sm);
+}
+/* 線條垃圾桶比實心的 ♻ 字形看起來小又淡：放大到 24px、線條加粗，兩者份量一致。 */
+.waste-picker.icon-only .waste-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.8;
+}
+/* 地圖標記：地標旗子、建議點虛線方框、示意起點。 */
+.mx-landmark .marker-body svg {
+  width: 28px;
+  height: 32px;
+}
+.mx-proposed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+}
+.mx-proposed span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 2px dashed var(--text-on-light);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--mascot-eye) 70%, transparent);
+  color: var(--text-on-light);
+  font: var(--text-heading);
+  line-height: 1;
+}
+.mx-proposed.selected span {
+  outline: 2.5px solid var(--signal);
+  outline-offset: var(--space-1);
+}
+.mx-origin {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+.mx-origin-pin {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: var(--space-1);
+  border-radius: var(--radius-xs);
+  background: var(--text-on-light);
+  color: var(--mint);
+  font: var(--text-caption);
+  font-weight: 700;
+}
+.mx-origin-label {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--chrome);
+  color: var(--text);
+  font: var(--text-caption);
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .mx-layout {
+    display: block;
+    min-height: 0;
+  }
+  .mx-map {
+    position: absolute;
+    inset: 0;
+  }
+  /* 底部抽屜（參考設計稿 Nav 底部面板）：chrome 底、上緣 1px line、上方圓角 md。 */
+  .mx-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--mx-drawer-h, 50%);
+    background: var(--chrome);
+    border-right: 0;
+    border-top: 1px solid var(--line);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    transition: height 0.26s ease;
+  }
+  .mx-panel.dragging {
+    transition: none;
+  }
+  .mx-handle-wrap {
+    display: flex;
+  }
+  .mx-panel-head {
+    min-height: 52px;
+    padding: var(--space-1) var(--space-4) var(--space-3);
+    touch-action: none;
+  }
+  .mx-panel-body {
+    padding: 0 var(--space-4) var(--space-6);
+  }
+  .mx-list {
+    margin-inline: calc(var(--space-4) * -1);
+  }
+  .mx-map .leaflet-bottom {
+    bottom: var(--mx-drawer-h, 50%);
+  }
+  /* 手機地圖矮：popover 開在按鈕左邊，不蓋到右下的縮放鈕。 */
+  .mx-legend-popover {
+    top: 0;
+    right: calc(100% + var(--space-2));
+  }
+  .mx-layout[data-drawer="full"] .mx-legend,
+  .mx-layout[data-drawer="full"] .mx-map .leaflet-bottom {
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mx-panel {
+    transition: none;
   }
 }
 

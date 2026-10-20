@@ -36,7 +36,7 @@ import { emptyDraft, type ReportDraft } from "../../src/data/reports";
 import { DemoLocationMap as LocationMap } from "../../src/map/DemoLocationMap";
 import { Mascot } from "../../src/components/Mascot";
 import { AppNav } from "../../src/components/AppNav";
-import { MapLegend } from "../../src/components/api/MapPages";
+import { MapLegend } from "../../src/components/api/MapPage";
 import { stateVisual } from "../../src/components/binVisual";
 import { Icon } from "../../src/components/Icon";
 import { LocationDetails } from "../../src/components/LocationDetails";

@@ -32,7 +32,8 @@ function summaryFor(list: CardCompartment[], state: BinState) {
   return "現在沒有桶能丟";
 }
 
-function FillBar({
+// 滿度條（餓了實心青綠、吃飽了橘色斜紋、失聯虛線空條）；地圖清單列也沿用。
+export function FillBar({
   c,
   thick = false,
 }: {
