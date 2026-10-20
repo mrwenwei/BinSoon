@@ -17,7 +17,12 @@ import {
 import { useSession } from "./SessionContext";
 import { useCooldown } from "./useApi";
 
-export type Intent = { path: string; body: unknown; label: string };
+export type Intent = {
+  path: string;
+  body: unknown;
+  label: string;
+  method?: "POST" | "PATCH";
+};
 type Pending = { operation: Command; intent: Intent };
 type PhotoDraft = { actorId: string; file?: File; mediaId?: string };
 const Context = createContext<{
@@ -71,6 +76,7 @@ type Options = {
   refresh: () => void;
   canRun?: (intent: Intent) => boolean;
   reconfirm?: boolean;
+  onSuccess?: (result: Result<unknown>) => void;
 };
 export function useCommand<T>(options: Options) {
   const { session, invalidate } = useSession();
@@ -83,6 +89,7 @@ export function useCommand<T>(options: Options) {
     intent: Intent;
   } | null>(null);
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState("");
   const [busy, setBusy] = useState(false);
   const cooldown = useCooldown();
   const alive = useRef(true),
@@ -136,7 +143,13 @@ export function useCommand<T>(options: Options) {
     const actor = current.session;
     const op = retry
       ? current.pending!.operation
-      : command(intent.path, intent.body, actor.user.id, current.options.etag);
+      : command(
+          intent.path,
+          intent.body,
+          actor.user.id,
+          current.options.etag,
+          intent.method,
+        );
     const savedIntent = retry ? current.pending!.intent : intent;
     const isCurrent = () =>
       alive.current &&
@@ -144,6 +157,7 @@ export function useCommand<T>(options: Options) {
     lock.current = true;
     setBusy(true);
     setError("");
+    setErrorCode("");
     setConflict(null);
     current.store.save(current.options.scope, {
       operation: op,
@@ -153,11 +167,13 @@ export function useCommand<T>(options: Options) {
       const result = await sendCommand<T>(op, actor);
       if (!isCurrent()) return;
       latest.current.store.save(current.options.scope, null);
+      latest.current.options.onSuccess?.(result);
       latest.current.options.refresh();
       return result;
     } catch (e) {
       if (!isCurrent()) return;
       setError(errorMessage(e));
+      setErrorCode(e instanceof ApiError ? e.code : "");
       cooldown.hold(e);
       if (e instanceof ApiError && e.status === 401)
         invalidate(actor.access_token);
@@ -183,6 +199,7 @@ export function useCommand<T>(options: Options) {
     pending,
     conflict: visibleConflict,
     error,
+    errorCode,
     busy,
     waiting: cooldown.waiting,
     blocked:
@@ -195,6 +212,7 @@ export function useCommand<T>(options: Options) {
     cancel: () => {
       setConflict(null);
       setError("");
+      setErrorCode("");
     },
   };
 }
@@ -210,7 +228,7 @@ export function CommandFeedback<T>({
       {action.error && (
         <p role="alert">
           {action.error}
-          {action.conflict && "；已重新讀取工單，請確認目前內容後再操作。"}
+          {action.conflict && "；已重新讀取資料，請確認目前內容後再操作。"}
         </p>
       )}
       {action.pending && (

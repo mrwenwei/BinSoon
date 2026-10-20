@@ -148,7 +148,7 @@ export function Login({ role, next }: { role: Role; next: string }) {
             setPassword("");
             // Only known internal hash routes are accepted as return destinations.
             window.location.hash =
-              /^(map|bin\/|nav\/|report\/|review\/|report-done\/|reports$|member$|staff(?:\/|$)|admin(?:\/|$))/.test(
+              /^(map|bin\/|nav\/|report\/|review\/|report-done\/|reports$|member$|stamps$|rewards(?:\/|$)|redemptions(?:\/|$)|vote(?:\/|$)|proposals(?:\/|$)|outcomes(?:\/|$)|adopt(?:\/|$)|quick-report\/|notifications(?:\?|$)|staff(?:\/|$)|admin(?:\/|$))/.test(
                 next,
               ) && !next.includes("login")
                 ? next

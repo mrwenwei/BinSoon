@@ -78,7 +78,7 @@ export type BinView = {
   location: ApiLocation;
   status: BinStatus;
   compartments: BinStatus[];
-  adopter: { display_name: string } | null;
+  adopter: { display_name: string; role: AdoptionRole; intro: string } | null;
   latest_cleanup: Cleanup | null;
   my_adoption_id: string | null;
   can_apply_adoption: boolean;
@@ -159,8 +159,149 @@ export type PointEntry = {
   amount: number;
   balance_after: number;
   report_id: string | null;
+  redemption_id: string | null;
   created_at: string;
   type: string;
+};
+export type Reward = {
+  id: string;
+  code: string;
+  name: string;
+  category: "coupon" | "grand";
+  cost: number;
+  stock: number;
+  is_demo: boolean;
+  available: boolean;
+};
+export type Redemption = {
+  id: string;
+  reward_id: string;
+  cost: number;
+  created_at: string;
+  status: "demo_issued";
+  voucher_code: string;
+  is_demo: true;
+};
+export type RedeemResult = {
+  redemption: Redemption;
+  membership: Membership;
+  reward: Reward;
+};
+export type Proposal = Position & {
+  id: string;
+  version: number;
+  bin_id: string;
+  name: string;
+  reason: string;
+  district: string;
+  created_at: string;
+  mine: boolean;
+  support: number;
+  oppose: number;
+  total_votes: number;
+  support_ratio: number | null;
+  my_vote: "support" | "oppose" | null;
+  status:
+    | "collecting"
+    | "village"
+    | "evaluation"
+    | "survey"
+    | "installed"
+    | "declined";
+  outcome_reason: string | null;
+  voting_closed_at: string | null;
+  pending_name: string | null;
+  approved_name: string | null;
+  name_status: "pending" | "approved" | "returned" | null;
+  is_demo: boolean;
+  rule_version: string;
+};
+export type ProposalQuota = {
+  month: string;
+  timezone: "Asia/Taipei";
+  limit: number;
+  used: number;
+  remaining: number;
+};
+export type AdoptionRole = "居民" | "店家" | "學校" | "社區團體";
+export type Preferences = { full: boolean; dumping: boolean; dirty: boolean };
+export type AdoptionMonth = {
+  adoption_id: string;
+  month: string;
+  timezone: "Asia/Taipei";
+  reports_submitted: number;
+  reports_approved: number;
+  points_awarded: number;
+  is_partial_month: boolean;
+  source_type: string;
+};
+export type Notification = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+  waste_type: WasteType | null;
+  target: {
+    kind: "report" | "work_order" | "proposal" | "adoption";
+    id: string;
+  };
+};
+export type Lifecycle = {
+  bin_id: string;
+  version: number;
+  operational_status: string;
+  placement_status: string;
+  installed_at: string | null;
+  removed_at: string | null;
+  reason: string | null;
+};
+export type Adoption = {
+  id: string;
+  version: number;
+  bin_id: string;
+  role: AdoptionRole;
+  display_name: string;
+  intro: string;
+  preferences: Preferences;
+  status: "pending" | "active" | "rejected" | "withdrawn" | "ended";
+  created_at: string;
+  updated_at: string;
+  reason: string;
+};
+export type ProposalCreated = {
+  proposal: Proposal;
+  quota: ProposalQuota;
+  warnings: { code: "NEAR_EXISTING_BIN"; distance_m: number; bin_id: string }[];
+};
+export type Availability = {
+  has_existing_bin_within_radius: boolean;
+  radius_m: number;
+  nearest_installed_bin: ApiLocation | null;
+  bins: ApiLocation[];
+  proposals: Proposal[];
+};
+export type PublicOutcomes = {
+  month: string;
+  timezone: "Asia/Taipei";
+  district: string;
+  waste_type: WasteType | null;
+  completed_count: number;
+  like_count: number;
+};
+export type Rank = {
+  rank: number;
+  staff_id: string;
+  display_name: string;
+  completed_count: number;
+  average_processing_seconds: number | null;
+  like_count: number;
+};
+export type StaffMonth = PublicOutcomes & {
+  average_processing_seconds: number | null;
+  bonus_display_only: true;
+  ranking: Rank[];
 };
 export type WorkOrder = WasteMetadata & {
   id: string;
@@ -324,12 +465,14 @@ export type Command = {
   serialized: string;
   etag: string | null;
   actorId: string;
+  method?: "POST" | "PATCH";
 };
 export function command(
   path: string,
   body: unknown,
   actorId: string,
   etag: string | null = null,
+  method?: "POST" | "PATCH",
 ): Command {
   return {
     path,
@@ -337,13 +480,14 @@ export function command(
     serialized: JSON.stringify(body),
     etag,
     actorId,
+    ...(method ? { method } : {}),
   };
 }
 export function sendCommand<T>(operation: Command, session: Session) {
   if (operation.actorId !== session.user.id)
     throw new ApiError(403, "ACTOR_CHANGED", "請使用原操作帳號登入後重試。");
   return request<T>(operation.path, {
-    method: "POST",
+    method: operation.method || "POST",
     token: session.access_token,
     key: operation.key,
     serialized: operation.serialized,

@@ -48,6 +48,7 @@ export function BinPanel({
   id: string;
   onLocation?: (location: ApiLocation) => void;
 }) {
+  const { session } = useSession();
   const [historyType, setHistoryType] = useState<string>(wasteType);
   const view = useBinView(id, wasteType);
   const loaded = view.data;
@@ -125,6 +126,11 @@ export function BinPanel({
         </span>
       </div>
       <LoadState {...view} />
+      {session?.user.roles.includes("admin") && (
+        <a className="button secondary" href={`#admin/bins/${id}`}>
+          管理桶生命週期
+        </a>
+      )}
       <section className="card bin-overview">
         <section aria-label="各類桶槽" className="bin-compartment-overview">
           {/* 面板同時顯示兩槽、由使用者自己判斷；不傳 onSelectWaste，槽只顯示不能點。
@@ -199,8 +205,25 @@ export function BinPanel({
         </div>
         <p className="bin-adoption tiny">
           認養：{view.data.adopter?.display_name || "尚無認養者"} ·
-          認養操作尚未開放。
+          {view.data.adopter && "已核准的公開認養資訊"}
         </p>
+        {view.data.adopter?.role && <p>認養身份：{view.data.adopter.role}</p>}
+        {view.data.adopter?.intro && (
+          <p>認養店家介紹：{view.data.adopter.intro}</p>
+        )}
+        {view.data.can_apply_adoption && !view.error && (
+          <a className="button secondary" href={`#adopt/apply/${id}`}>
+            申請認養此桶
+          </a>
+        )}
+        {view.data.my_adoption_id && (
+          <a
+            className="button secondary"
+            href={`#adopt/${view.data.my_adoption_id}`}
+          >
+            管理我的認養
+          </a>
+        )}
       </section>
       <div className="bin-support-grid">
         <section className="card">

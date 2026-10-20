@@ -88,8 +88,9 @@ export function LocationMap({
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
   const markerRecords = useRef<
-    { marker: L.Marker; location: LocationRecord }[]
+    { marker: L.Marker; location: LocationRecord; iconSignature: string }[]
   >([]);
+  const markerPositions = useRef("");
   const [basemapFailed, setBasemapFailed] = useState(false);
   useEffect(() => {
     const instance = L.map(container.current!, {
@@ -142,87 +143,117 @@ export function LocationMap({
       observer.disconnect();
       instance.remove();
       map.current = null;
+      markerRecords.current = [];
+      markerPositions.current = "";
     };
   }, []);
-  // 瀏覽模式：標記依 id 增量更新（輪詢不重建），圖示沒變就不換元素，
-  // 這樣停在標記上的鍵盤焦點與選取都不會因為每 10 秒更新而遺失。
+  // 標記依 kind/id 增量更新：背景輪詢不重建標記，位置、圖示、名稱沒變就不動，
+  // 停在標記上的鍵盤焦點、選取高亮與使用者目前的平移縮放都不會因為輪詢而遺失。
+  // 瀏覽模式（MapPage）與其他頁共用這一套，只有自動框選的時機不同。
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
-  const labelFor = (location: LocationRecord) =>
-    markerLabel
-      ? markerLabel(location)
-      : `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`;
-  const applyIcon = (marker: L.Marker, icon: L.DivIcon) => {
-    const old = marker.options.icon as L.DivIcon | undefined;
-    if (
-      browse &&
-      old?.options.html === icon.options.html &&
-      old?.options.className === icon.options.className
-    )
-      return;
-    marker.setIcon(icon);
-    if (browse) {
-      const label = marker.options.title || "";
-      marker.getElement()?.setAttribute("aria-label", label);
-    }
-  };
   useEffect(() => {
-    if (!browse) return;
     const instance = map.current!;
-    const byId = new Map(
-      markerRecords.current.map((record) => [record.location.id, record]),
+    const previous = new Map(
+      markerRecords.current.map((record) => [
+        `${record.location.kind}/${record.location.id}`,
+        record,
+      ]),
     );
     const next: typeof markerRecords.current = [];
     for (const location of locations) {
-      const label = labelFor(location);
-      const existing = byId.get(location.id);
-      if (existing) {
-        byId.delete(location.id);
-        existing.location = location;
-        const at = existing.marker.getLatLng();
-        if (at.lat !== location.latitude || at.lng !== location.longitude)
-          existing.marker.setLatLng([location.latitude, location.longitude]);
-        if (existing.marker.options.title !== label) {
-          existing.marker.options.title = label;
-          existing.marker.getElement()?.setAttribute("title", label);
-          existing.marker.getElement()?.setAttribute("aria-label", label);
-        }
-        next.push(existing);
-        continue;
+      const key = `${location.kind}/${location.id}`;
+      const active = location.id === selected?.id;
+      const label = markerLabel
+        ? markerLabel(location)
+        : `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`;
+      const icon = iconFor(location, active);
+      const iconSignature = JSON.stringify(icon.options);
+      let record = previous.get(key);
+      if (!record) {
+        const created = {
+          marker: L.marker([location.latitude, location.longitude], {
+            icon,
+            title: label,
+            alt: label,
+            riseOnHover: true,
+          }),
+          location,
+          iconSignature,
+        };
+        created.marker
+          .on("click", () => onSelectRef.current(created.location))
+          .addTo(markers.current!);
+        record = created;
+      } else {
+        if (
+          !record.marker
+            .getLatLng()
+            .equals([location.latitude, location.longitude])
+        )
+          record.marker.setLatLng([location.latitude, location.longitude]);
+        if (record.iconSignature !== iconSignature) record.marker.setIcon(icon);
+        record.marker.options.title = label;
+        record.location = location;
+        record.iconSignature = iconSignature;
       }
-      const record = {
-        marker: L.marker([location.latitude, location.longitude], {
-          icon: iconFor(location, false),
-          title: label,
-          alt: label,
-          riseOnHover: true,
-        }),
-        location,
-      };
-      record.marker
-        .on("click", () => onSelectRef.current(record.location))
-        .addTo(markers.current!);
-      record.marker.getElement()?.setAttribute("aria-label", label);
+      const element = record.marker.getElement();
+      element?.setAttribute("aria-label", label);
+      element?.setAttribute("title", label);
+      record.marker.setZIndexOffset(active ? 1000 : 0);
       next.push(record);
+      previous.delete(key);
     }
-    for (const stale of byId.values()) stale.marker.remove();
+    for (const record of previous.values())
+      markers.current!.removeLayer(record.marker);
     markerRecords.current = next;
-    if (!fitKey) fittedKey.current = undefined;
-    else if (fittedKey.current !== fitKey && locations.length) {
-      fittedKey.current = fitKey;
-      // 手機抽屜蓋住下半部：下方留白加上半開抽屜的高度（offset 的兩倍）。
-      if (!selectionBounds)
-        instance.fitBounds(
-          L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
-          {
-            paddingTopLeft: [50, 45],
-            paddingBottomRight: [50, 45 + offsetRef.current * 2],
-            maxZoom: 15,
-            animate: false,
-          },
-        );
-    }
-  }, [browse, locations, selectionBounds, markerLabel, fitKey]);
+    // 只有點位集合真的變了才重新框選；輪詢回來的 DTO 即使是新物件，
+    // 也要保留使用者目前的平移與縮放。
+    const positions = locations
+      .map((p) => JSON.stringify([p.kind, p.id, p.latitude, p.longitude]))
+      .sort()
+      .join(";");
+    if (browse) {
+      // 瀏覽模式：只在 fitKey（例如搜尋字）變了且有資料時框一次。
+      if (!fitKey) fittedKey.current = undefined;
+      else if (fittedKey.current !== fitKey && locations.length) {
+        fittedKey.current = fitKey;
+        // 手機抽屜蓋住下半部：下方留白加上半開抽屜的高度（offset 的兩倍）。
+        if (!selectionBounds)
+          instance.fitBounds(
+            L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
+            {
+              paddingTopLeft: [50, 45],
+              paddingBottomRight: [50, 45 + offsetRef.current * 2],
+              maxZoom: 15,
+              animate: false,
+            },
+          );
+      }
+    } else if (
+      positions !== markerPositions.current &&
+      locations.length &&
+      !selectionBounds &&
+      (autoFit ?? !initialCenter)
+    )
+      instance.fitBounds(
+        L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
+        { padding: [45, 50], maxZoom: 15, animate: false },
+      );
+    markerPositions.current = positions;
+  }, [
+    browse,
+    locations,
+    selected?.id,
+    removedIds,
+    operations,
+    selectionBounds,
+    binMarkerLabel,
+    markerIcon,
+    markerLabel,
+    autoFit,
+    fitKey,
+  ]);
   // 瀏覽模式：標記可用鍵盤 Enter／空白鍵選取（Leaflet 預設不會觸發 click）。
   useEffect(() => {
     if (!browse || !container.current) return;
@@ -242,63 +273,17 @@ export function LocationMap({
     element.addEventListener("keydown", keydown);
     return () => element.removeEventListener("keydown", keydown);
   }, [browse]);
+  // 只在選取對象換了（或瀏覽模式的 focusKey 變了）才置中，輪詢更新不會把地圖拉回來。
+  // 瀏覽模式在手機上再把選取點往上移，避開半開的抽屜。
   useEffect(() => {
-    if (browse) return;
-    const instance = map.current!;
-    markers.current!.clearLayers();
-    markerRecords.current = [];
-    for (const location of locations) {
-      const label = markerLabel
-        ? markerLabel(location)
-        : `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`;
-      const marker = L.marker([location.latitude, location.longitude], {
-        icon: iconFor(location, false),
-        title: label,
-        alt: label,
-        riseOnHover: true,
-      })
-        .on("click", () => onSelect(location))
-        .addTo(markers.current!);
-      marker.getElement()?.setAttribute("aria-label", label);
-      markerRecords.current.push({ marker, location });
-    }
-    if (locations.length && !selectionBounds && (autoFit ?? !initialCenter))
-      instance.fitBounds(
-        L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
-        { padding: [45, 50], maxZoom: 15, animate: false },
-      );
-  }, [
-    browse,
-    locations,
-    onSelect,
-    removedIds,
-    selectionBounds,
-    binMarkerLabel,
-    markerIcon,
-    markerLabel,
-    autoFit,
-  ]);
-  useEffect(() => {
-    for (const { marker, location } of markerRecords.current) {
-      applyIcon(marker, iconFor(location, location.id === selected?.id));
-      marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
-    }
-    if (!selected || browse) return;
-    const point: L.LatLngExpression = [selected.latitude, selected.longitude];
-    map.current!.setView(point, Math.max(map.current!.getZoom(), 16), {
-      animate: false,
-    });
-  }, [selected, locations, removedIds, operations, markerIcon]);
-  // 瀏覽模式：只在選取的桶／地標換了（或 focusKey 變了）才置中，輪詢更新不會把地圖拉回來。
-  useEffect(() => {
-    if (!browse || !selected || !map.current) return;
+    if (!selected || !map.current) return;
     const instance = map.current;
     instance.setView(
       [selected.latitude, selected.longitude],
       Math.max(instance.getZoom(), 16),
       { animate: false },
     );
-    if (offsetRef.current)
+    if (browse && offsetRef.current)
       instance.panBy([0, offsetRef.current], { animate: false });
   }, [browse, selected?.id, selected?.latitude, selected?.longitude, focusKey]);
   // 瀏覽模式第一次量到抽屜高度時，把初始中心移到抽屜上方的可見區（只做一次）。

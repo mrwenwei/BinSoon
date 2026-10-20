@@ -17,11 +17,27 @@ import {
   useReportDrafts,
   RequireCitizen,
   ReportForm,
+  QuickReport,
   ReportDetail,
   ReportsList,
   Member,
 } from "./components/api/ReportPages";
 
+import {
+  ProposalDraftProvider,
+  useProposalDraft,
+} from "./components/api/ProposalDraft";
+import {
+  ProposalList,
+  ProposalDetail,
+  ProposalForm,
+} from "./components/api/ProposalPages";
+import { AdminProposals } from "./components/api/ProposalGovernance";
+import { Adoptions, AdoptionApply } from "./components/api/AdoptionPages";
+import { LifecyclePage } from "./components/api/LifecyclePage";
+import { Notifications } from "./components/api/Notifications";
+import { Outcomes } from "./components/api/OutcomePages";
+import { Rewards, Redemptions } from "./components/api/RewardPages";
 import { RoutePage } from "./components/api/RoutePage";
 import { type CrewVehicle } from "./data/crewRouting";
 import { StaffPage } from "./components/api/StaffPages";
@@ -33,6 +49,7 @@ import {
 function AppContent() {
   const [route, setRoute] = useState(() => location.hash.slice(1) || "map");
   const drafts = useReportDrafts();
+  const proposalDraft = useProposalDraft();
   const workCommands = useWorkCommands();
   const main = useRef<HTMLDivElement>(null);
   const { session, logout, notice, clearNotice } = useSession();
@@ -99,6 +116,7 @@ function AppContent() {
   const isMapView = !isLogin && (page === "map" || (page === "bin" && !!id));
   const signOut = () => {
     drafts.clear();
+    proposalDraft.clear();
     workCommands.clear();
     void logout();
   };
@@ -137,7 +155,7 @@ function AppContent() {
                 label: "找垃圾桶",
                 current: page === "map",
               },
-              { href: "#vote", label: "要桶投票（尚未開放）" },
+              { href: "#vote", label: "要桶投票" },
               {
                 href: "#reports",
                 label: "我的回報",
@@ -153,8 +171,9 @@ function AppContent() {
                 label: "集章與等級",
                 current: page === "stamps",
               },
-              { href: "#rewards", label: "兌換獎勵（尚未開放）" },
-              { href: "#adopt", label: "認養電子雞（尚未開放）" },
+              { href: "#rewards", label: "兌換獎勵" },
+              { href: "#adopt", label: "認養電子雞" },
+              { href: "#notifications", label: "站內通知" },
             ],
           },
           {
@@ -170,6 +189,13 @@ function AppContent() {
                 label: "清運道路指引",
                 current: page === "staff" && id === "route",
               },
+              { href: "#staff/statistics", label: "隊員月份成果" },
+              { href: "#staff/notifications", label: "隊員站內通知" },
+              { href: "#admin/notifications", label: "管理員站內通知" },
+              { href: "#outcomes", label: "清潔隊公開成果" },
+              { href: "#admin/proposals", label: "提案與命名審查" },
+              { href: "#admin/adoptions", label: "認養審核" },
+              { href: "#admin/bins", label: "撤除桶管理" },
               { href: "#admin", label: "管理員", current: page === "admin" },
             ],
           },
@@ -224,6 +250,28 @@ function AppContent() {
                   : "map")
             }
           />
+        ) : page === "notifications" ||
+          (["staff", "admin"].includes(page) && id === "notifications") ? (
+          <Notifications
+            key={`${page}/${session?.user.id}`}
+            role={page === "notifications" ? undefined : role}
+          />
+        ) : page === "admin" && id === "bins" ? (
+          <LifecyclePage
+            key={`${workId || "list"}/${session?.user.id}`}
+            id={workId}
+          />
+        ) : page === "admin" && id === "adoptions" ? (
+          <Adoptions
+            key={`${workId || "list"}/${session?.user.id}`}
+            id={workId}
+            admin
+          />
+        ) : page === "admin" && id === "proposals" ? (
+          <AdminProposals
+            key={`${workId || "list"}/${session?.user.id}`}
+            id={workId}
+          />
         ) : page === "admin" ? (
           <AdminPage
             key={workId || "admin"}
@@ -245,6 +293,37 @@ function AppContent() {
             id={id}
             {...wasteControls}
           />
+        ) : page === "quick-report" && id ? (
+          <QuickReport
+            key={`${id}/${wasteType}/${session?.user.id}`}
+            id={id}
+            {...wasteControls}
+          />
+        ) : page === "adopt" ? (
+          id === "apply" && workId ? (
+            <AdoptionApply
+              key={`${workId}/${session?.user.id}`}
+              binId={workId}
+            />
+          ) : (
+            <Adoptions key={`${id || "list"}/${session?.user.id}`} id={id} />
+          )
+        ) : page === "vote" ? (
+          id === "create" ? (
+            <RequireCitizen next={route}>
+              <ProposalForm key={session?.user.id} />
+            </RequireCitizen>
+          ) : id === "mine" || id === "votes" ? (
+            <RequireCitizen next={route}>
+              <ProposalList key={`${id}/${session?.user.id}`} mode={id} />
+            </RequireCitizen>
+          ) : (
+            <ProposalList key={`all/${session?.user.id}`} />
+          )
+        ) : page === "proposals" && id ? (
+          <ProposalDetail key={`${id}/${session?.user.id}`} id={id} />
+        ) : page === "outcomes" || (page === "staff" && id === "statistics") ? (
+          <Outcomes staff={page === "staff"} />
         ) : page === "staff" && id === "route" ? (
           <RoutePage vehicle={vehicle} onVehicleChange={setVehicle} />
         ) : page === "staff" && id === "tasks" ? (
@@ -258,6 +337,17 @@ function AppContent() {
         ) : page === "reports" ? (
           <RequireCitizen next={route}>
             <ReportsList />
+          </RequireCitizen>
+        ) : page === "rewards" || page === "redemptions" ? (
+          <RequireCitizen next={route}>
+            {page === "rewards" ? (
+              <Rewards key={session?.user.id} />
+            ) : (
+              <Redemptions
+                key={`${session?.user.id}/${id || "list"}`}
+                id={id}
+              />
+            )}
           </RequireCitizen>
         ) : ["member", "stamps"].includes(page) ? (
           <RequireCitizen next={route}>
@@ -281,9 +371,8 @@ function AppContent() {
       {!isMapView && (
         <footer className="api-footer">
           所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。
-          <a href="#vote">提案（尚未開放）</a> ·{" "}
-          <a href="#adopt">認養（尚未開放）</a> ·{" "}
-          <a href="#rewards">兌換（尚未開放）</a>
+          <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}
+          <a href="#rewards">兌換</a>
         </footer>
       )}
     </div>
@@ -339,7 +428,9 @@ export default function App() {
     <SessionProvider>
       <ReportDraftProvider>
         <WorkCommandProvider>
-          <AppContent />
+          <ProposalDraftProvider>
+            <AppContent />
+          </ProposalDraftProvider>
         </WorkCommandProvider>
       </ReportDraftProvider>
     </SessionProvider>

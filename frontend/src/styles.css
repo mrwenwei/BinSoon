@@ -5868,6 +5868,18 @@ input[type="file"]::file-selector-button {
 .mx-filters .search-field input {
   min-height: 44px;
 }
+/* 「包含所有撤除紀錄」勾選＋說明小字：放在清單（或空狀態）下方，兩者靠緊。 */
+.mx-removed {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+.mx-removed .check-field {
+  min-height: 44px;
+}
+.mx-removed p {
+  margin: 0;
+}
 /* 標題列：左邊「附近的桶」＋下方小字（數量・排序依據），右邊純圖示種類切換、
    垂直置中。標題區可縮（小字會換行），但不小於標題本身；連這樣都放不下時，
    切換換到下一行並靠右。 */
@@ -5906,6 +5918,11 @@ input[type="file"]::file-selector-button {
 }
 .mx-row-title .status-pill {
   flex: none;
+}
+/* 已撤除的桶：一顆狀態膠囊取代兩槽滿度條。 */
+.mx-row-status {
+  display: flex;
+  margin-top: var(--space-1);
 }
 /* 清單列的兩槽：同一行並排（所選種類在左），每槽是圖示＋短滿度條＋百分比。
    圖示和數值欄寬固定，所以每一列的滿度條起點和長度都一樣。 */
@@ -6248,4 +6265,55 @@ input[type="file"]::file-selector-button {
   .mx-panel {
     transition: none;
   }
+}
+
+/* API 會員、月份成果與提案 */
+.api-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+.api-pagination a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.api-filter {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-4);
+}
+.api-voucher {
+  overflow-wrap: anywhere;
+}
+.proposal-map {
+  height: 340px;
+  margin-block: var(--space-4);
+}
+.proposal-map .map-wrap,
+.proposal-map .map-canvas {
+  height: 100%;
+}
+.api-items h3 {
+  font: var(--text-heading);
+}
+.api-narrow > .card {
+  margin-block: var(--space-4);
+}
+.proposal-page .card > a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+.proposal-map {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.api-action-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }

@@ -1,6 +1,6 @@
 # BinSoon 前端：API 地圖、回報、查證與現場處理
 
-React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)。
+React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)、[#12](https://github.com/mrwenwei/BinSoon/issues/12)、[#13](https://github.com/mrwenwei/BinSoon/issues/13)、[#14](https://github.com/mrwenwei/BinSoon/issues/14)、[#15](https://github.com/mrwenwei/BinSoon/issues/15)、[#16](https://github.com/mrwenwei/BinSoon/issues/16)、[#17](https://github.com/mrwenwei/BinSoon/issues/17)、[#18](https://github.com/mrwenwei/BinSoon/issues/18)、[#19](https://github.com/mrwenwei/BinSoon/issues/19)、[#20](https://github.com/mrwenwei/BinSoon/issues/20)。
 
 ## 目前可操作範圍
 
@@ -13,7 +13,15 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 管理員：`/#admin` 輸入工單 UUID，或使用隊員工單提供的另開分頁連結；以獨立 admin session 讀版本、確認「非真實 IoT」後送出 demo-clear。清空先到仍須完成照、全部查證與明確 finish 才能結案。每次保留 reading_id 與命令識別供未知結果重試。
 - 市民：桶詳情只呈現後端有效完成紀錄；對最新 completion.id 感謝一次，顯示後端 like_count／liked_by_me，不增加點數或排名。桶況、歷史、最近桶、導航及案件持續重新讀取後端，容量歸零本身不代表完工。
 - 隊員道路指引：`#staff/route` 讀後端 origin 與有序站點，同桶合站、工單 UUID 各自保留；可篩一般／回收並選機車／汽車，手動請求既有 Valhalla 道路幾何與逐段指引。前景每 10 秒重讀站點、背景停止；工單／站點／車種變動取消舊指引，不以直線替代。起點固定示範，沒有即時 GPS、交通或順序最佳化。
-- 兌換、成果統計、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
+- 會員兌換：`#member` 讀後端帳本，`#rewards` 分類／分頁選獎品 UUID 及確認兌換，`#redemptions`／`#redemptions/<id>` 查自己的 DEMO 展示券。未知結果保留原命令重送，沒有前端扣點／扣庫存。
+- 月份成果：訪客／市民 `#outcomes` 看公開整隊成果；隊員 `#staff/statistics` 看責任區本人件數、平均時間、讚及後端並列排名。台北曆月、區及種類可切換，空值不填假基數，加給只展示說明。
+- 提案投票：`#vote` 列表、`#vote/create` 選點查周邊與建立、`#vote/mine`／`#vote/votes` 追蹤自己的提案與投票、`#proposals/<id>` 分享詳情。周邊查詢不受找桶篩選影響，50m 鄰近案須明確確認不同需求，150m 已設置桶是提醒；額度及大安區界由後端判定。支持／反對／改票／撤票、票數及關票只使用後端結果。
+- 提案審查／命名：`#admin/proposals` 分頁進入管理員審查，依最新 ETag 及合法階段操作；原提案人於 `#proposals/<id>` 在示範設置後送命名，管理員核准／附原因退回。
+- 認養：桶詳情依後端可申請狀態進入 `#adopt/apply/<bin.id>`；市民 `#adopt`／`#adopt/<id>` 查看歷史、偏好、撤回與結束；管理員 `#admin/adoptions`／`#admin/adoptions/<id>` 分頁審核。pending 沒有權益；公開認養與命名分開。
+- 認養快捷回報：有效認養於 `#adopt/<adoption.id>` 進入 `#quick-report/<adoption.id>`，仍需上傳現場照片與確認位置，送出同一 `/reports` API。認養、種類及普通回報各自保留草稿；後端決定資格、首報與結算，不由前端補倍或追扣。認養詳情另讀台北曆月月報，含部分月份與零值。
+- 站內通知：`#notifications`、`#staff/notifications`、`#admin/notifications` 依當前 session 讀自己的分頁／未讀資料；標已讀可重送原命令，再依 target.kind/id 進入案件。隊員／管理員入口仍需對應身份；無 LINE 或系統推播。
+- 撤桶：管理員從桶詳情或 `#admin/bins` 輸入桶 UUID，於 `#admin/bins/<bin.id>` 讀獨立 lifecycle ETag、填原因並確認撤除。地圖預設依後端顯示近七日撤除標記，也可查全部撤除紀錄；其他分頁重新讀取後停止權益／回報，未完成工單受阻且路線排除此桶，歷史與既有結算保留。沒有通用更新／刪除或復原功能。
+- #18–#20 的流程、測試與限制見 [快捷回報／通知／撤桶驗證](../docs/FRONTEND_FINAL_FLOWS_VALIDATION.md)。#12–#14 見 [會員／投票驗證](../docs/FRONTEND_ENGAGEMENT_VALIDATION.md)；#15–#17 的入口、版本衝突與資料限制見 [審查／命名／認養驗證](../docs/FRONTEND_STEWARDSHIP_VALIDATION.md)。
 
 ## 一般垃圾／資源回收
 
@@ -23,7 +31,13 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 歷史預設只查所選槽；「歷史種類」可選舊未分類（legacy_unknown），保留 waste_type=null，不混成一般垃圾。classification_source 與 simulated 讀值來源分開顯示；CSV 沒有分類證據，兩槽是展示假設。
 - 回報清單與隊員工單可篩種類，案件、工作證據及完成紀錄顯示後端種類。管理員清空依 work_order_id 的種類，不讓前端覆寫；最新完成與按讚待重試命令按種類分開，會員點數不乘二。
 
-新契約與資料限制見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。通知等尚未串接的票單仍待後續實作。
+新契約與資料限制見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。認養快捷回報也按種類及認養 UUID 隔離草稿。
+
+## 背景更新與手動驗收
+
+桶詳情與清單前景每 10 秒讀後端，保留現有內容直到新資料到達；有資料時不插入會推動版面的載入提示，首次載入及更新失敗仍有提示。地圖按位置 ID 更新標記，只有外觀改變才替換圖示；桶況更新不重設使用者縮放／拖曳，查詢位置集合改變時才重新框選範圍。背景停止、離頁取消與操作版本檢查維持原規則。
+
+提案列表為空時，可從「建立提案」開始；逐步流程與單帳號可驗收的範圍見 [提案投票操作手冊](../docs/PROPOSAL_VOTING_WALKTHROUGH.md)。桶詳情更新修正見 [驗證紀錄](../docs/FRONTEND_REFRESH_VALIDATION.md)。
 
 ## API 設定與身份
 
@@ -162,6 +176,8 @@ npm run preview
 完整規格見 [B_FLOW.md](../docs/B_FLOW.md)，驗證紀錄見 [B_FLOW_VALIDATION.md](../docs/B_FLOW_VALIDATION.md)。
 
 ## 驗證
+
+完整回歸包含開發專用的 `tests/legacy/`，必須使用 Vite dev server。若 5173 正在執行 `npm run preview`，先停止該預覽再跑完整測試，避免 Playwright 誤用不含歷史入口的 production 產物。
 
 另開終端機，在 `frontend/` 執行：
 

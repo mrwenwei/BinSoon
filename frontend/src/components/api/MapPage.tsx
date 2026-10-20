@@ -42,7 +42,7 @@ import { LocationDetails } from "../LocationDetails";
 import { LoadState } from "./LoadState";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
-import { ORIGIN } from "./mapShared";
+import { ORIGIN, Status } from "./mapShared";
 import { BinPanel } from "./BinPage";
 
 // ── 地圖瀏覽模式 ─────────────────────────────────────────────────────
@@ -113,6 +113,8 @@ export function MapPage({
   const { session } = useSession();
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
+  // 預設只拿後端保留的近七日撤除標記；勾選後查詢全部撤除紀錄。
+  const [includeRemoved, setIncludeRemoved] = useState(false);
   // 搜尋停止輸入 300ms 後才送出；換字時 useApi 會取消上一個讀取。
   const [search, setSearch] = useState("");
   useEffect(() => {
@@ -130,6 +132,7 @@ export function MapPage({
     filter: filter === "new" ? "new" : "all",
     q: search,
     include_proposed: true,
+    include_removed: includeRemoved,
     ...ORIGIN,
   });
   const list = useApi(
@@ -495,6 +498,20 @@ export function MapPage({
                   </button>
                 </div>
               )}
+              {/* 進階查詢放在清單下方：不佔半開抽屜裡篩選與第一列之間的高度。 */}
+              <div className="mx-removed">
+                <label className="check-field">
+                  <input
+                    type="checkbox"
+                    checked={includeRemoved}
+                    onChange={(e) => setIncludeRemoved(e.target.checked)}
+                  />
+                  包含所有撤除紀錄
+                </label>
+                <p className="tiny">
+                  預設顯示後端保留的近七日撤除標記；勾選後查詢全部撤除紀錄。
+                </p>
+              </div>
             </>
           )}
           <p className="tiny mx-disclosure">{DISCLOSURE}</p>
@@ -534,6 +551,7 @@ function NearbyRow({
   onSelect: (item: LocationRecord) => void;
 }) {
   const proposed = isProposed(item);
+  const removed = item.bin_status?.operational_status === "removed";
   const state = proposed ? "offline" : wasteState(item, wasteType);
   const parts = apiCompartments(item.bin_status, item.compartments);
   const ordered = [...parts].sort(
@@ -564,6 +582,11 @@ function NearbyRow({
         </small>
         {proposed ? (
           <small>建議點／待現勘，尚未設置</small>
+        ) : removed ? (
+          // 整個點位已撤除：一顆狀態膠囊（含撤除說明），不再列兩槽滿度條。
+          <span className="mx-row-status">
+            <Status status={item.bin_status} />
+          </span>
         ) : (
           <span className="mx-slots">
             {ordered.map((part) => (
@@ -571,8 +594,12 @@ function NearbyRow({
             ))}
           </span>
         )}
+        {item.bin_type === "proposed" &&
+          item.placement_status === "installed" && (
+            <small>新增提案 · DEMO 示範設置，非現場驗收</small>
+          )}
       </span>
-      {!proposed && (
+      {!proposed && !removed && (
         <span
           className={`mx-usable ${usable === 0 ? "state-full" : "state-hungry"}`}
         >

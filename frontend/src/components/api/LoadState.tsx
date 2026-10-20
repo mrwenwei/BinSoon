@@ -5,12 +5,14 @@ export function LoadState({
   reload,
   retryAt = 0,
   stale = false,
+  refreshing = false,
 }: {
   loading: boolean;
   error?: string;
   reload: () => void;
   retryAt?: number;
   stale?: boolean;
+  refreshing?: boolean;
 }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -20,7 +22,7 @@ export function LoadState({
   }, [retryAt]);
   return (
     <>
-      {loading && <p role="status">載入中…</p>}
+      {loading && !refreshing && <p role="status">載入中…</p>}
       {stale && <p role="status">先前讀取的資料可能已過期，請重新載入確認。</p>}
       {error && (
         <div role="alert">
