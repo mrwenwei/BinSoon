@@ -317,10 +317,14 @@ test("four filters and the waste type drive the list, sorting and marker colours
   // 全部：只列桶（地標、建議點不在清單），一般垃圾能丟的排最前。
   await expect(rows).toHaveCount(3);
   await expect(rows.nth(0)).toContainText("一般空回收滿");
-  await expect(rows.nth(0)).toContainText("一般垃圾 · 餓了 · 20%");
-  await expect(rows.nth(0).locator(".status-pill.state-hungry")).toHaveCount(1);
+  await expect(
+    rows.nth(0).getByRole("img", { name: "一般垃圾，餓了，20%" }),
+  ).toBeVisible();
+  await expect(rows.nth(0).locator(".mx-slot.state-hungry")).toHaveCount(1);
   await expect(rows.nth(1)).toContainText("一般滿回收空");
-  await expect(rows.nth(1)).toContainText("一般垃圾 · 吃飽了 · 92%");
+  await expect(
+    rows.nth(1).getByRole("img", { name: "一般垃圾，吃飽了，92%" }),
+  ).toBeVisible();
   await expect(rows.nth(2)).toContainText("0/2");
   await expect(page.locator(".mx-list")).not.toContainText("公園地標");
   await expect(page.locator(".mx-list")).not.toContainText("建議設置點");
@@ -339,11 +343,13 @@ test("four filters and the waste type drive the list, sorting and marker colours
   await expect(marker(page, "垃圾桶：一般滿回收空")).toHaveCount(0);
   await expect(marker(page, "地標：公園地標")).toHaveCount(0);
   // 切到資源回收：清單、排序、標記與圖例一起換
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
+  await page.getByRole("radio", { name: "資源回收", exact: true }).click();
   await expect(page).toHaveURL(/#map\?waste_type=recycling$/);
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("一般滿回收空");
-  await expect(rows.first()).toContainText("資源回收 · 餓了 · 30%");
+  await expect(
+    rows.first().getByRole("img", { name: "資源回收，餓了，30%" }),
+  ).toBeVisible();
   await expect(marker(page, "垃圾桶：一般滿回收空")).toHaveClass(
     /state-hungry/,
   );
@@ -573,7 +579,7 @@ test("markers work from the keyboard, focus follows selection and polling keeps 
   await expect(target).toHaveAttribute("data-probe", "1");
   // 在清單換種類不多一筆瀏覽紀錄。
   const before = await page.evaluate(() => history.length);
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
+  await page.getByRole("radio", { name: "資源回收", exact: true }).click();
   await expect(page).toHaveURL(/waste_type=recycling$/);
   expect(await page.evaluate(() => history.length)).toBe(before);
 });
@@ -631,16 +637,20 @@ test("a fresh half drawer shows at least one whole row at 360 and 390 wide", asy
     const row = (await page.locator(".location-row").first().boundingBox())!;
     expect(row.y).toBeGreaterThanOrEqual(panel.y);
     expect(row.y + row.height).toBeLessThanOrEqual(panel.y + panel.height);
-    // 種類選單與篩選膠囊在同一列，搜尋框觸控高度不低於 44px。
-    const chips = (await page.locator(".filter-chips").boundingBox())!;
-    const select = (await page
-      .getByLabel("垃圾種類", { exact: true })
+    // 種類切換在標題列右邊、跟「標題＋小字」垂直置中；搜尋框自己一列、觸控高度 ≥ 44。
+    const title = (await page.locator(".mx-head-title").boundingBox())!;
+    const picker = (await page
+      .getByRole("group", { name: "垃圾種類" })
       .boundingBox())!;
     expect(
-      Math.abs(select.y + select.height / 2 - (chips.y + chips.height / 2)),
+      Math.abs(picker.y + picker.height / 2 - (title.y + title.height / 2)),
     ).toBeLessThan(4);
+    expect(picker.x + picker.width).toBeLessThanOrEqual(panel.x + panel.width);
     const search = (await page.getByRole("searchbox").boundingBox())!;
     expect(search.height).toBeGreaterThanOrEqual(44);
+    expect(search.y).toBeGreaterThan(picker.y + picker.height);
+    // 清單列改用滿度條後，列高明顯低於 139px。
+    expect(row.height).toBeLessThan(120);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -686,4 +696,216 @@ test("the list stops polling while a bin is open and refreshes on return (X7)", 
   await expect
     .poll(() => reads.length, { timeout: 13000 })
     .toBeGreaterThan(opened + 1);
+});
+
+test("the icon-only waste toggle switches with arrow keys and keeps focus (C)", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.goto("/#map");
+  await expect(page.locator(".location-row")).toHaveCount(3);
+  const group = page.getByRole("group", { name: "垃圾種類" });
+  const general = group.getByRole("radio", { name: "一般垃圾", exact: true });
+  const recycling = group.getByRole("radio", { name: "資源回收", exact: true });
+  const caption = page.locator(".mx-head-title .tiny");
+  await expect(general).toBeChecked();
+  await expect(caption).toHaveText("3 個桶 · 一般垃圾優先");
+  // 純圖示：每格 44×44，滑鼠移上去有文字提示。
+  for (const name of ["一般垃圾", "資源回收"]) {
+    const label = page.locator(`.mx-panel-head label[title="${name}"]`);
+    const box = (await label.boundingBox())!;
+    expect(Math.round(box.width)).toBe(44);
+    expect(Math.round(box.height)).toBe(44);
+  }
+  const before = await page.evaluate(() => history.length);
+  await general.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(recycling).toBeChecked();
+  await expect(page).toHaveURL(/waste_type=recycling$/);
+  await expect(caption).toHaveText("3 個桶 · 資源回收優先");
+  await expect(recycling).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(general).toBeChecked();
+  await expect(general).toBeFocused();
+  await expect(caption).toHaveText("3 個桶 · 一般垃圾優先");
+  await page.keyboard.press("ArrowRight");
+  await expect(recycling).toBeChecked();
+  await expect(recycling).toBeFocused();
+  expect(await page.evaluate(() => history.length)).toBe(before);
+});
+
+test("list rows show one short fill bar per compartment: solid, striped and dashed", async ({
+  page,
+}) => {
+  await setup(page);
+  const repairSlot = {
+    ...slot("general", 40, "unknown"),
+    operational_status: "repair",
+    is_usable: false,
+    unavailable_reasons: ["repair"],
+  };
+  const repaired = {
+    ...bin(
+      "10000000-0000-4000-8000-000000000005",
+      "一般維修中",
+      [40, "unknown"],
+      [70, "full"],
+      150,
+    ),
+  };
+  repaired.bin_status = repairSlot as typeof repaired.bin_status;
+  repaired.compartments = [
+    repairSlot as (typeof repaired.compartments)[number],
+    slot("recycling", 85, "full"),
+  ];
+  await page.route("**/api/v1/map/locations**", (route) =>
+    route.fulfill({ json: envelope([generalFull, generalOk, repaired]) }),
+  );
+  await page.goto("/#map");
+  const rows = page.locator(".location-row");
+  await expect(rows).toHaveCount(3);
+  // 所選種類（一般垃圾）在左邊，另一槽在右邊，同一行。
+  const okRow = rows.filter({ hasText: "一般空回收滿" });
+  const slots = okRow.locator(".mx-slot");
+  await expect(slots).toHaveCount(2);
+  const [left, right] = [
+    (await slots.nth(0).boundingBox())!,
+    (await slots.nth(1).boundingBox())!,
+  ];
+  expect(Math.abs(left.y - right.y)).toBeLessThan(2);
+  expect(left.x).toBeLessThan(right.x);
+  await expect(slots.nth(0)).toHaveAttribute(
+    "aria-label",
+    "一般垃圾，餓了，20%",
+  );
+  await expect(slots.nth(1)).toHaveAttribute(
+    "aria-label",
+    "資源回收，吃飽了，88%",
+  );
+  // 只寫百分比，不寫餓了／吃飽了
+  await expect(slots.nth(0)).toHaveText(/^\D*20%$/);
+  await expect(okRow).not.toContainText("餓了");
+  // 餓了：實心；吃飽了：斜紋
+  await expect(
+    slots.nth(0).locator(".fill-bar.state-hungry > span"),
+  ).toHaveCount(1);
+  const stripe = await slots
+    .nth(1)
+    .locator(".fill-bar.state-full > span")
+    .evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(stripe).toContain("repeating-linear-gradient");
+  // 維修中：虛線空條＋狀態字，不放百分比
+  const repairRow = rows.filter({ hasText: "一般維修中" });
+  const repairBar = repairRow.locator(".mx-slot").first();
+  await expect(repairBar).toHaveAttribute("aria-label", "一般垃圾，維修中");
+  await expect(repairBar).toContainText("維修中");
+  await expect(repairBar).not.toContainText("%");
+  await expect(repairBar.locator(".fill-bar.state-offline > span")).toHaveCount(
+    0,
+  );
+  const outline = await repairBar
+    .locator(".fill-bar.state-offline")
+    .evaluate((el) => getComputedStyle(el).outlineStyle);
+  expect(outline).toBe("dashed");
+});
+
+test("rows fit at least one whole row at 360 and 390, and 320 is measured (N5)", async ({
+  page,
+}) => {
+  for (const [width, height] of [
+    [320, 640],
+    [360, 780],
+    [390, 844],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await setup(page);
+    await page.goto("/#map");
+    await page.reload();
+    await expect(page.locator(".location-row").first()).toBeVisible();
+    const panel = (await page.locator(".mx-panel").boundingBox())!;
+    const row = (await page.locator(".location-row").first().boundingBox())!;
+    expect(row.height).toBeLessThan(120);
+    const shortfall = row.y + row.height - (panel.y + panel.height);
+    console.log(
+      `N5 ${width}x${height} rowH=${Math.round(row.height)} shortfall=${Math.round(shortfall)}`,
+    );
+    if (width >= 360) expect(shortfall).toBeLessThanOrEqual(0);
+  }
+});
+
+test("an open bin keeps its own marker in sync with the panel while the list is paused (N6)", async ({
+  page,
+}) => {
+  let full = false;
+  await setup(page);
+  await page.route(`**/api/v1/bins/${generalOk.id}/view**`, (route) => {
+    const general = full
+      ? slot("general", 96, "full")
+      : slot("general", 20, "hungry");
+    const compartments = [general, slot("recycling", 88, "full")];
+    return route.fulfill({
+      json: {
+        location: { ...generalOk, bin_status: general, compartments },
+        status: general,
+        compartments,
+        adopter: null,
+        latest_cleanup: null,
+        my_adoption_id: null,
+        can_apply_adoption: false,
+        can_report: false,
+        report_block_reason: "login_required",
+      },
+    });
+  });
+  await page.goto(`/#bin/${generalOk.id}?waste_type=general`);
+  const selected = marker(page, "垃圾桶：一般空回收滿");
+  await expect(selected).toHaveClass(/state-hungry/);
+  full = true;
+  await expect(page.getByText("兩桶都吃飽了", { exact: true })).toBeVisible({
+    timeout: 13000,
+  });
+  await expect(selected).toHaveClass(/state-full/);
+  await expect(selected).toHaveClass(/selected/);
+});
+
+test("the legend popover avoids the zoom buttons and closes when focus or the view moves away", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await setup(page);
+  await page.goto("/#map");
+  await expect(page.locator(".location-row")).toHaveCount(3);
+  const button = page.getByRole("button", { name: "圖例", exact: true });
+  await button.click();
+  const pop = (await page.locator(".mx-legend-popover").boundingBox())!;
+  const zoomIn = (await page
+    .locator(".leaflet-control-zoom-in")
+    .boundingBox())!;
+  const overlap =
+    pop.x < zoomIn.x + zoomIn.width &&
+    zoomIn.x < pop.x + pop.width &&
+    pop.y < zoomIn.y + zoomIn.height &&
+    zoomIn.y < pop.y + pop.height;
+  expect(overlap).toBe(false);
+  // Tab 離開 popover 就關閉
+  await button.focus();
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".mx-legend-popover")).toHaveCount(0);
+  await expect(button).toHaveAttribute("aria-expanded", "false");
+  // 開著時用鍵盤選桶：焦點移到清單列就關閉，選了桶也維持關閉
+  await button.focus();
+  await page.keyboard.press("Enter");
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await page.locator(".location-row").first().focus();
+  await expect(page.locator(".mx-legend-popover")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".mx-panel")).toHaveAttribute("data-view", "bin");
+  await expect(page.locator(".mx-legend-popover")).toHaveCount(0);
+  // 面板換畫面時也會關閉（例如用網址選桶）
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await page.evaluate(() => {
+    location.hash = "map?waste_type=general";
+  });
+  await expect(page.locator(".mx-legend-popover")).toHaveCount(0);
 });

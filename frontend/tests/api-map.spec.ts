@@ -379,18 +379,22 @@ test("two waste compartments map to three states, recycling-only navigation and 
   await expect(rows).toHaveCount(2);
   // 後端 half 在前端是「餓了」；列上寫兩槽可丟數，每一槽一顆狀態膠囊。
   await expect(rows.first()).toContainText("1/2");
-  await expect(rows.first()).toContainText("一般垃圾 · 吃飽了 · 92%");
+  await expect(
+    rows.first().getByRole("img", { name: "一般垃圾，吃飽了，92%" }),
+  ).toBeVisible();
   await expect(rows.nth(1)).toContainText("0/2");
   // 「還能丟」依所選種類判斷：一般垃圾兩點都滿，切到資源回收才剩一個。
   await page.getByRole("button", { name: "還能丟", exact: true }).click();
   await expect(rows).toHaveCount(0);
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
+  await page.getByRole("radio", { name: "資源回收", exact: true }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("一般滿回收餓");
-  await expect(rows.first()).toContainText("資源回收 · 餓了 · 60%");
+  await expect(
+    rows.first().getByRole("img", { name: "資源回收，餓了，60%" }),
+  ).toBeVisible();
   // 桶面板沒有種類選單：在地圖篩選列切回一般垃圾再選這個桶，
   // 確認一般滿、回收能丟時仍提供「導航過去丟回收」。
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("general");
+  await page.getByRole("radio", { name: "一般垃圾", exact: true }).click();
   await page.getByRole("button", { name: "全部", exact: true }).click();
   await rows.filter({ hasText: "一般滿回收餓" }).click();
   await expect(page.getByText("資源回收還能丟", { exact: true })).toBeVisible();

@@ -5567,22 +5567,6 @@ input[type="file"]::file-selector-button {
 .api-bin-detail .bin-overview {
   padding: 24px;
 }
-.bin-overview-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-.bin-overview-heading h2 {
-  margin: 0;
-}
-.bin-overview-heading p {
-  margin: 6px 0 0;
-}
-.bin-overview-heading .api-waste-select {
-  margin: 0;
-  font: var(--text-caption);
-}
 .compartment-choice {
   font: var(--text-caption);
   color: var(--text-body);
@@ -5679,13 +5663,6 @@ input[type="file"]::file-selector-button {
   }
   .bin-title {
     gap: 10px;
-  }
-  .bin-overview-heading {
-    align-items: start;
-    flex-direction: column;
-  }
-  .bin-overview-heading .api-waste-select {
-    width: 100%;
   }
   .compartment-choice {
     font: var(--text-caption);
@@ -5861,9 +5838,10 @@ input[type="file"]::file-selector-button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
   min-height: 60px;
-  padding: var(--space-3) var(--space-6);
+  padding: var(--space-4) var(--space-6);
   border-bottom: 2px solid var(--divider);
 }
 .mx-panel-head .back-link {
@@ -5884,46 +5862,82 @@ input[type="file"]::file-selector-button {
 }
 .mx-filters {
   display: grid;
-  gap: var(--space-2);
-  margin: var(--space-3) 0 var(--space-2);
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-4);
 }
 .mx-filters .search-field input {
   min-height: 44px;
 }
-/* 篩選膠囊＋種類選單同一列；放不下時整列橫向捲動。 */
-.mx-filter-row {
+/* 標題列：左邊「附近的桶」＋下方小字（數量・排序依據），右邊純圖示種類切換、
+   垂直置中。標題區可縮（小字會換行），但不小於標題本身；連這樣都放不下時，
+   切換換到下一行並靠右。 */
+.mx-head-title {
+  flex: 1 1 0;
+  min-width: min-content;
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
+  flex-direction: column;
+  gap: var(--space-1);
 }
-.mx-filter-row .filter-chips {
+.mx-head-title .mx-title {
   flex: none;
-  flex-wrap: nowrap;
+  white-space: nowrap;
 }
-.mx-filter-row .api-waste-select {
+
+.mx-panel-head .waste-picker {
   flex: none;
-  margin: 0;
+  margin-left: auto;
 }
 /* 清單：.location-row 自帶左右內距，所以清單左右貼齊面板邊。 */
 .mx-list {
   list-style: none;
-  margin: var(--space-2) calc(var(--space-6) * -1) 0;
+  margin: 0 calc(var(--space-6) * -1) 0;
   padding: 0;
   border-top: 2px solid var(--divider);
 }
-.mx-row-slots {
+/* 清單列的兩槽：同一行並排（所選種類在左），每槽是圖示＋短滿度條＋百分比。 */
+.mx-slots {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
   margin-top: var(--space-1);
 }
-.mx-row-slots .waste-icon {
+.mx-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.mx-slot .waste-icon {
   width: 16px;
   height: 16px;
   border: 0;
-  color: inherit;
+  color: var(--text-muted);
+}
+.mx-slot .fill-bar {
+  flex: 1 1 auto;
+  min-width: var(--space-6);
+}
+.mx-slot-value {
+  flex: none;
+  font: var(--text-caption);
+  font-weight: 700;
+  color: var(--text-body);
+}
+.mx-slot.state-full .mx-slot-value {
+  color: var(--signal);
+}
+.mx-slot.state-offline .mx-slot-value {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+/* 清單列放進面板時：列的上下內距、桶名／距離／膠囊之間鬆一點。 */
+.mx-list .location-row {
+  padding-block: var(--space-4);
+}
+.mx-list .row-copy {
+  gap: var(--space-1);
 }
 .mx-usable {
   display: flex;
@@ -6060,6 +6074,40 @@ input[type="file"]::file-selector-button {
   font: var(--text-label);
   font-style: normal;
 }
+/* WastePicker 純圖示版（iconOnly prop）：兩格 44×44 相連，圖示放大。 */
+.waste-picker.icon-only .segmented {
+  display: inline-grid;
+  grid-template-columns: repeat(2, 44px);
+  gap: 0;
+}
+.waste-picker.icon-only .segmented label {
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0;
+  gap: 0;
+}
+.waste-picker.icon-only .segmented label:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.waste-picker.icon-only .segmented label:last-child {
+  margin-left: -1px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.waste-picker.icon-only .segmented label:has(input:checked) {
+  z-index: 1;
+}
+.waste-picker.icon-only .waste-icon {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  color: inherit;
+  font: var(--text-numeral-sm);
+}
+.waste-picker.icon-only .waste-icon svg {
+  width: 20px;
+  height: 20px;
+}
 /* 地圖標記：地標旗子、建議點虛線方框、示意起點。 */
 .mx-landmark .marker-body svg {
   width: 28px;
@@ -6149,7 +6197,7 @@ input[type="file"]::file-selector-button {
   }
   .mx-panel-head {
     min-height: 52px;
-    padding: 0 var(--space-4) var(--space-2);
+    padding: var(--space-1) var(--space-4) var(--space-3);
     touch-action: none;
   }
   .mx-panel-body {
@@ -6160,6 +6208,11 @@ input[type="file"]::file-selector-button {
   }
   .mx-map .leaflet-bottom {
     bottom: var(--mx-drawer-h, 50%);
+  }
+  /* 手機地圖矮：popover 開在按鈕左邊，不蓋到右下的縮放鈕。 */
+  .mx-legend-popover {
+    top: 0;
+    right: calc(100% + var(--space-2));
   }
   .mx-layout[data-drawer="full"] .mx-legend,
   .mx-layout[data-drawer="full"] .mx-map .leaflet-bottom {

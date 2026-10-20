@@ -7,7 +7,12 @@ import type { Page } from "@playwright/test";
 // 桶面板不再有種類選單：回清單，在地圖篩選列換種類，再點回同一個桶。
 async function switchWaste(page: Page, value: "general" | "recycling") {
   await page.getByRole("link", { name: "← 返回清單", exact: true }).click();
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption(value);
+  await page
+    .getByRole("radio", {
+      name: value === "general" ? "一般垃圾" : "資源回收",
+      exact: true,
+    })
+    .click();
   await page
     .locator(".mx-list .location-row")
     .filter({ hasText: "雙槽測試桶" })
@@ -25,11 +30,13 @@ test("one map point exposes independent general and recycling availability and p
   await expect(
     page.locator(".mx-list").getByRole("button", { name: /雙槽測試桶/ }),
   ).toHaveCount(1);
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
-  // 「最近的可用小夥伴」併入「附近的桶」：列上每一槽一顆狀態膠囊。
-  await expect(page.getByRole("list", { name: "附近的桶" })).toContainText(
-    "資源回收 · 餓了 · 20%",
-  );
+  await page.getByRole("radio", { name: "資源回收", exact: true }).click();
+  // 「最近的可用小夥伴」併入「附近的桶」：列上每一槽一條滿度條（無障礙名稱寫完整）。
+  await expect(
+    page
+      .getByRole("list", { name: "附近的桶" })
+      .getByRole("img", { name: "資源回收，餓了，20%" }),
+  ).toBeVisible();
   await page
     .locator(".mx-list")
     .getByRole("button", { name: /雙槽測試桶/ })
@@ -271,8 +278,11 @@ test("report list filtering and waste choice stay usable on desktop and 320px sc
   // 桶面板的槽只顯示、不能點；種類從地圖篩選列切換（鍵盤也能操作）。
   await expect(page.locator(".mx-panel .compartment-select")).toHaveCount(0);
   await page.getByRole("link", { name: "← 返回清單", exact: true }).click();
-  await page.getByLabel("垃圾種類", { exact: true }).focus();
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("general");
+  await page.getByRole("radio", { name: "資源回收", exact: true }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(
+    page.getByRole("radio", { name: "一般垃圾", exact: true }),
+  ).toBeChecked();
   await page
     .locator(".mx-list .location-row")
     .filter({ hasText: "雙槽測試桶" })

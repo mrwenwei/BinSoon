@@ -44,14 +44,19 @@ function AppContent() {
     window.addEventListener("hashchange", change);
     return () => window.removeEventListener("hashchange", change);
   }, []);
+  const [path, search] = route.split("?");
+  const [page, id, workId] = path.split("/");
+  const params = new URLSearchParams(search);
+  // 換頁時把焦點移到頁面標題；只有 ?waste_type= 變了（例如用方向鍵切換種類）
+  // 不算換頁，焦點留在原處，才能連續切換。
+  const focusParams = new URLSearchParams(search);
+  focusParams.delete("waste_type");
+  const focusKey = `${path}?${focusParams}`;
   useEffect(() => {
     const h = main.current?.querySelector("h1");
     h?.setAttribute("tabindex", "-1");
     h?.focus({ preventScroll: true });
-  }, [route]);
-  const [path, search] = route.split("?");
-  const [page, id, workId] = path.split("/");
-  const params = new URLSearchParams(search);
+  }, [focusKey]);
   const [vehicle, setVehicle] = useState<CrewVehicle>("scooter");
   const [lastWaste, setLastWaste] = useState<WasteType>("general");
   const routeWaste = params.get("waste_type");

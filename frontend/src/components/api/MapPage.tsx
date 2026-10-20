@@ -4,7 +4,6 @@ import {
   type WasteControls,
   type WasteType,
 } from "../../data/waste";
-import { WasteSelect, statusText } from "./Waste";
 import {
   useCallback,
   useEffect,
@@ -21,6 +20,7 @@ import {
   apiBinState,
   apiCompartments,
   query,
+  type ApiCompartment,
   type ApiLocation,
 } from "../../data/api";
 import { stateLabels, usableCount } from "../../data/binState";
@@ -36,7 +36,8 @@ import {
   wasteState,
 } from "../../map/browseMarkers";
 import { Mascot } from "../Mascot";
-import { WasteIcon } from "../WasteType";
+import { WasteIcon, WastePicker } from "../WasteType";
+import { FillBar } from "../StationCard";
 import { LocationDetails } from "../LocationDetails";
 import { LoadState } from "./LoadState";
 import { useSession } from "./SessionContext";
@@ -167,17 +168,33 @@ export function MapPage({
       ? (items?.find((item) => item.id === placeId && item.kind === "place") ??
         null)
       : null;
+  // 開著桶面板時清單暫停輪詢；面板的 view 每次更新都帶最新桶況，
+  // 拿它蓋過清單裡那一筆，地圖上這個桶的標記才會跟面板一致。
+  const fresh = binId && binLocation?.id === binId ? binLocation : null;
+  const withFresh = useCallback(
+    (item: ApiLocation) =>
+      fresh && item.id === fresh.id
+        ? {
+            ...item,
+            bin_status: fresh.bin_status,
+            compartments: fresh.compartments,
+          }
+        : item,
+    [fresh],
+  );
+  const listed = binId ? items?.find((item) => item.id === binId) : undefined;
   const selected: ApiLocation | null = binId
-    ? (items?.find((item) => item.id === binId) ??
-      (binLocation?.id === binId ? binLocation : null))
+    ? listed
+      ? withFresh(listed)
+      : fresh
     : place;
   // 地圖：「全部」顯示桶＋地標＋建議點；其他篩選只顯示清單上的點。選中的點一定顯示。
   const mapItems = useMemo(() => {
-    const shown = (filter === "all" ? items : rows) ?? [];
+    const shown = ((filter === "all" ? items : rows) ?? []).map(withFresh);
     return selected && !shown.some((item) => item.id === selected.id)
       ? [...shown, selected]
       : shown;
-  }, [items, rows, filter, selected]);
+  }, [items, rows, filter, selected, withFresh]);
   // 選桶、選地標都寫進網址（push），瀏覽器返回鍵回到清單；選完把焦點移到面板標題。
   const pendingFocus = useRef<string | null>(null);
   const layoutRef = useRef<HTMLElement>(null);
@@ -378,8 +395,22 @@ export function MapPage({
         <div className="mx-panel-head" ref={headRef}>
           {view === "list" ? (
             <>
-              <h1 className="mx-title">附近的桶</h1>
-              <span className="tiny">{rows ? `${rows.length} 個` : "—"}</span>
+              {/* 標題下方小字：數量＋排序依據（所選種類能丟的排前面）。 */}
+              <div className="mx-head-title">
+                <h1 className="mx-title">附近的桶</h1>
+                <span className="tiny">
+                  {rows
+                    ? `${rows.length} 個桶 · ${wasteName(wasteType)}優先`
+                    : "—"}
+                </span>
+              </div>
+              <WastePicker
+                name="map-waste"
+                legend="垃圾種類"
+                iconOnly
+                value={wasteType}
+                onChange={replaceWaste}
+              />
             </>
           ) : (
             <a className="back-link" href={listHref}>
@@ -413,6 +444,7 @@ export function MapPage({
           ) : (
             <>
               <div className="mx-filters">
+                {/* 搜尋框＋種類切換同一列（放不下時切換換到下一行），篩選膠囊自己一列。 */}
                 <label className="search-field">
                   <span className="visually-hidden">搜尋地點</span>
                   <input
@@ -424,27 +456,17 @@ export function MapPage({
                     onChange={(e) => setQ(e.target.value)}
                   />
                 </label>
-                {/* 篩選膠囊與種類選單同一列，放不下時這一列橫向捲動。 */}
-                <div className="mx-filter-row">
-                  <div className="filter-chips" role="group" aria-label="篩選">
-                    {filters.map(([value, label]) => (
-                      <button
-                        type="button"
-                        key={value}
-                        aria-pressed={filter === value}
-                        onClick={() => setFilter(value)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <WasteSelect
-                    value={wasteType}
-                    hideLabel
-                    onChange={(value) => {
-                      if (value) replaceWaste(value);
-                    }}
-                  />
+                <div className="filter-chips" role="group" aria-label="篩選">
+                  {filters.map(([value, label]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      aria-pressed={filter === value}
+                      onClick={() => setFilter(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </div>
               <LoadState {...list} />
@@ -491,7 +513,10 @@ export function MapPage({
           focusOffsetY={focusOffsetY}
           focusKey={focusKey}
         />
-        <LegendPopover wasteType={wasteType} />
+        <LegendPopover
+          wasteType={wasteType}
+          closeKey={`${binId ?? ""}|${placeId ?? ""}`}
+        />
       </div>
     </main>
   );
@@ -535,18 +560,12 @@ function NearbyRow({
         {proposed ? (
           <small>建議點／待現勘，尚未設置</small>
         ) : (
-          <span className="mx-row-slots">
+          <span className="mx-slots">
             {item.bin_status?.is_new && (
               <span className="status-pill">新設</span>
             )}
             {ordered.map((part) => (
-              <span
-                key={part.waste_type}
-                className={`status-pill ${stateVisual[apiBinState(part)].className}`}
-              >
-                <WasteIcon type={part.waste_type} />
-                {wasteName(part.waste_type)} · {statusText(part)}
-              </span>
+              <SlotBar key={part.waste_type} part={part} />
             ))}
           </span>
         )}
@@ -562,6 +581,41 @@ function NearbyRow({
         </span>
       )}
     </button>
+  );
+}
+
+// 清單列裡的一槽：種類圖示＋短滿度條（沿用 StationCard 的 FillBar）＋百分比。
+// 不寫「餓了／吃飽了」；失聯／維修／撤除不放百分比，改虛線空條加狀態字。
+// 無障礙名稱寫完整，例如「一般垃圾，吃飽了，92%」。
+function SlotBar({ part }: { part: ApiCompartment }) {
+  const state = apiBinState(part);
+  const word =
+    part.operational_status === "removed"
+      ? "已撤除"
+      : part.operational_status === "repair"
+        ? "維修中"
+        : stateLabels.offline;
+  const pct = state === "offline" ? null : part.fill_level_pct;
+  const label = `${wasteName(part.waste_type)}，${state === "offline" ? word : stateLabels[state]}${pct === null ? "" : `，${pct}%`}`;
+  return (
+    <span
+      className={`mx-slot ${stateVisual[state].className}`}
+      role="img"
+      aria-label={label}
+    >
+      <WasteIcon type={part.waste_type} />
+      <FillBar
+        c={{
+          wasteType: part.waste_type,
+          state,
+          pct,
+          statusText: label,
+        }}
+      />
+      <span className="mx-slot-value" aria-hidden="true">
+        {pct === null ? word : `${pct}%`}
+      </span>
+    </span>
   );
 }
 
@@ -625,10 +679,20 @@ export function MapLegend({
 
 // 地圖右上角的圖例按鈕（沿用 .menu-button 圖示按鈕）＋按鈕下方的 popover。
 // 預設收起；點外面、按 Esc、再點一次按鈕都會關閉，Esc 與按鈕關閉後焦點回到按鈕。
-function LegendPopover({ wasteType }: { wasteType: WasteType }) {
+// 面板換畫面（選桶／地標／回清單）或焦點離開圖例時也會關閉。
+function LegendPopover({
+  wasteType,
+  closeKey,
+}: {
+  wasteType: WasteType;
+  closeKey: string;
+}) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    setOpen(false);
+  }, [closeKey]);
   useEffect(() => {
     if (!open) return;
     const outside = (event: Event) => {
@@ -647,7 +711,14 @@ function LegendPopover({ wasteType }: { wasteType: WasteType }) {
     };
   }, [open]);
   return (
-    <div className="mx-legend" ref={root}>
+    <div
+      className="mx-legend"
+      ref={root}
+      onBlur={(event) => {
+        if (!root.current?.contains(event.relatedTarget as Node | null))
+          setOpen(false);
+      }}
+    >
       <button
         type="button"
         ref={button}
@@ -668,7 +739,7 @@ function LegendPopover({ wasteType }: { wasteType: WasteType }) {
         </svg>
       </button>
       {open && (
-        <div className="mx-legend-popover" id="mx-legend-popover">
+        <div className="mx-legend-popover" id="mx-legend-popover" tabIndex={-1}>
           <MapLegend wasteType={wasteType} landmarks stacked />
         </div>
       )}
