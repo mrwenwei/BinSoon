@@ -21,6 +21,17 @@ import {
   Member,
 } from "./components/api/ReportPages";
 
+import {
+  ProposalDraftProvider,
+  useProposalDraft,
+} from "./components/api/ProposalDraft";
+import {
+  ProposalList,
+  ProposalDetail,
+  ProposalForm,
+} from "./components/api/ProposalPages";
+import { Outcomes } from "./components/api/OutcomePages";
+import { Rewards, Redemptions } from "./components/api/RewardPages";
 import { RoutePage } from "./components/api/RoutePage";
 import { type CrewVehicle } from "./data/crewRouting";
 import { StaffPage } from "./components/api/StaffPages";
@@ -32,6 +43,7 @@ import {
 function AppContent() {
   const [route, setRoute] = useState(() => location.hash.slice(1) || "map");
   const drafts = useReportDrafts();
+  const proposalDraft = useProposalDraft();
   const workCommands = useWorkCommands();
   const main = useRef<HTMLDivElement>(null);
   const { session, logout, notice, clearNotice } = useSession();
@@ -73,6 +85,7 @@ function AppContent() {
   const isLogin = page === "login" || id === "login";
   const signOut = () => {
     drafts.clear();
+    proposalDraft.clear();
     workCommands.clear();
     void logout();
   };
@@ -111,7 +124,7 @@ function AppContent() {
                 label: "找垃圾桶",
                 current: page === "map",
               },
-              { href: "#vote", label: "要桶投票（尚未開放）" },
+              { href: "#vote", label: "要桶投票" },
               {
                 href: "#reports",
                 label: "我的回報",
@@ -127,7 +140,7 @@ function AppContent() {
                 label: "集章與等級",
                 current: page === "stamps",
               },
-              { href: "#rewards", label: "兌換獎勵（尚未開放）" },
+              { href: "#rewards", label: "兌換獎勵" },
               { href: "#adopt", label: "認養電子雞（尚未開放）" },
             ],
           },
@@ -144,6 +157,8 @@ function AppContent() {
                 label: "清運道路指引",
                 current: page === "staff" && id === "route",
               },
+              { href: "#staff/statistics", label: "隊員月份成果" },
+              { href: "#outcomes", label: "清潔隊公開成果" },
               { href: "#admin", label: "管理員", current: page === "admin" },
             ],
           },
@@ -212,6 +227,22 @@ function AppContent() {
             navigation={page === "nav"}
             {...wasteControls}
           />
+        ) : page === "vote" ? (
+          id === "create" ? (
+            <RequireCitizen next={route}>
+              <ProposalForm key={session?.user.id} />
+            </RequireCitizen>
+          ) : id === "mine" || id === "votes" ? (
+            <RequireCitizen next={route}>
+              <ProposalList key={`${id}/${session?.user.id}`} mode={id} />
+            </RequireCitizen>
+          ) : (
+            <ProposalList key={`all/${session?.user.id}`} />
+          )
+        ) : page === "proposals" && id ? (
+          <ProposalDetail key={`${id}/${session?.user.id}`} id={id} />
+        ) : page === "outcomes" || (page === "staff" && id === "statistics") ? (
+          <Outcomes staff={page === "staff"} />
         ) : page === "staff" && id === "route" ? (
           <RoutePage vehicle={vehicle} onVehicleChange={setVehicle} />
         ) : page === "staff" && id === "tasks" ? (
@@ -225,6 +256,17 @@ function AppContent() {
         ) : page === "reports" ? (
           <RequireCitizen next={route}>
             <ReportsList />
+          </RequireCitizen>
+        ) : page === "rewards" || page === "redemptions" ? (
+          <RequireCitizen next={route}>
+            {page === "rewards" ? (
+              <Rewards key={session?.user.id} />
+            ) : (
+              <Redemptions
+                key={`${session?.user.id}/${id || "list"}`}
+                id={id}
+              />
+            )}
           </RequireCitizen>
         ) : ["member", "stamps"].includes(page) ? (
           <RequireCitizen next={route}>
@@ -247,9 +289,8 @@ function AppContent() {
       </div>
       <footer className="api-footer">
         所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。
-        <a href="#vote">提案（尚未開放）</a> ·{" "}
-        <a href="#adopt">認養（尚未開放）</a> ·{" "}
-        <a href="#rewards">兌換（尚未開放）</a>
+        <a href="#vote">提案</a> · <a href="#adopt">認養（尚未開放）</a> ·{" "}
+        <a href="#rewards">兌換</a>
       </footer>
     </div>
   );
@@ -259,7 +300,9 @@ export default function App() {
     <SessionProvider>
       <ReportDraftProvider>
         <WorkCommandProvider>
-          <AppContent />
+          <ProposalDraftProvider>
+            <AppContent />
+          </ProposalDraftProvider>
         </WorkCommandProvider>
       </ReportDraftProvider>
     </SessionProvider>

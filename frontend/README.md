@@ -1,6 +1,6 @@
 # BinSoon 前端：API 地圖、回報、查證與現場處理
 
-React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)。
+React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)、[#12](https://github.com/mrwenwei/BinSoon/issues/12)、[#13](https://github.com/mrwenwei/BinSoon/issues/13)、[#14](https://github.com/mrwenwei/BinSoon/issues/14)。
 
 ## 目前可操作範圍
 
@@ -13,7 +13,10 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 管理員：`/#admin` 輸入工單 UUID，或使用隊員工單提供的另開分頁連結；以獨立 admin session 讀版本、確認「非真實 IoT」後送出 demo-clear。清空先到仍須完成照、全部查證與明確 finish 才能結案。每次保留 reading_id 與命令識別供未知結果重試。
 - 市民：桶詳情只呈現後端有效完成紀錄；對最新 completion.id 感謝一次，顯示後端 like_count／liked_by_me，不增加點數或排名。桶況、歷史、最近桶、導航及案件持續重新讀取後端，容量歸零本身不代表完工。
 - 隊員道路指引：`#staff/route` 讀後端 origin 與有序站點，同桶合站、工單 UUID 各自保留；可篩一般／回收並選機車／汽車，手動請求既有 Valhalla 道路幾何與逐段指引。前景每 10 秒重讀站點、背景停止；工單／站點／車種變動取消舊指引，不以直線替代。起點固定示範，沒有即時 GPS、交通或順序最佳化。
-- 兌換、成果統計、提案、認養及通知等操作依後續票單開放，不能以本機假帳本補結果。
+- 會員兌換：`#member` 讀後端帳本，`#rewards` 分類／分頁選獎品 UUID 及確認兌換，`#redemptions`／`#redemptions/<id>` 查自己的 DEMO 展示券。未知結果保留原命令重送，沒有前端扣點／扣庫存。
+- 月份成果：訪客／市民 `#outcomes` 看公開整隊成果；隊員 `#staff/statistics` 看責任區本人件數、平均時間、讚及後端並列排名。台北曆月、區及種類可切換，空值不填假基數，加給只展示說明。
+- 提案投票：`#vote` 列表、`#vote/create` 選點查周邊與建立、`#vote/mine`／`#vote/votes` 追蹤自己的提案與投票、`#proposals/<id>` 分享詳情。周邊查詢不受找桶篩選影響，50m 鄰近案須明確確認不同需求，150m 已設置桶是提醒；額度及大安區界由後端判定。支持／反對／改票／撤票、票數及關票只使用後端結果。
+- 認養、命名及通知等操作依後續票單開放，不能以本機假帳本補結果。GitHub #12–#14 的驗證與完整入口見 [專項紀錄](../docs/FRONTEND_ENGAGEMENT_VALIDATION.md)。
 
 ## 一般垃圾／資源回收
 

@@ -403,8 +403,15 @@ test("a rejected first report never promotes later reporters and suspension only
   await expect(
     page.getByRole("button", { name: "確認送出回報", exact: true }),
   ).toBeDisabled();
-  // Unconnected B flows remain unopened rather than being gated by reporting suspension.
-  for (const hash of ["vote", "adopt", `quick-report/${binId}`]) {
+  // #14 opens proposals; reporting suspension must not block that public flow.
+  await page.evaluate(() => {
+    window.location.hash = "vote";
+  });
+  await expect(
+    page.getByRole("heading", { name: "要桶投票", exact: true }),
+  ).toBeVisible();
+  // Other B flows still await their own integration tickets.
+  for (const hash of ["adopt", `quick-report/${binId}`]) {
     await page.evaluate((value) => {
       window.location.hash = value;
     }, hash);

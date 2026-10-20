@@ -67,11 +67,11 @@ test("hamburger drawer reaches every entry, traps focus and closes with Esc or t
   await expect(menu).toHaveAttribute("aria-expanded", "true");
   for (const name of [
     "找垃圾桶",
-    "要桶投票（尚未開放）",
+    "要桶投票",
     "我的回報",
     "會員中心",
     "集章與等級",
-    "兌換獎勵（尚未開放）",
+    "兌換獎勵",
     "認養電子雞（尚未開放）",
     "清潔隊工作台",
     "清運道路指引",

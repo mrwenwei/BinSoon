@@ -30,6 +30,7 @@ import {
   type Command,
   type Membership,
   type PointEntry,
+  type PageData,
   type Problem,
   type Report,
 } from "../../data/api";
@@ -697,6 +698,15 @@ export function Member() {
     }),
     true,
   );
+  const reports = useApi(
+    "/me/reports?limit=1&offset=0",
+    (signal) =>
+      request<PageData<Report>>("/me/reports?limit=1&offset=0", {
+        signal,
+        token: session?.access_token,
+      }),
+    true,
+  );
   return (
     <main className="page api-narrow">
       <h1>會員中心</h1>
@@ -718,12 +728,12 @@ export function Member() {
             </p>
           )}
           {membership.data.reporting_suspended && (
-            <p role="status">
-              回報資格暫停，提案／投票／認養不因此停權；相關功能仍依各自串接進度開放。
-            </p>
+            <p role="status">回報資格暫停，合法兌換、提案與投票不因此停權。</p>
           )}
         </section>
       )}
+      <LoadState {...reports} />
+      {reports.data && <p>我的回報共 {reports.data.page.total} 筆</p>}
       <h2>點數台帳</h2>
       <LoadState {...entries} />
       <ul className="api-items">
@@ -732,6 +742,9 @@ export function Member() {
             {time(e.created_at)} · {e.type} · {e.amount} 點 · 餘額{" "}
             {e.balance_after}
             {e.report_id && <a href={`#review/${e.report_id}`}>查看回報</a>}
+            {e.redemption_id && (
+              <a href={`#redemptions/${e.redemption_id}`}>查看展示券</a>
+            )}
           </li>
         ))}
       </ul>
@@ -739,7 +752,12 @@ export function Member() {
       <a className="button secondary" href="#reports">
         查看我的回報
       </a>
-      <p>獎品兌換尚未開放。</p>
+      <a className="button primary" href="#rewards">
+        兌換獎勵
+      </a>
+      <a className="button secondary" href="#redemptions">
+        我的兌換
+      </a>
     </main>
   );
 }
