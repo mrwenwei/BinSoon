@@ -68,6 +68,7 @@ export function MapPage({ wasteType, onWasteChange }: WasteControls) {
     [filter, setFilter] = useState("all"),
     [q, setQ] = useState("");
   const [proposed, setProposed] = useState(false);
+  const [includeRemoved, setIncludeRemoved] = useState(false);
   const [selected, setSelected] = useState<LocationRecord | null>(null);
   // 「餓了的桶」＝至少一桶還能丟（兩桶規則），在前端依 compartments 篩選；
   // 新設的桶仍交給後端篩選。
@@ -78,6 +79,7 @@ export function MapPage({ wasteType, onWasteChange }: WasteControls) {
     filter: filter === "new" ? "new" : "all",
     q,
     include_proposed: proposed,
+    include_removed: includeRemoved,
     ...ORIGIN,
   });
   const list = useApi(
@@ -213,6 +215,17 @@ export function MapPage({ wasteType, onWasteChange }: WasteControls) {
             />
             包含建議點／待現勘
           </label>
+          <label className="check-field">
+            <input
+              type="checkbox"
+              checked={includeRemoved}
+              onChange={(e) => setIncludeRemoved(e.target.checked)}
+            />
+            包含所有撤除紀錄
+          </label>
+          <p className="tiny">
+            預設顯示後端保留的近七日撤除標記；勾選後查詢全部撤除紀錄。
+          </p>
         </div>
         <section className="nearest-card">
           <div className="panel-heading">
@@ -288,7 +301,9 @@ export function MapPage({ wasteType, onWasteChange }: WasteControls) {
                   </small>
                   {item.kind === "bin" ? (
                     <>
-                      {parts.length > 1 ? (
+                      {item.bin_status?.operational_status === "removed" ? (
+                        <Status status={item.bin_status} />
+                      ) : parts.length > 1 ? (
                         <span
                           className={`status-pill ${stateVisual[state].className}`}
                         >
@@ -476,6 +491,11 @@ export function BinPage({
         </span>
       </div>
       <LoadState {...view} />
+      {session?.user.roles.includes("admin") && (
+        <a className="button secondary" href={`#admin/bins/${id}`}>
+          管理桶生命週期
+        </a>
+      )}
       <section className="card bin-overview">
         <div className="bin-overview-heading">
           <div>

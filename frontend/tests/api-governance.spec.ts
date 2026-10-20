@@ -355,7 +355,7 @@ test("owner requests, admin returns, owner resubmits, admin approves without rep
   ).toBeVisible();
   await page.getByRole("link", { name: "查看關聯 Bin", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "新桶名", exact: true }),
+    page.getByRole("heading", { name: "新桶名", level: 1, exact: true }),
   ).toBeVisible();
   await expect(page.getByText(/認養：認養公開名/)).toBeVisible();
 });

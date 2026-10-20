@@ -410,7 +410,7 @@ test("a rejected first report never promotes later reporters and suspension only
   await expect(
     page.getByRole("heading", { name: "要桶投票", exact: true }),
   ).toBeVisible();
-  // Other B flows still await their own integration tickets.
+  // Reporting suspension does not block adoption management.
   await page.evaluate(() => {
     location.hash = "adopt";
   });
@@ -422,7 +422,7 @@ test("a rejected first report never promotes later reporters and suspension only
       window.location.hash = value;
     }, hash);
     await expect(
-      page.getByRole("heading", { name: "功能尚未開放" }),
+      page.getByRole("heading", { name: "認養快捷通報" }),
     ).toBeVisible();
   }
 });

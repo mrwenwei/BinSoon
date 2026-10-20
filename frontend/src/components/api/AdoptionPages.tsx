@@ -1,3 +1,4 @@
+import { AdoptionMonthly } from "./AdoptionMonthly";
 import { useState } from "react";
 import {
   query,
@@ -494,6 +495,16 @@ function AdoptionDetail({ id, admin }: { id: string; admin: boolean }) {
                 結束認養
               </button>
             </section>
+          )}
+        </>
+      )}
+      {!admin && item && (
+        <>
+          <AdoptionMonthly id={id} />
+          {item.status === "active" && !detail.error && (
+            <a className="button primary" href={`#quick-report/${id}`}>
+              認養快捷通報
+            </a>
           )}
         </>
       )}

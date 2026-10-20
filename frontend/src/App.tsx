@@ -16,6 +16,7 @@ import {
   useReportDrafts,
   RequireCitizen,
   ReportForm,
+  QuickReport,
   ReportDetail,
   ReportsList,
   Member,
@@ -32,6 +33,8 @@ import {
 } from "./components/api/ProposalPages";
 import { AdminProposals } from "./components/api/ProposalGovernance";
 import { Adoptions, AdoptionApply } from "./components/api/AdoptionPages";
+import { LifecyclePage } from "./components/api/LifecyclePage";
+import { Notifications } from "./components/api/Notifications";
 import { Outcomes } from "./components/api/OutcomePages";
 import { Rewards, Redemptions } from "./components/api/RewardPages";
 import { RoutePage } from "./components/api/RoutePage";
@@ -144,6 +147,7 @@ function AppContent() {
               },
               { href: "#rewards", label: "兌換獎勵" },
               { href: "#adopt", label: "認養電子雞" },
+              { href: "#notifications", label: "站內通知" },
             ],
           },
           {
@@ -160,9 +164,12 @@ function AppContent() {
                 current: page === "staff" && id === "route",
               },
               { href: "#staff/statistics", label: "隊員月份成果" },
+              { href: "#staff/notifications", label: "隊員站內通知" },
+              { href: "#admin/notifications", label: "管理員站內通知" },
               { href: "#outcomes", label: "清潔隊公開成果" },
               { href: "#admin/proposals", label: "提案與命名審查" },
               { href: "#admin/adoptions", label: "認養審核" },
+              { href: "#admin/bins", label: "撤除桶管理" },
               { href: "#admin", label: "管理員", current: page === "admin" },
             ],
           },
@@ -217,6 +224,17 @@ function AppContent() {
                   : "map")
             }
           />
+        ) : page === "notifications" ||
+          (["staff", "admin"].includes(page) && id === "notifications") ? (
+          <Notifications
+            key={`${page}/${session?.user.id}`}
+            role={page === "notifications" ? undefined : role}
+          />
+        ) : page === "admin" && id === "bins" ? (
+          <LifecyclePage
+            key={`${workId || "list"}/${session?.user.id}`}
+            id={workId}
+          />
         ) : page === "admin" && id === "adoptions" ? (
           <Adoptions
             key={`${workId || "list"}/${session?.user.id}`}
@@ -240,6 +258,12 @@ function AppContent() {
             key={`${page}/${id}/${wasteType}`}
             id={id}
             navigation={page === "nav"}
+            {...wasteControls}
+          />
+        ) : page === "quick-report" && id ? (
+          <QuickReport
+            key={`${id}/${wasteType}/${session?.user.id}`}
+            id={id}
             {...wasteControls}
           />
         ) : page === "adopt" ? (

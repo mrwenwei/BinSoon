@@ -110,6 +110,17 @@ export async function apiFixture(
         url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGMwTnMBAAGtAN6NqpJ+AAAAAElFTkSuQmCC",
         expires_at: new Date(Date.now() + 300000).toISOString(),
       };
+    else if (path.endsWith("/monthly-summary"))
+      data = {
+        adoption_id: path.split("/")[2],
+        month: url.searchParams.get("month"),
+        timezone: "Asia/Taipei",
+        reports_submitted: 0,
+        reports_approved: 0,
+        points_awarded: 0,
+        is_partial_month: false,
+        source_type: "demo",
+      };
     else if (path.endsWith("/history")) data = [];
     else if (path === "/me/membership")
       data = {

@@ -225,6 +225,38 @@ export type ProposalQuota = {
 };
 export type AdoptionRole = "居民" | "店家" | "學校" | "社區團體";
 export type Preferences = { full: boolean; dumping: boolean; dirty: boolean };
+export type AdoptionMonth = {
+  adoption_id: string;
+  month: string;
+  timezone: "Asia/Taipei";
+  reports_submitted: number;
+  reports_approved: number;
+  points_awarded: number;
+  is_partial_month: boolean;
+  source_type: string;
+};
+export type Notification = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+  waste_type: WasteType | null;
+  target: {
+    kind: "report" | "work_order" | "proposal" | "adoption";
+    id: string;
+  };
+};
+export type Lifecycle = {
+  bin_id: string;
+  version: number;
+  operational_status: string;
+  placement_status: string;
+  installed_at: string | null;
+  removed_at: string | null;
+  reason: string | null;
+};
 export type Adoption = {
   id: string;
   version: number;

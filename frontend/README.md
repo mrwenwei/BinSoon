@@ -1,6 +1,6 @@
 # BinSoon 前端：API 地圖、回報、查證與現場處理
 
-React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)、[#12](https://github.com/mrwenwei/BinSoon/issues/12)、[#13](https://github.com/mrwenwei/BinSoon/issues/13)、[#14](https://github.com/mrwenwei/BinSoon/issues/14)、[#15](https://github.com/mrwenwei/BinSoon/issues/15)、[#16](https://github.com/mrwenwei/BinSoon/issues/16)、[#17](https://github.com/mrwenwei/BinSoon/issues/17)。
+React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)、[#12](https://github.com/mrwenwei/BinSoon/issues/12)、[#13](https://github.com/mrwenwei/BinSoon/issues/13)、[#14](https://github.com/mrwenwei/BinSoon/issues/14)、[#15](https://github.com/mrwenwei/BinSoon/issues/15)、[#16](https://github.com/mrwenwei/BinSoon/issues/16)、[#17](https://github.com/mrwenwei/BinSoon/issues/17)、[#18](https://github.com/mrwenwei/BinSoon/issues/18)、[#19](https://github.com/mrwenwei/BinSoon/issues/19)、[#20](https://github.com/mrwenwei/BinSoon/issues/20)。
 
 ## 目前可操作範圍
 
@@ -18,7 +18,10 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 提案投票：`#vote` 列表、`#vote/create` 選點查周邊與建立、`#vote/mine`／`#vote/votes` 追蹤自己的提案與投票、`#proposals/<id>` 分享詳情。周邊查詢不受找桶篩選影響，50m 鄰近案須明確確認不同需求，150m 已設置桶是提醒；額度及大安區界由後端判定。支持／反對／改票／撤票、票數及關票只使用後端結果。
 - 提案審查／命名：`#admin/proposals` 分頁進入管理員審查，依最新 ETag 及合法階段操作；原提案人於 `#proposals/<id>` 在示範設置後送命名，管理員核准／附原因退回。
 - 認養：桶詳情依後端可申請狀態進入 `#adopt/apply/<bin.id>`；市民 `#adopt`／`#adopt/<id>` 查看歷史、偏好、撤回與結束；管理員 `#admin/adoptions`／`#admin/adoptions/<id>` 分頁審核。pending 沒有權益；公開認養與命名分開。
-- 後續通知、認養月報與快捷通報仍依票單開放。#12–#14 見 [會員／投票驗證](../docs/FRONTEND_ENGAGEMENT_VALIDATION.md)；#15–#17 的入口、版本衝突與資料限制見 [審查／命名／認養驗證](../docs/FRONTEND_STEWARDSHIP_VALIDATION.md)。
+- 認養快捷回報：有效認養於 `#adopt/<adoption.id>` 進入 `#quick-report/<adoption.id>`，仍需上傳現場照片與確認位置，送出同一 `/reports` API。認養、種類及普通回報各自保留草稿；後端決定資格、首報與結算，不由前端補倍或追扣。認養詳情另讀台北曆月月報，含部分月份與零值。
+- 站內通知：`#notifications`、`#staff/notifications`、`#admin/notifications` 依當前 session 讀自己的分頁／未讀資料；標已讀可重送原命令，再依 target.kind/id 進入案件。隊員／管理員入口仍需對應身份；無 LINE 或系統推播。
+- 撤桶：管理員從桶詳情或 `#admin/bins` 輸入桶 UUID，於 `#admin/bins/<bin.id>` 讀獨立 lifecycle ETag、填原因並確認撤除。地圖預設依後端顯示近七日撤除標記，也可查全部撤除紀錄；其他分頁重新讀取後停止權益／回報，未完成工單受阻且路線排除此桶，歷史與既有結算保留。沒有通用更新／刪除或復原功能。
+- #18–#20 的流程、測試與限制見 [快捷回報／通知／撤桶驗證](../docs/FRONTEND_FINAL_FLOWS_VALIDATION.md)。#12–#14 見 [會員／投票驗證](../docs/FRONTEND_ENGAGEMENT_VALIDATION.md)；#15–#17 的入口、版本衝突與資料限制見 [審查／命名／認養驗證](../docs/FRONTEND_STEWARDSHIP_VALIDATION.md)。
 
 ## 一般垃圾／資源回收
 
@@ -28,7 +31,7 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 歷史預設只查所選槽；「歷史種類」可選舊未分類（legacy_unknown），保留 waste_type=null，不混成一般垃圾。classification_source 與 simulated 讀值來源分開顯示；CSV 沒有分類證據，兩槽是展示假設。
 - 回報清單與隊員工單可篩種類，案件、工作證據及完成紀錄顯示後端種類。管理員清空依 work_order_id 的種類，不讓前端覆寫；最新完成與按讚待重試命令按種類分開，會員點數不乘二。
 
-新契約與資料限制見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。通知等尚未串接的票單仍待後續實作。
+新契約與資料限制見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。認養快捷回報也按種類及認養 UUID 隔離草稿。
 
 ## API 設定與身份
 

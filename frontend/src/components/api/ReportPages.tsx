@@ -27,6 +27,7 @@ import {
   time,
   workLabels,
   type BinView,
+  type Adoption,
   type Command,
   type Membership,
   type PointEntry,
@@ -123,15 +124,73 @@ export function RequireCitizen({
     );
   return <>{children}</>;
 }
+export function QuickReport({
+  id,
+  ...controls
+}: { id: string } & WasteControls) {
+  return (
+    <RequireCitizen
+      next={wasteHref(`quick-report/${id}`, controls.wasteType).slice(1)}
+    >
+      <QuickReportContent id={id} {...controls} />
+    </RequireCitizen>
+  );
+}
+function QuickReportContent({
+  id,
+  ...controls
+}: { id: string } & WasteControls) {
+  const { session } = useSession();
+  const path = `/adoptions/${id}`;
+  const adoption = useApi(
+    path,
+    (signal) =>
+      request<Adoption>(path, { signal, token: session?.access_token }),
+    true,
+  );
+  if (!adoption.data)
+    return (
+      <main className="page api-narrow">
+        <h1>認養快捷通報</h1>
+        <LoadState {...adoption} />
+        <a className="back-link" href="#adopt">
+          返回我的認養
+        </a>
+      </main>
+    );
+  return (
+    <>
+      <LoadState {...adoption} />
+      <ReportForm
+        id={adoption.data.bin_id}
+        {...controls}
+        quickAdoption={{
+          item: adoption.data,
+          ready: !adoption.loading && !adoption.error,
+          reload: adoption.reload,
+        }}
+      />
+    </>
+  );
+}
 export function ReportForm({
   id,
   wasteType,
   onWasteChange,
-}: { id: string } & WasteControls) {
+  quickAdoption,
+}: {
+  id: string;
+  quickAdoption?: { item: Adoption; ready: boolean; reload: () => void };
+} & WasteControls) {
   const { session, invalidate } = useSession();
   const { drafts, update, remove } = useReportDrafts();
   const cooldown = useCooldown();
-  const draftKey = `${id}/${wasteType}`;
+  const draftKey = `${id}/${wasteType}${quickAdoption ? `/quick/${quickAdoption.item.id}` : ""}`;
+  const quickAllowed =
+    !quickAdoption ||
+    (quickAdoption.ready &&
+      quickAdoption.item.status === "active" &&
+      quickAdoption.item.bin_id === id);
   const saved = drafts[draftKey];
   const draft =
     saved && (!saved.ownerId || saved.ownerId === session?.user.id)
@@ -222,7 +281,8 @@ export function ReportForm({
       return;
     if (
       !draft.operation &&
-      (!view.data?.can_report ||
+      (!quickAllowed ||
+        !view.data?.can_report ||
         Boolean(view.error) ||
         !validPosition ||
         !draft.file ||
@@ -262,7 +322,7 @@ export function ReportForm({
             description: draft.description,
             photo_ids: [mediaId],
             position: { latitude: lat, longitude: lng },
-            quick: false,
+            quick: Boolean(quickAdoption),
           },
           current.user.id,
         );
@@ -281,6 +341,7 @@ export function ReportForm({
       else if (e instanceof ApiError && e.status < 500 && e.status !== 429) {
         update(draftKey, { operation: undefined });
         view.reload();
+        quickAdoption?.reload();
       }
     } finally {
       lock.current = false;
@@ -292,7 +353,10 @@ export function ReportForm({
       <a className="back-link" href={wasteHref(`bin/${id}`, wasteType)}>
         返回桶詳情
       </a>
-      <h1>回報問題</h1>
+      <h1>{quickAdoption ? "認養快捷通報" : "回報問題"}</h1>
+      {quickAdoption && !quickAllowed && (
+        <p role="alert">僅有效認養可快捷通報；請回認養管理確認狀態。</p>
+      )}
       <p className="tiny">每一種類的照片與草稿分開保留；重試沿用原回報種類。</p>
       <p>{view.data?.location.label}</p>
       <LoadState {...view} />
@@ -448,7 +512,7 @@ export function ReportForm({
         {!session?.user.roles.includes("citizen") ? (
           <a
             className="button primary"
-            href={`#login?next=${encodeURIComponent(wasteHref(`report/${id}`, wasteType).slice(1))}`}
+            href={`#login?next=${encodeURIComponent(wasteHref(quickAdoption ? `quick-report/${quickAdoption.item.id}` : `report/${id}`, wasteType).slice(1))}`}
           >
             登入後繼續回報
           </a>
@@ -460,7 +524,8 @@ export function ReportForm({
               validating ||
               cooldown.waiting ||
               (!draft.operation &&
-                (!draft.file ||
+                (!quickAllowed ||
+                  !draft.file ||
                   !validPosition ||
                   !view.data?.can_report ||
                   Boolean(view.error) ||
@@ -476,6 +541,11 @@ export function ReportForm({
           </p>
         )}
       </form>
+      {quickAdoption && (
+        <a className="back-link" href={`#adopt/${quickAdoption.item.id}`}>
+          返回認養管理
+        </a>
+      )}
     </main>
   );
 }
@@ -548,6 +618,11 @@ export function ReportSummary({ report }: { report: Report }) {
       {report.assignment_status === "unassigned" && (
         <p>此回報尚未指派，超出目前大安區隊員範圍。</p>
       )}
+      <p>
+        提交時認養資格：{report.adopter ? "有效認養" : "無認養資格"} ·{" "}
+        {report.first_reporter ? "事件首報" : "同事件後續回報"}
+        {report.quick ? " · 快捷通報" : ""}
+      </p>
       <p>待確認點數 {report.pending_points}</p>
       <p>已入帳點數 {report.awarded_points}</p>
       {report.status === "approved" && report.work_status !== "completed" && (
