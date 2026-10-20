@@ -13,9 +13,9 @@ test("one map point exposes independent general and recycling availability and p
     page.locator(".mx-list").getByRole("button", { name: /雙槽測試桶/ }),
   ).toHaveCount(1);
   await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
-  // 「最近的可用小夥伴」併入「附近的桶」：列上直接寫所選種類那一槽能不能丟。
+  // 「最近的可用小夥伴」併入「附近的桶」：列上每一槽一顆狀態膠囊。
   await expect(page.getByRole("list", { name: "附近的桶" })).toContainText(
-    "資源回收：還能丟",
+    "資源回收 · 餓了 · 20%",
   );
   await page
     .locator(".mx-list")
@@ -311,7 +311,7 @@ test("all map pages retain recycling and render one result per location", async 
   f.state.multiPage = true;
   await f.setup(page);
   await page.goto("/#map?waste_type=recycling");
-  await expect(page.locator(".mx-list .mx-row")).toHaveCount(2);
+  await expect(page.locator(".mx-list .location-row")).toHaveCount(2);
   await expect(page.locator(".mx-list")).toContainText("另一個位置");
   const reads = f.requests.filter((r) => r.path === "/map/locations");
   expect(reads.every((r) => r.waste === "recycling")).toBe(true);

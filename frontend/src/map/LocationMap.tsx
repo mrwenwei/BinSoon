@@ -45,6 +45,8 @@ interface Props {
   origin?: { latitude: number; longitude: number; label: string };
   /** 有給時：只在選取對象改變時置中，並把選取點往上移這麼多像素（手機抽屜遮住下半部）。 */
   focusOffsetY?: number;
+  /** 瀏覽模式：數字變了就把目前選取重新置中（例如抽屜從全開回到半開）。 */
+  focusKey?: number;
 }
 export function LocationMap({
   locations,
@@ -69,6 +71,7 @@ export function LocationMap({
   markerLabel,
   origin,
   focusOffsetY,
+  focusKey,
 }: Props) {
   const browse = focusOffsetY !== undefined;
   const offsetRef = useRef(focusOffsetY ?? 0);
@@ -137,7 +140,96 @@ export function LocationMap({
       map.current = null;
     };
   }, []);
+  // 瀏覽模式：標記依 id 增量更新（輪詢不重建），圖示沒變就不換元素，
+  // 這樣停在標記上的鍵盤焦點與選取都不會因為每 10 秒更新而遺失。
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+  const labelFor = (location: LocationRecord) =>
+    markerLabel
+      ? markerLabel(location)
+      : `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`;
+  const applyIcon = (marker: L.Marker, icon: L.DivIcon) => {
+    const old = marker.options.icon as L.DivIcon | undefined;
+    if (
+      browse &&
+      old?.options.html === icon.options.html &&
+      old?.options.className === icon.options.className
+    )
+      return;
+    marker.setIcon(icon);
+    if (browse) {
+      const label = marker.options.title || "";
+      marker.getElement()?.setAttribute("aria-label", label);
+    }
+  };
   useEffect(() => {
+    if (!browse) return;
+    const instance = map.current!;
+    const byId = new Map(
+      markerRecords.current.map((record) => [record.location.id, record]),
+    );
+    const next: typeof markerRecords.current = [];
+    for (const location of locations) {
+      const label = labelFor(location);
+      const existing = byId.get(location.id);
+      if (existing) {
+        byId.delete(location.id);
+        existing.location = location;
+        const at = existing.marker.getLatLng();
+        if (at.lat !== location.latitude || at.lng !== location.longitude)
+          existing.marker.setLatLng([location.latitude, location.longitude]);
+        if (existing.marker.options.title !== label) {
+          existing.marker.options.title = label;
+          existing.marker.getElement()?.setAttribute("title", label);
+          existing.marker.getElement()?.setAttribute("aria-label", label);
+        }
+        next.push(existing);
+        continue;
+      }
+      const record = {
+        marker: L.marker([location.latitude, location.longitude], {
+          icon: iconFor(location, false),
+          title: label,
+          alt: label,
+          riseOnHover: true,
+        }),
+        location,
+      };
+      record.marker
+        .on("click", () => onSelectRef.current(record.location))
+        .addTo(markers.current!);
+      record.marker.getElement()?.setAttribute("aria-label", label);
+      next.push(record);
+    }
+    for (const stale of byId.values()) stale.marker.remove();
+    markerRecords.current = next;
+    if (locations.length && !selectionBounds && autoFit)
+      instance.fitBounds(
+        L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
+        { padding: [45, 50], maxZoom: 15, animate: false },
+      );
+  }, [browse, locations, selectionBounds, markerLabel, autoFit]);
+  // 瀏覽模式：標記可用鍵盤 Enter／空白鍵選取（Leaflet 預設不會觸發 click）。
+  useEffect(() => {
+    if (!browse || !container.current) return;
+    const element = container.current;
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const icon = (event.target as HTMLElement).closest?.(
+        ".leaflet-marker-icon",
+      );
+      const record = icon
+        ? markerRecords.current.find((r) => r.marker.getElement() === icon)
+        : undefined;
+      if (!record) return;
+      event.preventDefault();
+      onSelectRef.current(record.location);
+    };
+    element.addEventListener("keydown", keydown);
+    return () => element.removeEventListener("keydown", keydown);
+  }, [browse]);
+  useEffect(() => {
+    if (browse) return;
     const instance = map.current!;
     markers.current!.clearLayers();
     markerRecords.current = [];
@@ -162,6 +254,7 @@ export function LocationMap({
         { padding: [45, 50], maxZoom: 15, animate: false },
       );
   }, [
+    browse,
     locations,
     onSelect,
     removedIds,
@@ -173,7 +266,7 @@ export function LocationMap({
   ]);
   useEffect(() => {
     for (const { marker, location } of markerRecords.current) {
-      marker.setIcon(iconFor(location, location.id === selected?.id));
+      applyIcon(marker, iconFor(location, location.id === selected?.id));
       marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
     }
     if (!selected || browse) return;
@@ -182,7 +275,7 @@ export function LocationMap({
       animate: false,
     });
   }, [selected, locations, removedIds, operations, markerIcon]);
-  // 瀏覽模式：只在選取的桶／地標換了才置中（輪詢更新清單不會把地圖拉回來）。
+  // 瀏覽模式：只在選取的桶／地標換了（或 focusKey 變了）才置中，輪詢更新不會把地圖拉回來。
   useEffect(() => {
     if (!browse || !selected || !map.current) return;
     const instance = map.current;
@@ -193,7 +286,7 @@ export function LocationMap({
     );
     if (offsetRef.current)
       instance.panBy([0, offsetRef.current], { animate: false });
-  }, [browse, selected?.id, selected?.latitude, selected?.longitude]);
+  }, [browse, selected?.id, selected?.latitude, selected?.longitude, focusKey]);
   // 瀏覽模式第一次量到抽屜高度時，把初始中心移到抽屜上方的可見區（只做一次）。
   const initialOffsetDone = useRef(false);
   useEffect(() => {

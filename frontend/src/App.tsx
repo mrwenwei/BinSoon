@@ -72,6 +72,8 @@ function AppContent() {
   const loginRoute = role === "citizen" ? "login" : `${role}/login`;
   const loginHref = `#${loginRoute}?next=${encodeURIComponent(route)}`;
   const isLogin = page === "login" || id === "login";
+  // 地圖瀏覽模式（#map、#bin/<id>）是一屏 app，不接頁尾；揭露句改在面板底部。
+  const isMapView = !isLogin && (page === "map" || (page === "bin" && !!id));
   const signOut = () => {
     drafts.clear();
     workCommands.clear();
@@ -207,7 +209,13 @@ function AppContent() {
         ) : page === "map" || (page === "bin" && id) ? (
           // 地圖與桶資訊同一個元件：#bin/<id> 是「地圖＋已選該桶的面板」，
           // 切換時地圖不重建。
-          <MapPage {...wasteControls} binId={page === "bin" ? id : undefined} />
+          <MapPage
+            {...wasteControls}
+            binId={page === "bin" ? id : undefined}
+            placeId={
+              page === "map" ? params.get("place") || undefined : undefined
+            }
+          />
         ) : page === "nav" && id ? (
           <NavigationPage
             key={`${page}/${id}/${wasteType}`}
@@ -247,12 +255,14 @@ function AppContent() {
           </main>
         )}
       </div>
-      <footer className="api-footer">
-        所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。
-        <a href="#vote">提案（尚未開放）</a> ·{" "}
-        <a href="#adopt">認養（尚未開放）</a> ·{" "}
-        <a href="#rewards">兌換（尚未開放）</a>
-      </footer>
+      {!isMapView && (
+        <footer className="api-footer">
+          所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。
+          <a href="#vote">提案（尚未開放）</a> ·{" "}
+          <a href="#adopt">認養（尚未開放）</a> ·{" "}
+          <a href="#rewards">兌換（尚未開放）</a>
+        </footer>
+      )}
     </div>
   );
 }

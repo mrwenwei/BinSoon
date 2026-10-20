@@ -4,7 +4,7 @@ import {
   type WasteControls,
   type WasteType,
 } from "../../data/waste";
-import { WasteSelect } from "./Waste";
+import { WasteSelect, statusText } from "./Waste";
 import {
   useCallback,
   useEffect,
@@ -23,7 +23,7 @@ import {
   query,
   type ApiLocation,
 } from "../../data/api";
-import { stateLabels, usableCount, type BinState } from "../../data/binState";
+import { stateLabels, usableCount } from "../../data/binState";
 import { stateVisual } from "../binVisual";
 import type { LocationRecord } from "../../data/locations";
 import { LocationMap } from "../../map/LocationMap";
@@ -36,6 +36,8 @@ import {
   wasteState,
 } from "../../map/browseMarkers";
 import { Mascot } from "../Mascot";
+import { WasteIcon } from "../WasteType";
+import { LocationDetails } from "../LocationDetails";
 import { LoadState } from "./LoadState";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
@@ -44,8 +46,9 @@ import { BinPanel } from "./BinPage";
 
 // ── 地圖瀏覽模式 ─────────────────────────────────────────────────────
 // 手機：地圖滿版＋下方抽屜（收起／半開／全開）；桌面：左側面板＋右側地圖。
-// 面板未選桶時是「附近的桶」清單；選桶（#bin/<id>）時原地顯示桶資訊。
-// 資料流照原本：/map/locations 全部分頁讀完、?waste_type= 決定看哪一槽。
+// 面板未選桶時是「附近的桶」清單；選桶（#bin/<id>）或地標（#map?place=<id>）
+// 時原地顯示資訊。資料流照原本：/map/locations 全部分頁讀完、?waste_type=
+// 決定看哪一槽。清單列、篩選膠囊、狀態膠囊、圖例都沿用既有元件。
 
 type Filter = "all" | "usable" | "new" | "proposed";
 const filters: [Filter, string][] = [
@@ -62,8 +65,11 @@ const drawerNames: Record<Drawer, string> = {
   full: "全開",
 };
 const MOBILE_QUERY = "(max-width: 760px)";
+const SEARCH_DELAY_MS = 300;
 const originMarker = { ...ORIGIN, label: "起點（示意）" };
 const initialCenter: [number, number] = [ORIGIN.latitude, ORIGIN.longitude];
+// 原本頁尾的資料揭露句；地圖頁不再顯示頁尾（避免整頁可捲），改放在面板底部。
+const DISCLOSURE = "所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。";
 
 function useMediaQuery(media: string) {
   const [matches, setMatches] = useState(
@@ -89,32 +95,29 @@ function walkText(item: ApiLocation) {
     ? null
     : `步行 ${Math.max(1, Math.round(item.walking_estimate_seconds / 60))} 分鐘`;
 }
-// 所選種類那一槽的白話狀態。
-function slotText(item: ApiLocation, wasteType: WasteType, state: BinState) {
-  const part = apiCompartments(item.bin_status, item.compartments).find(
-    (c) => c.waste_type === wasteType,
-  );
-  if (state === "hungry") return "還能丟";
-  if (state === "full") return "滿了";
-  const status = part ?? item.bin_status;
-  return status?.operational_status === "removed"
-    ? "已撤除"
-    : status?.operational_status === "repair"
-      ? "維修中"
-      : stateLabels.offline;
-}
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
+// 換種類只換網址參數，不多一筆瀏覽紀錄（返回鍵直接回上一個畫面）。
+function replaceWaste(value: WasteType) {
+  window.location.replace(
+    wasteHref(window.location.hash.slice(1) || "map", value),
+  );
+}
 
 export function MapPage({
   wasteType,
-  onWasteChange,
   binId,
-}: WasteControls & { binId?: string }) {
+  placeId,
+}: WasteControls & { binId?: string; placeId?: string }) {
   const { session } = useSession();
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
-  const [place, setPlace] = useState<ApiLocation | null>(null);
+  // 搜尋停止輸入 300ms 後才送出；換字時 useApi 會取消上一個讀取。
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(q), SEARCH_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [q]);
   const [binLocation, setBinLocation] = useState<ApiLocation | null>(null);
   const mobile = useMediaQuery(MOBILE_QUERY);
   // 全台北市一次讀完（district=all，後端可接受），建議點也一起讀，前端再依篩選分：
@@ -124,7 +127,7 @@ export function MapPage({
     district: "all",
     kind: "all",
     filter: filter === "new" ? "new" : "all",
-    q,
+    q: search,
     include_proposed: true,
     ...ORIGIN,
   });
@@ -157,6 +160,11 @@ export function MapPage({
       .sort((a, b) => Number(b.ok) - Number(a.ok) || a.index - b.index)
       .map(({ item }) => item);
   }, [items, filter, wasteType]);
+  const place =
+    !binId && placeId
+      ? (items?.find((item) => item.id === placeId && item.kind === "place") ??
+        null)
+      : null;
   const selected: ApiLocation | null = binId
     ? (items?.find((item) => item.id === binId) ??
       (binLocation?.id === binId ? binLocation : null))
@@ -168,20 +176,40 @@ export function MapPage({
       ? [...shown, selected]
       : shown;
   }, [items, rows, filter, selected]);
+  // 選桶、選地標都寫進網址（push），瀏覽器返回鍵回到清單；選完把焦點移到面板標題。
+  const pendingFocus = useRef(false);
+  const layoutRef = useRef<HTMLElement>(null);
+  const focusTitle = useCallback(() => {
+    if (!pendingFocus.current) return;
+    const title = layoutRef.current?.querySelector<HTMLElement>(
+      ".mx-panel-body h1, .mx-panel-body h2",
+    );
+    if (!title) return;
+    pendingFocus.current = false;
+    title.setAttribute("tabindex", "-1");
+    title.focus({ preventScroll: true });
+  }, []);
   const select = useCallback(
     (item: LocationRecord) => {
-      if (item.kind === "bin") {
-        window.location.hash = wasteHref(`bin/${item.id}`, wasteType).slice(1);
-        return;
-      }
-      setPlace(item as ApiLocation);
-      if (binId) window.location.hash = wasteHref("map", wasteType).slice(1);
+      pendingFocus.current = true;
+      window.location.hash = (
+        item.kind === "bin"
+          ? wasteHref(`bin/${item.id}`, wasteType)
+          : wasteHref(`map?place=${encodeURIComponent(item.id)}`, wasteType)
+      ).slice(1);
     },
-    [wasteType, binId],
+    [wasteType],
+  );
+  const binLoaded = useCallback(
+    (location: ApiLocation) => {
+      setBinLocation(location);
+      focusTitle();
+    },
+    [focusTitle],
   );
   useEffect(() => {
-    if (binId) setPlace(null);
-  }, [binId]);
+    if (place) focusTitle();
+  }, [place?.id, focusTitle]);
   const iconFor = useCallback(
     (location: LocationRecord, active: boolean) =>
       browseMarkerIcon(location, active, wasteType),
@@ -189,12 +217,12 @@ export function MapPage({
   );
 
   // ── 抽屜（只在手機） ──
-  const layoutRef = useRef<HTMLElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
   const [drawer, setDrawer] = useState<Drawer>("half");
   const [dims, setDims] = useState({ layout: 0, head: 0 });
   const [dragPx, setDragPx] = useState<number | null>(null);
+  const [focusKey, setFocusKey] = useState(0);
   const drag = useRef<{
     id: number;
     y: number;
@@ -230,9 +258,17 @@ export function MapPage({
     setDrawer((d) =>
       d === "collapsed" ? "half" : d === "half" ? "full" : "half",
     );
+  // 選了桶或地標：抽屜一律回半開（全開時地圖幾乎被蓋住，收起時看不到資訊）。
   useEffect(() => {
-    if (binId || place) setDrawer((d) => (d === "collapsed" ? "half" : d));
-  }, [binId, place]);
+    if (binId || placeId) setDrawer("half");
+  }, [binId, placeId]);
+  // 從全開回到半開時，把目前選取重新置中到抽屜上方的可見區。
+  const previousDrawer = useRef<Drawer>(drawer);
+  useEffect(() => {
+    if (previousDrawer.current === "full" && drawer === "half")
+      setFocusKey((k) => k + 1);
+    previousDrawer.current = drawer;
+  }, [drawer]);
   const pointerDown = (e: PointerEvent<HTMLElement>) => {
     if (!mobile) return;
     const target = e.target as HTMLElement;
@@ -293,17 +329,18 @@ export function MapPage({
     }
   };
   const collapsed = mobile && drawer === "collapsed" && dragPx === null;
-  const focusOffsetY = mobile
-    ? Math.round(Math.max(drawerPx, heights.half) / 2)
-    : 0;
+  // 選取一律在半開時置中，所以位移固定用半開高度的一半。
+  const focusOffsetY = mobile ? Math.round(heights.half / 2) : 0;
   const style = mobile
     ? ({ "--mx-drawer-h": `${drawerPx}px` } as CSSProperties)
     : undefined;
   const resetFilters = () => {
     setQ("");
+    setSearch("");
     setFilter("all");
   };
   const view = binId ? "bin" : place ? "place" : "list";
+  const listHref = wasteHref("map", wasteType);
 
   return (
     <main
@@ -335,29 +372,15 @@ export function MapPage({
           </button>
         </div>
         <div className="mx-panel-head" ref={headRef}>
-          {view === "bin" ? (
-            <a className="mx-back" href={wasteHref("map", wasteType)}>
-              ← 返回清單
-            </a>
-          ) : view === "place" ? (
-            <>
-              <h1 className="mx-title">{place!.label}</h1>
-              <button
-                type="button"
-                className="mx-close"
-                aria-label="關閉，回到附近的桶"
-                onClick={() => setPlace(null)}
-              >
-                ×
-              </button>
-            </>
-          ) : (
+          {view === "list" ? (
             <>
               <h1 className="mx-title">附近的桶</h1>
-              <span className="mx-count">
-                {rows ? `${rows.length} 個` : "—"}
-              </span>
+              <span className="tiny">{rows ? `${rows.length} 個` : "—"}</span>
             </>
+          ) : (
+            <a className="back-link" href={listHref}>
+              ← 返回清單
+            </a>
           )}
         </div>
         <div className="mx-panel-body" inert={collapsed}>
@@ -366,15 +389,28 @@ export function MapPage({
               key={`${binId}/${wasteType}`}
               id={binId!}
               wasteType={wasteType}
-              onWasteChange={onWasteChange}
-              onLocation={setBinLocation}
+              onWasteChange={replaceWaste}
+              onLocation={binLoaded}
             />
           ) : view === "place" ? (
-            <PlaceDetails place={place!} />
+            <>
+              <p className="mx-note">
+                這是地標，不是垃圾桶，周邊約 {place!.reported_count ?? "—"}{" "}
+                處清潔箱。
+                {walkText(place!) &&
+                  `距起點 ${distanceText(place!)} · ${walkText(place!)}。`}
+              </p>
+              <LocationDetails
+                location={place!}
+                onClose={() => {
+                  window.location.hash = listHref.slice(1);
+                }}
+              />
+            </>
           ) : (
             <>
               <div className="mx-filters">
-                <label className="mx-search">
+                <label className="search-field">
                   <span className="visually-hidden">搜尋地點</span>
                   <input
                     type="search"
@@ -385,31 +421,28 @@ export function MapPage({
                     onChange={(e) => setQ(e.target.value)}
                   />
                 </label>
-                <div className="mx-filter-row">
-                  <div className="mx-chips" role="group" aria-label="篩選">
-                    {filters.map(([value, label]) => (
-                      <button
-                        type="button"
-                        key={value}
-                        className="mx-chip"
-                        aria-pressed={filter === value}
-                        onClick={() => setFilter(value)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <WasteSelect
-                    value={wasteType}
-                    onChange={(value) => {
-                      if (value) onWasteChange(value);
-                    }}
-                  />
+                <div className="filter-chips" role="group" aria-label="篩選">
+                  {filters.map(([value, label]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      aria-pressed={filter === value}
+                      onClick={() => setFilter(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
+                <WasteSelect
+                  value={wasteType}
+                  onChange={(value) => {
+                    if (value) replaceWaste(value);
+                  }}
+                />
               </div>
-              <p className="mx-caption">
+              <p className="tiny">
                 {wasteName(wasteType)}
-                還能丟的排前面，再依離地圖上「起點（示意）」的距離排序；起點是固定示意位置，不是你的定位。桶況為模擬讀值。
+                還能丟的排前面，再依離地圖上「起點（示意）」的距離排序；起點是固定示意位置，不是你的定位。
               </p>
               <LoadState {...list} />
               {rows && rows.length > 0 && (
@@ -439,6 +472,7 @@ export function MapPage({
               )}
             </>
           )}
+          <p className="tiny mx-disclosure">{DISCLOSURE}</p>
         </div>
       </section>
       <div className="mx-map">
@@ -447,173 +481,157 @@ export function MapPage({
           selected={selected}
           onSelect={select}
           initialCenter={initialCenter}
-          autoFit={q.trim() !== ""}
+          autoFit={search.trim() !== ""}
           markerIcon={iconFor}
           markerLabel={browseMarkerLabel}
           origin={originMarker}
           focusOffsetY={focusOffsetY}
+          focusKey={focusKey}
         />
-        <BrowseLegend wasteType={wasteType} />
+        <MapLegend wasteType={wasteType} landmarks collapsible />
       </div>
     </main>
   );
 }
 
+// 清單列沿用 .location-row：電子雞（所選種類那一槽的狀態）、桶名、距離，
+// 每一槽一顆狀態膠囊（所選種類排第一），右側兩槽可丟數。
 function NearbyRow({
   item,
   wasteType,
   onSelect,
 }: {
   item: ApiLocation;
-  wasteType: WasteControls["wasteType"];
+  wasteType: WasteType;
   onSelect: (item: LocationRecord) => void;
 }) {
   const proposed = isProposed(item);
-  const state = wasteState(item, wasteType);
+  const state = proposed ? "offline" : wasteState(item, wasteType);
   const parts = apiCompartments(item.bin_status, item.compartments);
+  const ordered = [...parts].sort(
+    (a, b) =>
+      Number(b.waste_type === wasteType) - Number(a.waste_type === wasteType),
+  );
   const usable = usableCount(parts.map((c) => ({ state: apiBinState(c) })));
   const walk = walkText(item);
   return (
-    <button type="button" className="mx-row" onClick={() => onSelect(item)}>
-      <span
-        className={`mx-row-icon ${proposed ? "proposed" : stateVisual[state].className}`}
-      >
-        {proposed ? (
-          <span className="mx-proposed-mini" aria-hidden="true">
-            ＋
-          </span>
-        ) : (
-          <Mascot state={state} />
-        )}
+    <button
+      type="button"
+      className="location-row"
+      onClick={() => onSelect(item)}
+    >
+      <span className={`row-buddy ${stateVisual[state].className}`}>
+        <Mascot state={state} />
       </span>
-      <span className="mx-row-main">
-        <span className="mx-row-name">
-          {proposed ? (
-            <span className="mx-tag dashed">建議點</span>
-          ) : (
-            item.bin_status?.is_new && <span className="mx-tag new">新設</span>
-          )}
-          {item.label}
-        </span>
-        <span className="mx-row-sub">
+      <span className="row-copy">
+        <strong>{item.label}</strong>
+        <small>
           {distanceText(item)}
           {walk && ` · ${walk}`}
-        </span>
-        <span className="mx-row-sub">
-          {proposed
-            ? "建議設置的位置，現場還沒有桶"
-            : `${wasteName(wasteType)}：${slotText(item, wasteType, state)}`}
-        </span>
-      </span>
-      <span className="mx-row-side">
+        </small>
         {proposed ? (
-          <span className="mx-side-muted">尚未設置</span>
+          <small>建議點／待現勘，尚未設置</small>
         ) : (
-          <>
-            <small>可丟</small>
-            <b className={usable === 0 ? "mx-zero" : "mx-ok"}>
-              {usable}/{parts.length}
-            </b>
-          </>
+          <span className="mx-row-slots">
+            {item.bin_status?.is_new && (
+              <span className="status-pill">新設</span>
+            )}
+            {ordered.map((part) => (
+              <span
+                key={part.waste_type}
+                className={`status-pill ${stateVisual[apiBinState(part)].className}`}
+              >
+                <WasteIcon type={part.waste_type} />
+                {wasteName(part.waste_type)} · {statusText(part)}
+              </span>
+            ))}
+          </span>
         )}
       </span>
+      {!proposed && (
+        <span
+          className={`mx-usable ${usable === 0 ? "state-full" : "state-hungry"}`}
+        >
+          <small>可丟</small>
+          <span className="numeral-sm">
+            {usable}/{parts.length}
+          </span>
+        </span>
+      )}
     </button>
   );
 }
 
-// 地標（場所代表點）：只在地圖上出現，點了在面板說明它不是垃圾桶。
-function PlaceDetails({ place }: { place: ApiLocation }) {
-  const walk = walkText(place);
-  return (
-    <section className="mx-place" aria-label="位置詳情">
-      <p className="mx-sub">
-        <span className="mx-tag">地標</span>
-        {place.district} · 距起點 {distanceText(place)}
-        {walk && ` · ${walk}`}
-      </p>
-      <p className="mx-note">
-        這是地標，不是垃圾桶，周邊約 {place.reported_count ?? "—"} 處清潔箱。
-      </p>
-      <p className="mx-caption">
-        此為場所代表點，並非個別清潔箱位置；周邊數量是來源統計，不代表桶的實際座標。
-      </p>
-      <details className="mx-source">
-        <summary>來源與位置精度</summary>
-        <p>
-          {place.source_file} · 原始列 {place.source_row}
-        </p>
-        <p>
-          {place.source_type}
-          <br />
-          {place.location_precision}
-        </p>
-      </details>
-    </section>
-  );
-}
-
-// 地圖瀏覽模式的圖例：顏色依所選種類那一槽。
-function BrowseLegend({
-  wasteType,
-}: {
-  wasteType: WasteControls["wasteType"];
-}) {
-  return (
-    <div className="mx-legend" aria-label="圖例">
-      <span className="mx-legend-title">依{wasteName(wasteType)}</span>
-      <span>
-        <i className="legend-swatch state-hungry" />
-        {stateLabels.hungry}
-      </span>
-      <span>
-        <i className="legend-swatch state-full" />
-        {stateLabels.full}
-      </span>
-      <span>
-        <i className="legend-swatch state-offline" />
-        失聯／維修／撤除
-      </span>
-      <span>
-        <i
-          className="mx-legend-flag"
-          aria-hidden="true"
-          dangerouslySetInnerHTML={{ __html: landmarkSvg }}
-        />
-        地標
-      </span>
-      <span>
-        <i className="mx-legend-proposed" aria-hidden="true">
-          ＋
-        </i>
-        建議點
-      </span>
-    </div>
-  );
-}
-
 // 圖例：桶況三態＋場所代表點（失聯一定有虛線外框）。
-export function MapLegend() {
+// 地圖瀏覽模式另外傳 wasteType（標題「依〈種類〉」）、landmarks（地標旗子＋建議點，
+// 取代場所代表點色塊）、collapsible（地圖寬度不夠時收成一顆「圖例」按鈕）。
+export function MapLegend({
+  wasteType,
+  landmarks = false,
+  collapsible = false,
+}: {
+  wasteType?: WasteType;
+  landmarks?: boolean;
+  collapsible?: boolean;
+} = {}) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="map-legend" aria-label="圖例">
-      <span className="label">STATUS</span>
-      <span>
-        <i className="legend-swatch state-hungry" />
-        {stateLabels.hungry}
-        <small>0–79%</small>
-      </span>
-      <span>
-        <i className="legend-swatch state-full" />
-        {stateLabels.full}
-        <small>80%+</small>
-      </span>
-      <span>
-        <i className="legend-swatch state-offline" />
-        {stateLabels.offline}
-      </span>
-      <span>
-        <i className="legend-swatch place" />
-        場所代表點
-      </span>
+    <div
+      className={`map-legend${collapsible ? " collapsible" : ""}${open ? " open" : ""}`}
+      aria-label="圖例"
+    >
+      {collapsible && (
+        <button
+          type="button"
+          className="map-legend-toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          圖例
+        </button>
+      )}
+      <div className="map-legend-items">
+        {wasteType && (
+          <span className="map-legend-title">依{wasteName(wasteType)}</span>
+        )}
+        <span>
+          <i className="legend-swatch state-hungry" />
+          {stateLabels.hungry}
+          <small>0–79%</small>
+        </span>
+        <span>
+          <i className="legend-swatch state-full" />
+          {stateLabels.full}
+          <small>80%+</small>
+        </span>
+        <span>
+          <i className="legend-swatch state-offline" />
+          {landmarks ? "失聯／維修／撤除" : stateLabels.offline}
+        </span>
+        {landmarks ? (
+          <>
+            <span>
+              <i
+                className="map-legend-flag"
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{ __html: landmarkSvg }}
+              />
+              地標
+            </span>
+            <span>
+              <i className="map-legend-proposed" aria-hidden="true">
+                ＋
+              </i>
+              建議點
+            </span>
+          </>
+        ) : (
+          <span>
+            <i className="legend-swatch place" />
+            場所代表點
+          </span>
+        )}
+      </div>
     </div>
   );
 }
