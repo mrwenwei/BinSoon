@@ -305,6 +305,10 @@ export function MapPage({ wasteType, onWasteChange }: WasteControls) {
                       {item.placement_status === "proposed" && (
                         <small>建議點／待現勘，尚未設置</small>
                       )}
+                      {item.bin_type === "proposed" &&
+                        item.placement_status === "installed" && (
+                          <small>新增提案 · DEMO 示範設置，非現場驗收</small>
+                        )}
                     </>
                   ) : (
                     <small>
@@ -560,8 +564,25 @@ export function BinPage({
         </div>
         <p className="bin-adoption tiny">
           認養：{view.data.adopter?.display_name || "尚無認養者"} ·
-          認養操作尚未開放。
+          {view.data.adopter && "已核准的公開認養資訊"}
         </p>
+        {view.data.adopter?.role && <p>認養身份：{view.data.adopter.role}</p>}
+        {view.data.adopter?.intro && (
+          <p>認養店家介紹：{view.data.adopter.intro}</p>
+        )}
+        {view.data.can_apply_adoption && !view.error && (
+          <a className="button secondary" href={`#adopt/apply/${id}`}>
+            申請認養此桶
+          </a>
+        )}
+        {view.data.my_adoption_id && (
+          <a
+            className="button secondary"
+            href={`#adopt/${view.data.my_adoption_id}`}
+          >
+            管理我的認養
+          </a>
+        )}
       </section>
       <div className="bin-support-grid">
         <section className="card">

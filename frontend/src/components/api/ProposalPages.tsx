@@ -17,6 +17,7 @@ import { useApi } from "./useApi";
 import { LoadState } from "./LoadState";
 import { Pagination } from "./Pagination";
 import { useCommand, CommandFeedback } from "./Commands";
+import { ProposalNaming } from "./ProposalNaming";
 import { useProposalDraft } from "./ProposalDraft";
 
 const labels: Record<Proposal["status"], string> = {
@@ -73,8 +74,10 @@ export function ProposalSummary({ item }: { item: Proposal }) {
 }
 export function ProposalList({
   mode = "all",
+  admin = false,
 }: {
   mode?: "all" | "mine" | "votes";
+  admin?: boolean;
 }) {
   const { session } = useSession();
   const [district, setDistrict] = useState("大安區");
@@ -157,7 +160,13 @@ export function ProposalList({
         {list.data?.items.map((item) => (
           <li className="card" key={item.id}>
             <ProposalSummary item={item} />
-            <a href={`#proposals/${item.id}`}>查看提案與投票</a>
+            <a
+              href={
+                admin ? `#admin/proposals/${item.id}` : `#proposals/${item.id}`
+              }
+            >
+              {admin ? "審查此提案" : "查看提案與投票"}
+            </a>
           </li>
         ))}
       </ul>
@@ -193,6 +202,11 @@ export function ProposalDetail({ id }: { id: string }) {
       <h1>提案詳情</h1>
       <ProposalLinks />
       <LoadState {...detail} />
+      {session?.user.roles.includes("admin") && (
+        <a className="button secondary" href={`#admin/proposals/${id}`}>
+          審查此提案
+        </a>
+      )}
       {item && (
         <section className="card">
           <ProposalSummary item={item} />
@@ -206,6 +220,14 @@ export function ProposalDetail({ id }: { id: string }) {
             查看待現勘或示範設置點位
           </a>
         </section>
+      )}
+      {item && (
+        <ProposalNaming
+          item={item}
+          etag={detail.etag || `"v${item.version}"`}
+          ready={!detail.loading && !detail.error}
+          refresh={detail.reload}
+        />
       )}
       <CommandFeedback action={action} />
       {action.errorCode === "VOTING_CLOSED" && (
@@ -481,6 +503,10 @@ export function ProposalForm() {
                     {b.distance_m === null
                       ? "距離未知"
                       : `${Math.round(b.distance_m)} 公尺`}
+                    {b.bin_type === "proposed" &&
+                      b.placement_status === "installed" && (
+                        <p>新增提案 · DEMO 示範設置，非現場驗收</p>
+                      )}
                     {b.distance_m !== null && b.distance_m <= 150 && (
                       <p>150 公尺內已有設置桶，請確認需求；仍可提案。</p>
                     )}

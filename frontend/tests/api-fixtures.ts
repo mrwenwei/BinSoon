@@ -150,6 +150,9 @@ export async function login(page: Page, role = "citizen", next = "map") {
     .getByLabel("密碼", { exact: true })
     .fill("fixture-only-not-a-real-password");
   await page.getByRole("button", { name: "登入", exact: true }).click();
+  // Same-document role switches can still display the previous session's logout
+  // button. Wait for the authenticated return navigation before inspecting it.
+  await expect(page).not.toHaveURL(/#(?:staff\/|admin\/)?login(?:\?|$)/);
   await expectSignedIn(page);
 }
 // 手機版頂欄只有「地圖｜要桶投票」與點數按鈕，其他入口與帳號都在左側漢堡選單。

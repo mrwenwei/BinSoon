@@ -30,6 +30,8 @@ import {
   ProposalDetail,
   ProposalForm,
 } from "./components/api/ProposalPages";
+import { AdminProposals } from "./components/api/ProposalGovernance";
+import { Adoptions, AdoptionApply } from "./components/api/AdoptionPages";
 import { Outcomes } from "./components/api/OutcomePages";
 import { Rewards, Redemptions } from "./components/api/RewardPages";
 import { RoutePage } from "./components/api/RoutePage";
@@ -141,7 +143,7 @@ function AppContent() {
                 current: page === "stamps",
               },
               { href: "#rewards", label: "兌換獎勵" },
-              { href: "#adopt", label: "認養電子雞（尚未開放）" },
+              { href: "#adopt", label: "認養電子雞" },
             ],
           },
           {
@@ -159,6 +161,8 @@ function AppContent() {
               },
               { href: "#staff/statistics", label: "隊員月份成果" },
               { href: "#outcomes", label: "清潔隊公開成果" },
+              { href: "#admin/proposals", label: "提案與命名審查" },
+              { href: "#admin/adoptions", label: "認養審核" },
               { href: "#admin", label: "管理員", current: page === "admin" },
             ],
           },
@@ -213,6 +217,17 @@ function AppContent() {
                   : "map")
             }
           />
+        ) : page === "admin" && id === "adoptions" ? (
+          <Adoptions
+            key={`${workId || "list"}/${session?.user.id}`}
+            id={workId}
+            admin
+          />
+        ) : page === "admin" && id === "proposals" ? (
+          <AdminProposals
+            key={`${workId || "list"}/${session?.user.id}`}
+            id={workId}
+          />
         ) : page === "admin" ? (
           <AdminPage
             key={workId || "admin"}
@@ -227,6 +242,15 @@ function AppContent() {
             navigation={page === "nav"}
             {...wasteControls}
           />
+        ) : page === "adopt" ? (
+          id === "apply" && workId ? (
+            <AdoptionApply
+              key={`${workId}/${session?.user.id}`}
+              binId={workId}
+            />
+          ) : (
+            <Adoptions key={`${id || "list"}/${session?.user.id}`} id={id} />
+          )
         ) : page === "vote" ? (
           id === "create" ? (
             <RequireCitizen next={route}>
@@ -289,7 +313,7 @@ function AppContent() {
       </div>
       <footer className="api-footer">
         所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。
-        <a href="#vote">提案</a> · <a href="#adopt">認養（尚未開放）</a> ·{" "}
+        <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}
         <a href="#rewards">兌換</a>
       </footer>
     </div>

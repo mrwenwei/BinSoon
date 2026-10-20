@@ -1,6 +1,6 @@
 # BinSoon 前端：API 地圖、回報、查證與現場處理
 
-React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)、[#12](https://github.com/mrwenwei/BinSoon/issues/12)、[#13](https://github.com/mrwenwei/BinSoon/issues/13)、[#14](https://github.com/mrwenwei/BinSoon/issues/14)。
+React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)、[#12](https://github.com/mrwenwei/BinSoon/issues/12)、[#13](https://github.com/mrwenwei/BinSoon/issues/13)、[#14](https://github.com/mrwenwei/BinSoon/issues/14)、[#15](https://github.com/mrwenwei/BinSoon/issues/15)、[#16](https://github.com/mrwenwei/BinSoon/issues/16)、[#17](https://github.com/mrwenwei/BinSoon/issues/17)。
 
 ## 目前可操作範圍
 
@@ -16,7 +16,9 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 會員兌換：`#member` 讀後端帳本，`#rewards` 分類／分頁選獎品 UUID 及確認兌換，`#redemptions`／`#redemptions/<id>` 查自己的 DEMO 展示券。未知結果保留原命令重送，沒有前端扣點／扣庫存。
 - 月份成果：訪客／市民 `#outcomes` 看公開整隊成果；隊員 `#staff/statistics` 看責任區本人件數、平均時間、讚及後端並列排名。台北曆月、區及種類可切換，空值不填假基數，加給只展示說明。
 - 提案投票：`#vote` 列表、`#vote/create` 選點查周邊與建立、`#vote/mine`／`#vote/votes` 追蹤自己的提案與投票、`#proposals/<id>` 分享詳情。周邊查詢不受找桶篩選影響，50m 鄰近案須明確確認不同需求，150m 已設置桶是提醒；額度及大安區界由後端判定。支持／反對／改票／撤票、票數及關票只使用後端結果。
-- 認養、命名及通知等操作依後續票單開放，不能以本機假帳本補結果。GitHub #12–#14 的驗證與完整入口見 [專項紀錄](../docs/FRONTEND_ENGAGEMENT_VALIDATION.md)。
+- 提案審查／命名：`#admin/proposals` 分頁進入管理員審查，依最新 ETag 及合法階段操作；原提案人於 `#proposals/<id>` 在示範設置後送命名，管理員核准／附原因退回。
+- 認養：桶詳情依後端可申請狀態進入 `#adopt/apply/<bin.id>`；市民 `#adopt`／`#adopt/<id>` 查看歷史、偏好、撤回與結束；管理員 `#admin/adoptions`／`#admin/adoptions/<id>` 分頁審核。pending 沒有權益；公開認養與命名分開。
+- 後續通知、認養月報與快捷通報仍依票單開放。#12–#14 見 [會員／投票驗證](../docs/FRONTEND_ENGAGEMENT_VALIDATION.md)；#15–#17 的入口、版本衝突與資料限制見 [審查／命名／認養驗證](../docs/FRONTEND_STEWARDSHIP_VALIDATION.md)。
 
 ## 一般垃圾／資源回收
 

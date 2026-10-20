@@ -126,6 +126,10 @@ test("clearing before evidence changes capacity but never implies completion", a
   await expect(
     citizen.getByRole("button", { name: /滿桶流程測試桶/ }).first(),
   ).toBeVisible();
+  await citizen
+    .getByRole("button", { name: /滿桶流程測試桶/ })
+    .first()
+    .click();
   await expect(
     citizen
       .locator(".bin-action-panel .status-pill")

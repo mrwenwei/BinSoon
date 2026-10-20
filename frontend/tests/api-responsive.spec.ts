@@ -72,7 +72,7 @@ test("hamburger drawer reaches every entry, traps focus and closes with Esc or t
     "會員中心",
     "集章與等級",
     "兌換獎勵",
-    "認養電子雞（尚未開放）",
+    "認養電子雞",
     "清潔隊工作台",
     "清運道路指引",
     "管理員",

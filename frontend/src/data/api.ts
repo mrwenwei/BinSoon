@@ -78,7 +78,7 @@ export type BinView = {
   location: ApiLocation;
   status: BinStatus;
   compartments: BinStatus[];
-  adopter: { display_name: string } | null;
+  adopter: { display_name: string; role: AdoptionRole; intro: string } | null;
   latest_cleanup: Cleanup | null;
   my_adoption_id: string | null;
   can_apply_adoption: boolean;
@@ -222,6 +222,21 @@ export type ProposalQuota = {
   limit: number;
   used: number;
   remaining: number;
+};
+export type AdoptionRole = "居民" | "店家" | "學校" | "社區團體";
+export type Preferences = { full: boolean; dumping: boolean; dirty: boolean };
+export type Adoption = {
+  id: string;
+  version: number;
+  bin_id: string;
+  role: AdoptionRole;
+  display_name: string;
+  intro: string;
+  preferences: Preferences;
+  status: "pending" | "active" | "rejected" | "withdrawn" | "ended";
+  created_at: string;
+  updated_at: string;
+  reason: string;
 };
 export type ProposalCreated = {
   proposal: Proposal;
@@ -418,12 +433,14 @@ export type Command = {
   serialized: string;
   etag: string | null;
   actorId: string;
+  method?: "POST" | "PATCH";
 };
 export function command(
   path: string,
   body: unknown,
   actorId: string,
   etag: string | null = null,
+  method?: "POST" | "PATCH",
 ): Command {
   return {
     path,
@@ -431,13 +448,14 @@ export function command(
     serialized: JSON.stringify(body),
     etag,
     actorId,
+    ...(method ? { method } : {}),
   };
 }
 export function sendCommand<T>(operation: Command, session: Session) {
   if (operation.actorId !== session.user.id)
     throw new ApiError(403, "ACTOR_CHANGED", "請使用原操作帳號登入後重試。");
   return request<T>(operation.path, {
-    method: "POST",
+    method: operation.method || "POST",
     token: session.access_token,
     key: operation.key,
     serialized: operation.serialized,

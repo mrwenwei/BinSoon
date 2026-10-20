@@ -17,7 +17,12 @@ import {
 import { useSession } from "./SessionContext";
 import { useCooldown } from "./useApi";
 
-export type Intent = { path: string; body: unknown; label: string };
+export type Intent = {
+  path: string;
+  body: unknown;
+  label: string;
+  method?: "POST" | "PATCH";
+};
 type Pending = { operation: Command; intent: Intent };
 type PhotoDraft = { actorId: string; file?: File; mediaId?: string };
 const Context = createContext<{
@@ -138,7 +143,13 @@ export function useCommand<T>(options: Options) {
     const actor = current.session;
     const op = retry
       ? current.pending!.operation
-      : command(intent.path, intent.body, actor.user.id, current.options.etag);
+      : command(
+          intent.path,
+          intent.body,
+          actor.user.id,
+          current.options.etag,
+          intent.method,
+        );
     const savedIntent = retry ? current.pending!.intent : intent;
     const isCurrent = () =>
       alive.current &&

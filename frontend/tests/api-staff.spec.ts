@@ -411,7 +411,13 @@ test("a rejected first report never promotes later reporters and suspension only
     page.getByRole("heading", { name: "要桶投票", exact: true }),
   ).toBeVisible();
   // Other B flows still await their own integration tickets.
-  for (const hash of ["adopt", `quick-report/${binId}`]) {
+  await page.evaluate(() => {
+    location.hash = "adopt";
+  });
+  await expect(
+    page.getByRole("heading", { name: "我的認養", exact: true }),
+  ).toBeVisible();
+  for (const hash of [`quick-report/${binId}`]) {
     await page.evaluate((value) => {
       window.location.hash = value;
     }, hash);
