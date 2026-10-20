@@ -53,9 +53,9 @@ test("map reads every page, keeps unknown status and opens server history", asyn
     }
   });
   await page.goto("/");
-  await expect(page.locator(".location-row")).toHaveCount(101);
+  await expect(page.locator(".mx-row")).toHaveCount(101);
   await expect(page.getByText("第二頁的桶", { exact: true })).toBeVisible();
-  await page.locator(".location-row").first().click();
+  await page.locator(".mx-row").first().click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "API 未知桶",
   );
@@ -115,15 +115,15 @@ test("search cancels stale results and API failure never restores local demo dat
     }
   });
   await page.goto("/");
-  await expect(page.locator(".location-row")).toHaveCount(1);
+  await expect(page.locator(".mx-row")).toHaveCount(1);
   await page.getByRole("searchbox").fill("舊");
   await page.getByRole("searchbox").fill("新");
-  await expect(page.locator(".location-row")).toContainText("最新搜尋");
+  await expect(page.locator(".mx-row")).toContainText("最新搜尋");
   release();
   await expect(page.getByText("過期搜尋", { exact: true })).toHaveCount(0);
   await page.getByRole("searchbox").fill("錯誤");
   await expect(page.getByRole("alert")).toContainText("暫時無法載入地圖");
-  await expect(page.locator(".location-row")).toHaveCount(0);
+  await expect(page.locator(".mx-row")).toHaveCount(0);
   expect(
     await page.evaluate(() => localStorage.getItem("binsoon-demo-1019-v3")),
   ).toBe('{"loggedIn":true,"availablePoints":999}');
@@ -146,6 +146,7 @@ test("place precision and proposed lifecycle are preserved with API filters", as
     };
     const place = {
       ...location,
+      latitude: 25.0355,
       id: "place-uuid",
       label: "場所代表點測試",
       kind: "place",
@@ -158,26 +159,34 @@ test("place precision and proposed lifecycle are preserved with API filters", as
     };
     await route.fulfill({
       json: envelope(
-        params.get("kind") === "place"
-          ? [place]
-          : params.get("include_proposed") === "true"
-            ? [proposed]
-            : [location],
+        params.get("kind") === "all" &&
+          params.get("district") === "all" &&
+          params.get("include_proposed") === "true"
+          ? [location, proposed, place]
+          : [],
       ),
     });
     return true;
   });
   await page.goto("/");
-  await expect(page.locator("#district option")).toHaveCount(13);
-  await page.getByLabel("包含建議點／待現勘").check();
-  await expect(page.locator(".location-row")).toContainText("尚未設置");
-  await page.getByRole("button", { name: "場所代表點", exact: true }).click();
-  await page.locator(".location-row").click();
+  // 行政區下拉與類型分頁拿掉：一次讀全台北市、桶＋地標＋建議點。
+  await expect(page.locator("#district")).toHaveCount(0);
+  await expect(page.locator(".mx-row")).toHaveCount(1);
+  await expect(page.locator(".mx-row")).toContainText("API 未知桶");
+  // 建議點只在選「建議點」篩選時列入清單。
+  await page.getByRole("button", { name: "建議點", exact: true }).click();
+  await expect(page.locator(".mx-row")).toHaveCount(1);
+  await expect(page.locator(".mx-row")).toContainText("尚未設置");
+  // 場所代表點（地標）只在地圖上，點標記在面板顯示說明。
+  await page.getByRole("button", { name: "全部", exact: true }).click();
+  await page
+    .getByRole("button", { name: "地標：場所代表點測試", exact: true })
+    .click();
   await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
     "並非個別清潔箱位置",
   );
   await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
-    "周邊 12 處",
+    "周邊約 12 處清潔箱",
   );
   await expect(
     page.getByRole("link", { name: "回報問題", exact: true }),
@@ -278,13 +287,13 @@ test("a refresh failure preserves the last complete map and marks it stale", asy
     }
   });
   await page.goto("/");
-  await expect(page.locator(".location-row")).toHaveCount(1);
+  await expect(page.locator(".mx-row")).toHaveCount(1);
   fail = true;
   await page.evaluate(() =>
     document.dispatchEvent(new Event("visibilitychange")),
   );
   await expect(page.getByRole("alert")).toContainText("刷新地圖失敗");
-  await expect(page.locator(".location-row")).toHaveCount(1);
+  await expect(page.locator(".mx-row")).toHaveCount(1);
   await expect(
     page.getByText("先前讀取的資料可能已過期，請重新載入確認。", {
       exact: true,
@@ -366,15 +375,22 @@ test("two waste compartments map to three states, recycling-only navigation and 
     }
   });
   await page.goto("/");
-  const rows = page.locator(".location-row");
+  const rows = page.locator(".mx-row");
   await expect(rows).toHaveCount(2);
-  // 後端 half 在前端是「餓了」；只要一桶能丟，點位整體就是餓了。
-  await expect(rows.first()).toContainText("餓了 · 1/2 桶能丟");
-  await expect(rows.nth(1)).toContainText("吃飽了 · 0/2 桶能丟");
-  await page.getByRole("button", { name: "餓了的桶", exact: true }).click();
+  // 後端 half 在前端是「餓了」；列上寫兩槽可丟數，以及所選種類那一槽的狀態。
+  await expect(rows.first()).toContainText("1/2");
+  await expect(rows.first()).toContainText("一般垃圾：滿了");
+  await expect(rows.nth(1)).toContainText("0/2");
+  // 「還能丟」依所選種類判斷：一般垃圾兩點都滿，切到資源回收才剩一個。
+  await page.getByRole("button", { name: "還能丟", exact: true }).click();
+  await expect(rows).toHaveCount(0);
+  await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("一般滿回收餓");
+  await expect(rows.first()).toContainText("資源回收：還能丟");
   await rows.first().click();
+  // 面板裡切回一般垃圾，確認一般滿、回收能丟時仍提供「導航過去丟回收」。
+  await page.getByLabel("垃圾種類", { exact: true }).selectOption("general");
   await expect(page.getByText("資源回收還能丟", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "選擇一般垃圾", exact: true }),

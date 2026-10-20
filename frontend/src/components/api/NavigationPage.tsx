@@ -7,6 +7,42 @@ import { useQrCode } from "../useQrCode";
 import { LoadState } from "./LoadState";
 import { useApi } from "./useApi";
 import { ORIGIN, ignoreSelect } from "./mapShared";
+import { useBinView } from "./BinPage";
+// 步行導航仍是獨立頁（#nav/<id>）：讀桶 view 後顯示導航；行為與拆檔前相同。
+export function NavigationPage({
+  id,
+  wasteType,
+  onWasteChange,
+}: WasteControls & { id: string }) {
+  const view = useBinView(id, wasteType);
+  if (!view.data)
+    return (
+      <main className="page">
+        <h1>桶詳情</h1>
+        <LoadState {...view} />
+        <a href={wasteHref("map", wasteType)}>返回地圖</a>
+      </main>
+    );
+  return view.error ? (
+    <main className="page">
+      <h1>步行導航</h1>
+      <WasteSelect
+        value={wasteType}
+        onChange={(value) => {
+          if (value) onWasteChange(value);
+        }}
+      />
+      <LoadState {...view} />
+      <p>桶況尚未更新，請先重新載入確認可用性。</p>
+    </main>
+  ) : (
+    <Navigation
+      view={view.data}
+      wasteType={wasteType}
+      onWasteChange={onWasteChange}
+    />
+  );
+}
 export function Navigation({
   view,
   wasteType,

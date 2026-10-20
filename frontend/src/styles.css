@@ -5803,3 +5803,498 @@ input[type="file"]::file-selector-button {
     width: 100%;
   }
 }
+
+/* ── 地圖瀏覽模式（components/api/MapPage.tsx） ──────────────────────
+   手機（≤760px）：地圖滿版＋下方抽屜（收起／半開／全開，高度由
+   --mx-drawer-h 控制）；桌面：左側面板＋右側地圖。class 一律 mx- 前綴；
+   對沿用元件（桶資訊內容、種類選單）的調整只限定在 .mx-panel 底下。 */
+.mx-layout {
+  --mx-panel-w: clamp(360px, 32vw, 440px);
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--mx-panel-w) minmax(0, 1fr);
+  height: calc(100dvh - var(--topbar-h));
+  min-height: 480px;
+  overflow: hidden;
+  background: var(--map);
+}
+.mx-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+.mx-handle-wrap {
+  display: none;
+  flex: none;
+  justify-content: center;
+  touch-action: none;
+}
+.mx-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: grab;
+}
+.mx-handle span {
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: var(--radius-xs);
+  background: var(--line-control);
+}
+.mx-panel-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 60px;
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 2px solid var(--divider);
+}
+.mx-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: var(--text-card-title);
+  overflow-wrap: anywhere;
+}
+.mx-count {
+  flex: none;
+  font: 500 13px/1 var(--font-display);
+  color: var(--text-muted);
+}
+.mx-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+.mx-back:hover {
+  color: var(--teal);
+}
+.mx-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 24px;
+}
+.mx-close:hover {
+  background: var(--field);
+}
+.mx-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--space-6) var(--space-6);
+}
+.mx-filters {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.mx-search {
+  display: block;
+}
+.mx-search input {
+  width: 100%;
+  min-height: 44px;
+}
+.mx-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+.mx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.mx-chip {
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text);
+  font: 500 14px/1 var(--font-sans);
+}
+.mx-chip[aria-pressed="true"] {
+  background: var(--mint);
+  border-color: var(--mint);
+  color: var(--text-on-light);
+}
+.mx-panel .mx-filter-row .api-waste-select {
+  margin: 0;
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.mx-caption {
+  margin: var(--space-3) 0 0;
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.mx-list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  border-top: 2px solid var(--divider);
+}
+.mx-list > li + li {
+  border-top: 1px solid var(--hairline);
+}
+.mx-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 64px;
+  padding: 10px var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+.mx-row:hover {
+  background: var(--chrome);
+}
+.mx-row-icon {
+  flex: none;
+  width: 34px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.mx-row-icon svg {
+  width: 26px;
+  height: 29px;
+}
+.mx-row-icon.state-offline {
+  outline: 1.5px dashed var(--status-offline);
+  outline-offset: -1px;
+  border-radius: 50%;
+}
+.mx-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mx-row-name {
+  font: 500 15px/1.45 var(--font-sans);
+  overflow-wrap: anywhere;
+}
+.mx-row-sub {
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.mx-row-side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 44px;
+  text-align: right;
+}
+.mx-row-side small,
+.mx-side-muted {
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.mx-row-side b {
+  font: var(--text-numeral-sm);
+}
+.mx-ok {
+  color: var(--teal);
+}
+.mx-zero {
+  color: var(--signal);
+}
+.mx-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 2px 6px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-sm);
+  font: 500 11px/1.3 var(--font-sans);
+  color: var(--text-muted);
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+.mx-tag.new {
+  background: var(--mint);
+  border-color: var(--mint);
+  color: var(--text-on-light);
+}
+.mx-tag.dashed {
+  border-style: dashed;
+}
+.mx-proposed-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px dashed var(--text-muted);
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  font: 700 13px/1 var(--font-sans);
+}
+.mx-empty {
+  padding: var(--space-5) var(--space-1);
+  color: var(--text-body);
+}
+.mx-empty p {
+  margin: 0 0 var(--space-1);
+}
+.mx-place .mx-sub {
+  margin: var(--space-4) 0 0;
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.mx-note {
+  margin: var(--space-4) 0 0;
+  padding: 10px var(--space-3);
+  border-left: 3px solid var(--mint);
+  background: var(--field);
+  color: var(--text);
+  font: 500 14px/1.55 var(--font-sans);
+}
+.mx-source {
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+.mx-source summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--teal);
+  font-weight: 700;
+  cursor: pointer;
+}
+.mx-source p {
+  font: var(--text-caption);
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+}
+/* 面板裡的桶資訊：內容沿用原桶頁，只把版面收成單欄。 */
+.mx-bin {
+  padding-top: var(--space-4);
+}
+.mx-bin h1 {
+  margin: 0;
+  font: var(--text-card-title);
+}
+.mx-panel .bin-heading {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.mx-panel .api-bin-detail .bin-overview {
+  padding: var(--space-4);
+}
+.mx-panel .bin-overview-heading {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.mx-panel .bin-action-panel {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+.mx-panel .bin-actions {
+  flex-wrap: wrap;
+}
+.mx-panel .bin-actions .button {
+  flex: 1 1 auto;
+}
+.mx-panel .bin-support-grid,
+.mx-panel .bin-location-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+.mx-map {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 0;
+  background: var(--map);
+}
+.mx-map .leaflet-bottom {
+  bottom: var(--legend-h);
+}
+.mx-legend {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--legend-h);
+  padding: 0 var(--space-6);
+  background: var(--chrome);
+  border-top: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.mx-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.mx-legend-title {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.mx-legend-flag {
+  display: inline-flex;
+}
+.mx-legend-flag svg {
+  width: 14px;
+  height: 16px;
+}
+.mx-legend-proposed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1.5px dashed var(--text-muted);
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  font: normal 700 10px/1 var(--font-sans);
+}
+/* 地圖標記：地標旗子、建議點虛線方框、示意起點。 */
+.mx-landmark .marker-body svg {
+  width: 28px;
+  height: 32px;
+}
+.mx-proposed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+}
+.mx-proposed span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 2px dashed var(--text-on-light);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--mascot-eye) 70%, transparent);
+  color: var(--text-on-light);
+  font: 700 15px/1 var(--font-sans);
+}
+.mx-proposed.selected span {
+  outline: 2.5px solid var(--signal);
+  outline-offset: 3px;
+}
+.mx-origin {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+.mx-origin-pin {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 3px;
+  border-radius: var(--radius-xs);
+  background: var(--text-on-light);
+  color: var(--mint);
+  font: 700 12px/1 var(--font-sans);
+}
+.mx-origin-label {
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--chrome);
+  color: var(--text);
+  font: 500 11px/1.4 var(--font-sans);
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .mx-layout {
+    display: block;
+    min-height: 420px;
+  }
+  .mx-map {
+    position: absolute;
+    inset: 0;
+  }
+  .mx-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--mx-drawer-h, 50%);
+    border-right: 0;
+    border-top: 1px solid var(--line-control);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    transition: height 0.26s ease;
+  }
+  .mx-panel.dragging {
+    transition: none;
+  }
+  .mx-handle-wrap {
+    display: flex;
+  }
+  .mx-panel-head {
+    min-height: 52px;
+    padding: 0 var(--space-4) var(--space-2);
+    touch-action: none;
+  }
+  .mx-panel-body {
+    padding: 0 var(--space-4) var(--space-6);
+  }
+  .mx-map .leaflet-bottom {
+    bottom: calc(var(--mx-drawer-h, 50%) + var(--legend-h));
+  }
+  .mx-legend {
+    bottom: var(--mx-drawer-h, 50%);
+    padding: 0 var(--space-4);
+  }
+  .mx-layout[data-drawer="full"] .mx-legend,
+  .mx-layout[data-drawer="full"] .mx-map .leaflet-bottom {
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mx-panel {
+    transition: none;
+  }
+}

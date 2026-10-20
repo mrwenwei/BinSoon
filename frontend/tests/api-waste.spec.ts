@@ -10,14 +10,15 @@ test("one map point exposes independent general and recycling availability and p
   await f.setup(page);
   await page.goto("/#map");
   await expect(
-    page.locator(".location-list").getByRole("button", { name: /雙槽測試桶/ }),
+    page.locator(".mx-list").getByRole("button", { name: /雙槽測試桶/ }),
   ).toHaveCount(1);
   await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
-  await expect(
-    page.getByRole("list", { name: "最近三個可用桶" }),
-  ).toContainText("雙槽測試桶");
+  // 「最近的可用小夥伴」併入「附近的桶」：列上直接寫所選種類那一槽能不能丟。
+  await expect(page.getByRole("list", { name: "附近的桶" })).toContainText(
+    "資源回收：還能丟",
+  );
   await page
-    .locator(".location-list")
+    .locator(".mx-list")
     .getByRole("button", { name: /雙槽測試桶/ })
     .click();
   await expect(
@@ -286,8 +287,9 @@ test("report list filtering and waste choice stay usable on desktop and 320px sc
       page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     )
     .toBe(true);
-  const mapBox = await page.locator(".api-detail-map").boundingBox();
-  const noteBox = await page.locator(".api-detail-map .map-note").boundingBox();
+  // 桶資訊改在地圖旁的面板，不再有獨立桶頁的小地圖；改驗主地圖的提示仍在地圖內。
+  const mapBox = await page.locator(".mx-map").boundingBox();
+  const noteBox = await page.locator(".mx-map .map-note").boundingBox();
   expect(noteBox!.y).toBeGreaterThanOrEqual(mapBox!.y);
   expect(noteBox!.y + noteBox!.height).toBeLessThanOrEqual(
     mapBox!.y + mapBox!.height,
@@ -309,8 +311,8 @@ test("all map pages retain recycling and render one result per location", async 
   f.state.multiPage = true;
   await f.setup(page);
   await page.goto("/#map?waste_type=recycling");
-  await expect(page.locator(".location-list > button")).toHaveCount(2);
-  await expect(page.locator(".location-list")).toContainText("另一個位置");
+  await expect(page.locator(".mx-list .mx-row")).toHaveCount(2);
+  await expect(page.locator(".mx-list")).toContainText("另一個位置");
   const reads = f.requests.filter((r) => r.path === "/map/locations");
   expect(reads.every((r) => r.waste === "recycling")).toBe(true);
   expect(reads.some((r) => r.offset === "1")).toBe(true);

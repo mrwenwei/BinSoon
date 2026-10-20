@@ -395,7 +395,7 @@ test("a rejected first report never promotes later reporters and suspension only
   await expect(page.getByText("可用點數 0", { exact: true })).toBeVisible();
   await expect(page.getByRole("status")).toContainText("回報資格暫停");
   await (await navLink(page, "找垃圾桶")).click();
-  await expect(page.locator(".location-row")).toHaveCount(1);
+  await expect(page.locator(".mx-row")).toHaveCount(1);
   await page.evaluate((id) => {
     window.location.hash = `report/${id}`;
   }, binId);

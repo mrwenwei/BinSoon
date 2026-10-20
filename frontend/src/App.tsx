@@ -10,7 +10,7 @@ import {
 } from "./components/api/SessionContext";
 import { AdminPage } from "./components/api/CompletionPages";
 import { MapPage } from "./components/api/MapPage";
-import { BinPage } from "./components/api/BinPage";
+import { NavigationPage } from "./components/api/NavigationPage";
 
 import {
   ReportDraftProvider,
@@ -204,13 +204,14 @@ function AppContent() {
             key={workId || "admin"}
             id={id === "work-orders" ? workId : undefined}
           />
-        ) : page === "map" ? (
-          <MapPage {...wasteControls} />
-        ) : (page === "bin" || page === "nav") && id ? (
-          <BinPage
+        ) : page === "map" || (page === "bin" && id) ? (
+          // 地圖與桶資訊同一個元件：#bin/<id> 是「地圖＋已選該桶的面板」，
+          // 切換時地圖不重建。
+          <MapPage {...wasteControls} binId={page === "bin" ? id : undefined} />
+        ) : page === "nav" && id ? (
+          <NavigationPage
             key={`${page}/${id}/${wasteType}`}
             id={id}
-            navigation={page === "nav"}
             {...wasteControls}
           />
         ) : page === "staff" && id === "route" ? (

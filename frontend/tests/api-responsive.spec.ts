@@ -17,8 +17,7 @@ test("API map, details, login and report stay usable on desktop and narrow phone
     ]) {
       await page.goto(`/#${hash}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      if (name === "map")
-        await expect(page.locator(".location-row")).toHaveCount(1);
+      if (name === "map") await expect(page.locator(".mx-row")).toHaveCount(1);
       if (name === "bin")
         await expect(
           page.getByRole("heading", { name: "API 未知桶", level: 1 }),

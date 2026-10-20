@@ -10,50 +10,64 @@ import {
   compartmentCards,
   CompartmentSources,
 } from "./Waste";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   apiBinState,
   apiCompartments,
   query,
   request,
   time,
+  type ApiLocation,
   type BinView,
   type Reading,
 } from "../../data/api";
 import { StationCard } from "../StationCard";
-import { LocationMap } from "../../map/LocationMap";
 import { LocationDetails } from "../LocationDetails";
 import { Mascot } from "../Mascot";
 import { LoadState } from "./LoadState";
 import { CompletionThanks } from "./CompletionPages";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
-import { ignoreSelect, reasonLabels, Status } from "./mapShared";
-import { Navigation } from "./NavigationPage";
-export function BinPage({
-  id,
-  navigation = false,
-  wasteType,
-  onWasteChange,
-}: WasteControls & {
-  id: string;
-  navigation?: boolean;
-}) {
+import { reasonLabels, Status } from "./mapShared";
+// 桶詳情的 view 讀取；地圖面板（BinPanel）與步行導航頁共用。
+export function useBinView(id: string, wasteType: string) {
   const { session } = useSession();
   const viewPath = query(`/bins/${encodeURIComponent(id)}/view`, {
     waste_type: wasteType,
   });
-  const [historyType, setHistoryType] = useState<string>(wasteType);
-  const view = useApi(
+  return useApi(
     viewPath,
     (signal) =>
       request<BinView>(viewPath, { signal, token: session?.access_token }),
     true,
   );
+}
+// 地圖瀏覽模式：選桶後在面板內原地顯示的桶資訊。內容先沿用原獨立桶頁，
+// 只拿掉小地圖（地圖本身就在旁邊）；返回清單由面板標題列提供。
+export function BinPanel({
+  id,
+  wasteType,
+  onWasteChange,
+  onLocation,
+}: WasteControls & {
+  id: string;
+  onLocation?: (location: ApiLocation) => void;
+}) {
+  const [historyType, setHistoryType] = useState<string>(wasteType);
+  const view = useBinView(id, wasteType);
+  const loaded = view.data;
+  useEffect(() => {
+    if (loaded && onLocation)
+      onLocation({
+        ...loaded.location,
+        bin_status: loaded.status,
+        compartments: loaded.compartments?.length
+          ? loaded.compartments
+          : loaded.location.compartments,
+      });
+  }, [loaded, onLocation]);
   const history = useApi(
-    navigation
-      ? null
-      : query(`/bins/${id}/history`, { waste_type: historyType }),
+    query(`/bins/${id}/history`, { waste_type: historyType }),
     async (signal) => {
       const items: Reading[] = [];
       let offset = 0;
@@ -84,39 +98,15 @@ export function BinPage({
   );
   if (!view.data)
     return (
-      <main className="page">
+      <div className="api-bin-detail mx-bin">
         <h1>桶詳情</h1>
         <LoadState {...view} />
-        <a href={wasteHref("map", wasteType)}>返回地圖</a>
-      </main>
-    );
-  if (navigation)
-    return view.error ? (
-      <main className="page">
-        <h1>步行導航</h1>
-        <WasteSelect
-          value={wasteType}
-          onChange={(value) => {
-            if (value) onWasteChange(value);
-          }}
-        />
-        <LoadState {...view} />
-        <p>桶況尚未更新，請先重新載入確認可用性。</p>
-      </main>
-    ) : (
-      <Navigation
-        view={view.data}
-        wasteType={wasteType}
-        onWasteChange={onWasteChange}
-      />
+      </div>
     );
   const { location: item, status, can_report } = view.data;
   const parts = apiCompartments(status, view.data.compartments);
   return (
-    <main className="page detail-page api-bin-detail">
-      <a className="back-link" href={wasteHref("map", wasteType)}>
-        ← 返回地圖
-      </a>
+    <div className="api-bin-detail mx-bin">
       <div className="page-heading bin-heading">
         <div className="bin-title">
           <span className="bin-avatar" aria-hidden="true">
@@ -293,14 +283,7 @@ export function BinPage({
             window.location.hash = wasteHref("map", wasteType).slice(1);
           }}
         />
-        <div className="api-detail-map">
-          <LocationMap
-            locations={[{ ...item, bin_status: status }]}
-            selected={item}
-            onSelect={ignoreSelect}
-          />
-        </div>
       </div>
-    </main>
+    </div>
   );
 }

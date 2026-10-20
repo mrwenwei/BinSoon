@@ -34,6 +34,17 @@ interface Props {
     west: number;
     east: number;
   };
+  // 地圖瀏覽模式（MapPage）專用，其他頁不傳時維持原行為。
+  /** 初始中心（zoom 15）；有給時，位置清單變動不自動 fitBounds（除非 autoFit）。 */
+  initialCenter?: [number, number];
+  autoFit?: boolean;
+  /** 自訂標記圖示與無障礙名稱。 */
+  markerIcon?: (location: LocationRecord, selected: boolean) => L.DivIcon;
+  markerLabel?: (location: LocationRecord) => string;
+  /** 固定示意起點標記（不可點、不影響視野）。 */
+  origin?: { latitude: number; longitude: number; label: string };
+  /** 有給時：只在選取對象改變時置中，並把選取點往上移這麼多像素（手機抽屜遮住下半部）。 */
+  focusOffsetY?: number;
 }
 export function LocationMap({
   locations,
@@ -52,7 +63,20 @@ export function LocationMap({
   removedIds,
   operations,
   binMarkerLabel,
+  initialCenter,
+  autoFit,
+  markerIcon,
+  markerLabel,
+  origin,
+  focusOffsetY,
 }: Props) {
+  const browse = focusOffsetY !== undefined;
+  const offsetRef = useRef(focusOffsetY ?? 0);
+  offsetRef.current = focusOffsetY ?? 0;
+  const iconFor = (location: LocationRecord, active: boolean) =>
+    markerIcon
+      ? markerIcon(location, active)
+      : locationMarkerIcon(location, active, removedIds, operations);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
@@ -65,7 +89,7 @@ export function LocationMap({
       zoomControl: false,
       minZoom: 8,
       maxZoom: 19,
-    }).setView([25.04, 121.54], 13);
+    }).setView(initialCenter || [25.04, 121.54], initialCenter ? 15 : 13);
     map.current = instance;
     L.control.zoom({ position: "bottomright" }).addTo(instance);
     L.control
@@ -118,46 +142,93 @@ export function LocationMap({
     markers.current!.clearLayers();
     markerRecords.current = [];
     for (const location of locations) {
+      const label = markerLabel
+        ? markerLabel(location)
+        : `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`;
       const marker = L.marker([location.latitude, location.longitude], {
-        icon: locationMarkerIcon(location, false, removedIds, operations),
-        title: `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`,
-        alt: `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`,
+        icon: iconFor(location, false),
+        title: label,
+        alt: label,
         riseOnHover: true,
       })
         .on("click", () => onSelect(location))
         .addTo(markers.current!);
-      marker
-        .getElement()
-        ?.setAttribute(
-          "aria-label",
-          `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`,
-        );
+      marker.getElement()?.setAttribute("aria-label", label);
       markerRecords.current.push({ marker, location });
     }
-    if (locations.length && !selectionBounds)
+    if (locations.length && !selectionBounds && (autoFit ?? !initialCenter))
       instance.fitBounds(
         L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
         { padding: [45, 50], maxZoom: 15, animate: false },
       );
-  }, [locations, onSelect, removedIds, selectionBounds, binMarkerLabel]);
+  }, [
+    locations,
+    onSelect,
+    removedIds,
+    selectionBounds,
+    binMarkerLabel,
+    markerIcon,
+    markerLabel,
+    autoFit,
+  ]);
   useEffect(() => {
     for (const { marker, location } of markerRecords.current) {
-      marker.setIcon(
-        locationMarkerIcon(
-          location,
-          location.id === selected?.id,
-          removedIds,
-          operations,
-        ),
-      );
+      marker.setIcon(iconFor(location, location.id === selected?.id));
       marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
     }
-    if (!selected) return;
+    if (!selected || browse) return;
     const point: L.LatLngExpression = [selected.latitude, selected.longitude];
     map.current!.setView(point, Math.max(map.current!.getZoom(), 16), {
       animate: false,
     });
-  }, [selected, locations, removedIds, operations]);
+  }, [selected, locations, removedIds, operations, markerIcon]);
+  // 瀏覽模式：只在選取的桶／地標換了才置中（輪詢更新清單不會把地圖拉回來）。
+  useEffect(() => {
+    if (!browse || !selected || !map.current) return;
+    const instance = map.current;
+    instance.setView(
+      [selected.latitude, selected.longitude],
+      Math.max(instance.getZoom(), 16),
+      { animate: false },
+    );
+    if (offsetRef.current)
+      instance.panBy([0, offsetRef.current], { animate: false });
+  }, [browse, selected?.id, selected?.latitude, selected?.longitude]);
+  // 瀏覽模式第一次量到抽屜高度時，把初始中心移到抽屜上方的可見區（只做一次）。
+  const initialOffsetDone = useRef(false);
+  useEffect(() => {
+    if (
+      !browse ||
+      initialOffsetDone.current ||
+      !initialCenter ||
+      !focusOffsetY ||
+      !map.current
+    )
+      return;
+    initialOffsetDone.current = true;
+    if (selected) return;
+    map.current.setView(initialCenter, map.current.getZoom(), {
+      animate: false,
+    });
+    map.current.panBy([0, focusOffsetY], { animate: false });
+  }, [browse, focusOffsetY]);
+  useEffect(() => {
+    if (!origin || !map.current) return;
+    const marker = L.marker([origin.latitude, origin.longitude], {
+      icon: L.divIcon({
+        className: "mx-origin",
+        html: `<span class="mx-origin-pin" aria-hidden="true">起</span><span class="mx-origin-label">${origin.label}</span>`,
+        iconSize: [112, 30],
+        iconAnchor: [15, 15],
+      }),
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: -500,
+    }).addTo(map.current);
+    return () => {
+      marker.remove();
+    };
+  }, [origin?.latitude, origin?.longitude, origin?.label]);
   useEffect(() => {
     const points = roadRoute || demoRoute;
     const start = routeOrigin || points?.[0];
