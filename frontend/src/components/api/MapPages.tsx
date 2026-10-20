@@ -1,3 +1,16 @@
+import {
+  classificationName,
+  wasteName,
+  wasteHref,
+  type WasteControls,
+} from "../../data/waste";
+import {
+  WasteSelect,
+  WasteInfo,
+  statusText,
+  compartmentCards,
+  CompartmentSources,
+} from "./Waste";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   allPages,
@@ -11,11 +24,10 @@ import {
   type BinStatus,
   type BinView,
   type Reading,
-  type WasteType,
 } from "../../data/api";
-import { stateLabels, usableCount, wasteLabels } from "../../data/binState";
+import { stateLabels, usableCount } from "../../data/binState";
 import { stateVisual } from "../binVisual";
-import { StationCard, type CardCompartment } from "../StationCard";
+import { StationCard } from "../StationCard";
 import {
   districts,
   kindLabel,
@@ -40,16 +52,6 @@ const reasonLabels: Record<string, string> = {
   login_required: "需登入",
   suspended: "回報資格暫停",
 };
-// 列上的狀態文字：三態標籤（API 四態在 apiBinState 轉成三態）＋滿度。
-export function statusText(status: BinStatus | null) {
-  return status?.operational_status === "removed"
-    ? "已撤除"
-    : status?.operational_status === "repair"
-      ? "維修中"
-      : status?.fill_level_pct == null
-        ? stateLabels.offline
-        : `${stateLabels[apiBinState(status)]} · ${status.fill_level_pct}%`;
-}
 export function Status({ status }: { status: BinStatus | null }) {
   return (
     <span
@@ -59,15 +61,7 @@ export function Status({ status }: { status: BinStatus | null }) {
     </span>
   );
 }
-function toCard(list: ReturnType<typeof apiCompartments>): CardCompartment[] {
-  return list.map((c) => ({
-    wasteType: c.waste_type,
-    state: apiBinState(c),
-    pct: c.operational_status === "removed" ? null : c.fill_level_pct,
-    statusText: statusText(c),
-  }));
-}
-export function MapPage() {
+export function MapPage({ wasteType, onWasteChange }: WasteControls) {
   const { session } = useSession();
   const [district, setDistrict] = useState("大安區"),
     [kind, setKind] = useState("bin"),
@@ -78,6 +72,7 @@ export function MapPage() {
   // 「餓了的桶」＝至少一桶還能丟（兩桶規則），在前端依 compartments 篩選；
   // 新設的桶仍交給後端篩選。
   const path = query("/map/locations", {
+    waste_type: wasteType,
     district,
     kind,
     filter: filter === "new" ? "new" : "all",
@@ -109,6 +104,7 @@ export function MapPage() {
     [list.data, filter],
   );
   const nearPath = query("/map/nearest-usable", {
+    waste_type: wasteType,
     district,
     q,
     limit: 3,
@@ -119,10 +115,14 @@ export function MapPage() {
     (signal) => request<{ items: ApiLocation[] }>(nearPath, { signal }),
     true,
   );
-  const select = useCallback((item: LocationRecord) => {
-    if (item.kind === "bin") window.location.hash = `bin/${item.id}`;
-    else setSelected(item);
-  }, []);
+  const select = useCallback(
+    (item: LocationRecord) => {
+      if (item.kind === "bin")
+        window.location.hash = wasteHref(`bin/${item.id}`, wasteType).slice(1);
+      else setSelected(item);
+    },
+    [wasteType],
+  );
   return (
     <main className="explore-layout">
       <aside className="explorer" aria-label="位置探索">
@@ -137,6 +137,12 @@ export function MapPage() {
           <span className="demo-tag">API 桶況 · simulated 模擬讀值</span>
         </div>
         <div className="filters">
+          <WasteSelect
+            value={wasteType}
+            onChange={(value) => {
+              if (value) onWasteChange(value);
+            }}
+          />
           <label className="search-field">
             <span className="visually-hidden">搜尋地點</span>
             <input
@@ -214,7 +220,8 @@ export function MapPage() {
             <span className="label">FROM 大安森林公園</span>
           </div>
           <p className="tiny">
-            固定大安森林公園示意起點 · 非目前定位 · 依一般垃圾槽判斷
+            固定大安森林公園示意起點 · 非目前定位 · 依{wasteName(wasteType)}
+            槽判斷
           </p>
           <LoadState {...nearest} />
           <ol aria-label="最近三個可用桶">
@@ -224,7 +231,9 @@ export function MapPage() {
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <span className="nearest-copy">
-                  <a href={`#bin/${item.id}`}>{item.label}</a>
+                  <a href={wasteHref(`bin/${item.id}`, wasteType)}>
+                    {item.label}
+                  </a>
                   <small>
                     {" · "}
                     {item.distance_m === null
@@ -292,6 +301,7 @@ export function MapPage() {
                       ) : (
                         <Status status={item.bin_status} />
                       )}
+                      <small>目前顯示：{wasteName(wasteType)}</small>
                       {item.placement_status === "proposed" && (
                         <small>建議點／待現勘，尚未設置</small>
                       )}
@@ -357,14 +367,16 @@ export function BinPage({
   id,
   navigation = false,
   wasteType,
-}: {
+  onWasteChange,
+}: WasteControls & {
   id: string;
   navigation?: boolean;
-  wasteType?: WasteType;
 }) {
   const { session } = useSession();
-  // 導航時可指定要丟的種類（只有回收槽能丟時）；預設沿用後端一般垃圾語意。
-  const viewPath = `/bins/${encodeURIComponent(id)}/view${wasteType === "recycling" ? "?waste_type=recycling" : ""}`;
+  const viewPath = query(`/bins/${encodeURIComponent(id)}/view`, {
+    waste_type: wasteType,
+  });
+  const [historyType, setHistoryType] = useState<string>(wasteType);
   const view = useApi(
     viewPath,
     (signal) =>
@@ -372,7 +384,9 @@ export function BinPage({
     true,
   );
   const history = useApi(
-    navigation ? null : `/bins/${id}/history`,
+    navigation
+      ? null
+      : query(`/bins/${id}/history`, { waste_type: historyType }),
     async (signal) => {
       const items: Reading[] = [];
       let offset = 0;
@@ -381,6 +395,7 @@ export function BinPage({
           query(`/bins/${encodeURIComponent(id)}/history`, {
             offset,
             limit: 100,
+            waste_type: historyType,
           }),
           { signal },
         );
@@ -405,141 +420,170 @@ export function BinPage({
       <main className="page">
         <h1>桶詳情</h1>
         <LoadState {...view} />
-        <a href="#map">返回地圖</a>
+        <a href={wasteHref("map", wasteType)}>返回地圖</a>
       </main>
     );
   if (navigation)
     return view.error ? (
       <main className="page">
         <h1>步行導航</h1>
+        <WasteSelect
+          value={wasteType}
+          onChange={(value) => {
+            if (value) onWasteChange(value);
+          }}
+        />
         <LoadState {...view} />
         <p>桶況尚未更新，請先重新載入確認可用性。</p>
       </main>
     ) : (
-      <Navigation view={view.data} wasteType={wasteType} />
+      <Navigation
+        view={view.data}
+        wasteType={wasteType}
+        onWasteChange={onWasteChange}
+      />
     );
   const { location: item, status, can_report } = view.data;
   const parts = apiCompartments(status, view.data.compartments);
-  const usable = parts.filter((c) => c.is_usable);
-  const twoBins = parts.length > 1;
-  // 主按鈕永遠是青綠：兩桶能丟或一般能丟→導航過去；只有回收能丟→導航過去丟回收。
-  const recyclingOnly =
-    twoBins && usable.length === 1 && usable[0].waste_type === "recycling";
-  const canGo = twoBins ? usable.length > 0 : status.is_usable;
-  const reasons = (list: BinStatus[]) =>
-    [...new Set(list.flatMap((c) => c.unavailable_reasons))]
-      .map((r) => reasonLabels[r] || r)
-      .join("、");
-  const note =
-    item.placement_status === "proposed"
-      ? "建議點／待現勘，尚未設置"
-      : !twoBins
-        ? status.is_usable
-          ? "只收隨手小垃圾，請依現場狀況使用。"
-          : `目前不可用：${reasons([status])}`
-        : usable.length === parts.length
-          ? "兩桶都還能丟，只收隨手小垃圾，請依現場狀況使用。"
-          : usable.length === 1
-            ? `${wasteLabels[usable[0].waste_type]}還能丟；${parts
-                .filter((c) => !c.is_usable)
-                .map(
-                  (c) =>
-                    `${wasteLabels[c.waste_type]}目前不可用：${reasons([c])}`,
-                )
-                .join("；")}。`
-            : `目前不可用：${reasons(parts)}`;
   return (
-    <main className="page detail-page">
-      <a className="back-link" href="#map">
+    <main className="page detail-page api-bin-detail">
+      <a className="back-link" href={wasteHref("map", wasteType)}>
         ← 返回地圖
       </a>
-      <div className="page-heading">
-        <div>
-          <h1>{item.label}</h1>
-          <p>
-            {item.district} · {twoBins ? "一般垃圾＋資源回收（示意） · " : ""}
-            {item.placement_status === "proposed"
-              ? "建議點／待現勘"
-              : item.placement_status === "installed"
-                ? "示範設置"
-                : "既有公布桶"}
-          </p>
+      <div className="page-heading bin-heading">
+        <div className="bin-title">
+          <span className="bin-avatar" aria-hidden="true">
+            <Mascot state={apiBinState(status)} />
+          </span>
+          <div>
+            <h1>{item.label}</h1>
+            <p>
+              {item.district} ·{" "}
+              {item.placement_status === "proposed"
+                ? "建議點／待現勘"
+                : item.placement_status === "installed"
+                  ? "示範設置"
+                  : "既有公布桶"}
+            </p>
+          </div>
         </div>
         <span className="demo-tag">
           {status.reading_source_type || "來源未知"} · 非實測 IoT
         </span>
       </div>
       <LoadState {...view} />
-      <div className="detail-grid">
-        <div className="detail-main">
+      <section className="card bin-overview">
+        <div className="bin-overview-heading">
+          <div>
+            <h2>一個定點，兩種桶況</h2>
+            <p className="tiny">選擇這次要使用的種類，查看可用性與操作。</p>
+          </div>
+          <WasteSelect
+            value={wasteType}
+            onChange={(value) => {
+              if (value) onWasteChange(value);
+            }}
+          />
+        </div>
+        <section aria-label="各類桶槽" className="bin-compartment-overview">
           <StationCard
-            compartments={toCard(parts)}
-            note={
-              <>
-                <p>{note}</p>
-                <p className="tiny">
-                  {twoBins
-                    ? "兩槽為後端示範假設（demo_assumption），不是現場盤點。"
-                    : "後端未提供分槽資料，暫以一般垃圾槽顯示。"}
-                </p>
-              </>
-            }
-          >
-            {!view.error && (
-              <a
-                className="button primary"
-                href={`#nav/${id}${recyclingOnly ? "?waste_type=recycling" : ""}`}
-              >
-                {canGo
-                  ? recyclingOnly
-                    ? "導航過去丟回收"
-                    : "導航過去"
-                  : "尋找可用桶並導航"}
-                <span aria-hidden="true">→</span>
-              </a>
-            )}
-            {can_report && !view.error && (
-              <a className="button secondary" href={`#report/${id}`}>
-                回報問題
-              </a>
-            )}
-          </StationCard>
-          {!(can_report && !view.error) && (
-            <p className="card-note">
-              {view.error ? (
-                "桶況更新失敗，請重新載入後操作。"
-              ) : view.data.report_block_reason === "login_required" ? (
-                <a href={`#login?next=${encodeURIComponent(`bin/${id}`)}`}>
-                  登入後回報
+            compartments={compartmentCards(parts)}
+            selectedWaste={wasteType}
+            onSelectWaste={onWasteChange}
+          />
+          <CompartmentSources items={parts} />
+        </section>
+        <div className="bin-action-panel">
+          <div>
+            <Status status={status} />
+            <WasteInfo value={status} />
+            <p>
+              {item.placement_status === "proposed"
+                ? "建議點／待現勘，尚未設置"
+                : status.is_usable
+                  ? "只收隨手小垃圾，請依現場狀況使用。"
+                  : `目前不可用：${status.unavailable_reasons.map((r) => reasonLabels[r] || r).join("、")}`}
+            </p>
+          </div>
+          <div className="bin-actions">
+            {!view.error &&
+              (status.is_usable ? (
+                <a
+                  className="button primary"
+                  href={wasteHref(`nav/${id}`, wasteType)}
+                >
+                  導航過去
                 </a>
               ) : (
-                `暫不能回報：${reasonLabels[view.data.report_block_reason || ""] || view.data.report_block_reason}`
+                <a
+                  className="button primary"
+                  href={wasteHref(`nav/${id}`, wasteType)}
+                >
+                  尋找可用桶並導航
+                </a>
+              ))}
+            {!view.error &&
+              !status.is_usable &&
+              parts.find((part) => part.waste_type === "recycling")
+                ?.is_usable &&
+              wasteType !== "recycling" && (
+                <a
+                  className="button primary"
+                  href={wasteHref(`nav/${id}`, "recycling")}
+                >
+                  導航過去丟回收
+                </a>
               )}
-            </p>
-          )}
-          <CompletionThanks
-            cleanup={view.data.latest_cleanup}
-            binId={id}
-            ready={!view.loading && !view.error}
-            refresh={view.reload}
-          />
-          <section className="card adopt-card">
-            <h2>認養</h2>
-            <p>認養：{view.data.adopter?.display_name || "尚無認養者"}</p>
-            <p className="tiny">
-              認養以點位為單位，涵蓋兩槽。認養操作尚未開放。
-            </p>
-          </section>
+            {can_report && !view.error ? (
+              <a
+                className="button secondary"
+                href={wasteHref(`report/${id}`, wasteType)}
+              >
+                回報問題
+              </a>
+            ) : (
+              <p>
+                {view.error ? (
+                  "桶況更新失敗，請重新載入後操作。"
+                ) : view.data.report_block_reason === "login_required" ? (
+                  <a
+                    href={`#login?next=${encodeURIComponent(wasteHref(`bin/${id}`, wasteType).slice(1))}`}
+                  >
+                    登入後回報
+                  </a>
+                ) : (
+                  `暫不能回報：${reasonLabels[view.data.report_block_reason || ""] || view.data.report_block_reason}`
+                )}
+              </p>
+            )}
+          </div>
         </div>
+        <p className="bin-adoption tiny">
+          認養：{view.data.adopter?.display_name || "尚無認養者"} ·
+          認養操作尚未開放。
+        </p>
+      </section>
+      <div className="bin-support-grid">
         <section className="card">
-          <h2>今天的飽足度</h2>
+          <h2>滿度與清運歷史</h2>
           <p>
             {status.fill_level_pct === null
               ? "尚無有效讀值"
               : `${status.fill_level_pct}%（模擬）`}
           </p>
           <p>觀測：{time(status.observed_at)}</p>
-          <h2>滿度與清運歷史</h2>
+          <label className="api-waste-select">
+            歷史種類
+            <select
+              aria-label="歷史種類"
+              value={historyType}
+              onChange={(e) => setHistoryType(e.target.value)}
+            >
+              <option value="general">一般垃圾</option>
+              <option value="recycling">資源回收</option>
+              <option value="legacy_unknown">舊未分類</option>
+            </select>
+          </label>
           <p className="tiny">以下為模擬時鐘，含各輪紀錄，並非實際作業時間。</p>
           <LoadState {...history} />
           {history.data?.length === 0 && <p>尚無歷史讀值</p>}
@@ -550,6 +594,10 @@ export function BinPage({
                 <span>
                   {r.fill_level_pct}% · {r.event_type} · {r.source_type}
                 </span>
+                <small>
+                  {wasteName(r.waste_type)} ·{" "}
+                  {classificationName(r.classification_source)}
+                </small>
                 <meter
                   min="0"
                   max="100"
@@ -561,25 +609,30 @@ export function BinPage({
             ))}
           </ol>
         </section>
+        <section className="card bin-community">
+          <CompletionThanks
+            cleanup={view.data.latest_cleanup}
+            binId={id}
+            wasteType={wasteType}
+            ready={!view.loading && !view.error}
+            refresh={view.reload}
+          />
+        </section>
       </div>
-      <LocationDetails
-        location={item}
-        onClose={() => {
-          window.location.hash = "map";
-        }}
-      />
-      <div className="api-detail-map">
-        <LocationMap
-          locations={[
-            {
-              ...item,
-              bin_status: status,
-              compartments: view.data.compartments,
-            },
-          ]}
-          selected={item}
-          onSelect={ignoreSelect}
+      <div className="bin-location-grid">
+        <LocationDetails
+          location={item}
+          onClose={() => {
+            window.location.hash = wasteHref("map", wasteType).slice(1);
+          }}
         />
+        <div className="api-detail-map">
+          <LocationMap
+            locations={[{ ...item, bin_status: status }]}
+            selected={item}
+            onSelect={ignoreSelect}
+          />
+        </div>
       </div>
     </main>
   );
@@ -587,12 +640,11 @@ export function BinPage({
 function Navigation({
   view,
   wasteType,
-}: {
-  view: BinView;
-  wasteType?: WasteType;
-}) {
+  onWasteChange,
+}: { view: BinView } & WasteControls) {
   const available = view.status.is_usable;
   const nextPath = query("/map/nearest-usable", {
+    waste_type: wasteType,
     district: "all",
     ...ORIGIN,
     limit: 3,
@@ -631,14 +683,23 @@ function Navigation({
         : [],
     [destination],
   );
-  const url = `${window.location.origin}${window.location.pathname}#nav/${destination?.id || view.location.id}`;
+  const url = `${window.location.origin}${window.location.pathname}${wasteHref(`nav/${destination?.id || view.location.id}`, wasteType)}`;
   const qr = useQrCode(url, 180);
   return (
     <main className="page navigation-page">
-      <a className="back-link" href={`#bin/${view.location.id}`}>
+      <a
+        className="back-link"
+        href={wasteHref(`bin/${view.location.id}`, wasteType)}
+      >
         返回桶詳情
       </a>
       <h1>步行導航</h1>
+      <WasteSelect
+        value={wasteType}
+        onChange={(value) => {
+          if (value) onWasteChange(value);
+        }}
+      />
       <p>大安森林公園固定示意起點 · 非即時 GPS，非實際道路指引。</p>
       {wasteType === "recycling" && (
         <p className="tiny">本次要丟：資源回收。</p>
@@ -661,7 +722,7 @@ function Navigation({
           </div>
           <a
             className="button primary"
-            href={`#report/${destination.id}${wasteType === "recycling" ? "?waste_type=recycling" : ""}`}
+            href={wasteHref(`report/${destination.id}`, wasteType)}
           >
             抵達後回報
           </a>
@@ -675,7 +736,7 @@ function Navigation({
       ) : (
         !alternatives.loading && <p>目前沒有其他可用桶</p>
       )}
-      <a className="back-link" href="#map">
+      <a className="back-link" href={wasteHref("map", wasteType)}>
         結束導航
       </a>
     </main>

@@ -1,4 +1,4 @@
-# 前端 API 串接驗證：第 1–4 票
+# 前端 API 串接驗證：第 1–5 票
 
 第 1–3 票紀錄（第 4 票見文末）：日期 2026-10-19，範圍為 GitHub #6、#7、#8，起始基準 38b67b8，分支 feat/frontend-v0。後端契約、資料庫 migration 與雲端部署未修改。
 
@@ -73,3 +73,110 @@ Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
 本票完整驗證：typecheck、data:check（811＝681＋130）、build、Prettier 與 git diff --check 均通過。完整 test:e2e 共 **144 項通過（3.7 分鐘）**，包含 58 項 API 流程與 86 項歷史展示回歸；正式 build 不含 localStorage 或舊展示帳本字串。build 仍有既有 MapLibre 大型 bundle 提示。最後僅調整新回報測試資料後，全部 20 項完工流程測試再次通過（29.9 秒）。
 
 限制同前：未取得真實帳密，未寫入雲端案件／照片／清空／感謝，未跑雲端 pytest、未建立資源或部署；GCS 私照、Cloud Run 實際角色操作與實體手機相機／GPS 尚未整合驗收。所有滿度仍 simulated。道路站點、非滿桶完工、修繕、成果統計等仍依後續票單開放。
+
+
+## 第 5 票：非滿桶問題處理、待修繕與無需處理
+
+2026-10-19，GitHub [#10](https://github.com/mrwenwei/BinSoon/issues/10)，基準 fd6c6d8。沿用 feat/frontend-v0，先快轉同步已合併的 main；原本機截圖保留。後端契約、資料庫與雲端部署未改。
+
+- dirty／dumping／other 到場後可上傳完成照、掛 evidence、全部查證後明確 finish，不要求或偽造清空。
+- broken 到場後可填最多 500 字原因送 defer-repair；顯示後端 repair、原因與未結案說明。修復後再掛完成照及 finish，每步用最新 ETag。桶況與維修限制重新讀取，其他 broken 事件仍存在時不自行恢復可用性。
+- WorkPhoto 支援 completion／site，按工單與用途隔離照片草稿及 media.id。無需處理使用 site 照＋全部查證＋非空白原因，再獨立 dismiss；顯示後端 dismissed／原因／證據，沒有 completion_id 或本次可讚成果，不聲稱正常完工。
+- 回報不實與現場工作分開：不實可以與工單仍到場、後續完成工作並存；不自行結算點數、關閉其他工單或改容量。市民案件、桶況、導航、最近桶與維修限制持續讀後端。
+- defer-repair／dismiss 沿用原命令重試與同帳號重新登入；key、body、ETag 不變。409／412／428 重讀後明確確認；重讀失敗時保持操作關閉。照片證據、原因、責任區／所有權與到場條件均由後端再次驗證。
+
+採用既有瀏覽器／HTTP 邊界 seam。已先確認原介面缺少非滿桶完成照、留待修繕、無需處理三個失敗案例，再逐段實作驗證。針對性桌面／Pixel 7 測試 20 項通過（28.3 秒）：各種非滿桶類型、修復後重讀、不實仍有工作、同桶其他工作保留、雙用途照片、重送、版本衝突／重讀失敗、角色／所有權／到場／空白原因、同帳號重登入。已檢視桌面 1440px 與手機 320px 的完整現場處理頁，無水平溢出、頁首不重疊，截圖在本機 .scratch/frontend-api-integration/work-resolution-*.png。
+
+### Standards
+
+獨立 reviewer 以 `git diff fd6c6d8...c3feec7` 檢查 AGENTS.md、frontend/AGENTS.md、GLOSSARY.md、專案背景與 smell baseline。查證、不實、待修繕、完成、無需處理語意各自獨立；WorkPhoto／ReasonAction 的共用範圍合理。未發現可操作的規範問題或 baseline smell。
+
+### Spec
+
+獨立 reviewer 核對 #10 與後端 work_command／requirements／可用性投影，未發現缺漏、範圍擴張或契約錯誤。非滿桶不造清空、修繕未自行解鎖、dismiss 使用 site／原因／全部查證且不冒充 completed。測試涵蓋權限、重送、衝突、同身份重登入與同桶其他工作。
+
+Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
+
+本票完整驗證：typecheck、data:check（681 桶＋130 場所、十二區）、build、Prettier 與 git diff --check 均通過。完整 test:e2e **166 項通過（4.1 分鐘）**，包含 80 項 API 流程與 86 項歷史展示回歸。新增的 22 項（桌面／手機）全部通過，含最後補入的修復一張 broken 工單後、0% 桶仍受另一損壞事件限制而不可導航的案例。正式 build 不含 localStorage／舊展示帳本；保留既有 MapLibre 大型 bundle 提示。
+
+未驗證：真實 Cloud Run 角色登入與操作、GCS 照片及實體手機相機／GPS。未取得或儲存帳密、未寫入雲端測試案件／證據／工單、未跑雲端 pytest、未清除／重設資料、未建立資源或部署。滿度仍 simulated；現場作業時間不與模擬歷史時鐘混用。
+
+
+## 雙種類 API 調整與 rebase
+
+2026-10-19，使用者要求 rebase 最新 origin/main 並適配一般垃圾／資源回收。已抓取遠端、無衝突 rebase 至 7481ba5，保留第 5 票兩個提交及本機 .scratch 截圖。未改雲端資源、schema 或後端程式；本輪程式 review 基準為 rebase 後的 c2e97e7。
+
+- DTO 接入 waste_type、classification_source、compartments；TaskReading 與 Reading 的舊未分類種類可 null，與位置 source_type／讀值 simulated 分開。沒有補造第二個地圖點、分攤滿度或複製歷史。
+- 找桶、最近桶、詳情、分頁歷史及導航把種類放入 query／cache identity；切換不保留另一槽快照。各類桶槽顯示各自滿度與可用性。歷史只查明確種類或 legacy_unknown，不混線；未分類不轉成 general。
+- 深連結及 QR 保留種類；回報明確送 waste_type。記憶體照片草稿依 bin_id／種類隔離，同帳號重登入與未知結果重試不改原 body／key。路由切換以目前 hash 為準，避免快速操作套回舊路由。
+- 隊員／市民清單可篩種類，工單、查證、完成、無需處理及清空證據標示各自種類與分類根據；不自行解除另一槽維修限制。管理員 demo-clear body 維持 reading_id，不接受 client 種類覆寫。
+- 最新有效成果依 BinView 的所選種類讀取，感謝命令按種類隔離；一般槽未知結果不阻擋或改讚回收成果。點數與會員摘要仍讀原後端彙總，不乘二。
+- 視覺：種類選單符合窄螢幕，已檢視桌面 1440px／手機 320px 桶詳情；另修正地圖提示的定位，避免浮到桶況區，測試檢查提示留在地圖內。截圖在 .scratch/frontend-api-integration/waste-compartments-*.png。
+
+採用既有瀏覽器／HTTP seam，先確認缺選單、回報缺 waste_type、兩槽按讚命令互相阻擋、工單缺種類篩選等失敗，再逐段修正。新增 18 項桌面／Pixel 7 測試通過（14.6 秒）：95% 一般／20% 回收分別可用性、單一位置與完整分頁、種類深連結、回收回報重送與重登入、雙槽按讚重試、工單篩選／管理員單槽清空、null 舊歷史及分類來源、照片草稿、延遲讀取不沿用其他種類、清單及 320px 溢出。舊導航測試與一般回報 body 斷言更新為新契約。
+
+### Standards
+
+獨立 reviewer 以 `git diff c2e97e7...e134cec` 比對 AGENTS.md 新種類規則、frontend/AGENTS.md、GLOSSARY.md、專案背景與 smell baseline，未發現可操作問題。種類、查詢身份、草稿／待重試命令隔離與模組分工符合規範，未將雙槽展開成多個位置或複製歷史。
+
+### Spec
+
+獨立 reviewer 核對 WASTE_STREAMS.md、後端 schemas／投影與本輪 diff，未發現缺漏、範圍擴張或契約錯誤。回報及按讚命令不跨種類、清空依後端工單、舊 TaskReading 可 null，舊重播不冒充當前兩槽快照。
+
+Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
+
+已再次檢視完整回歸產生的桌面／320px 手機截圖：選單、兩槽狀態、分類依據及歷史分區清楚，地圖提示留在地圖內，沒有水平溢出或頁首遮擋。Cloud Run 公開唯讀 smoke：map/locations?waste_type=recycling 回 200 且 compartments 為 general／recycling；同一 Bin 的兩種 view 均 200、各自回正確 waste_type，來源分別為 legacy_assumed_general／demo_assumption、讀值 simulated，訪客 can_report=false；legacy_unknown 歷史 200，waste_type=null、classification_source=legacy_unclassified。CORS 為 http://127.0.0.1:5173。未做授權或業務寫入。
+
+完整驗證：typecheck、data:check（811＝681 桶＋130 場所，十二區）、build、Prettier 與 git diff --check 均通過。完整 test:e2e **184 項通過（4.5 分鐘）**，包含 98 項 API 流程與 86 項歷史展示回歸。新雙種類 18 項也在完整回歸中全數通過，含地圖提示位置檢查。build 保留既有 MapLibre 大型 bundle 提示。
+
+最後 fetch 確認 origin/main 仍為 7481ba5；range-diff 確認原第 5 票 c3feec7／05d34d8 與 rebase 後 8bd846d／c2e97e7 內容等價。本機截圖保留；本輪未推送、未 force push 或合併 main。
+
+限制：所有滿度仍 simulated，CSV 無桶槽分類／現勘證據。未取得真實帳密，未驗證 Cloud Run 角色完整操作、私有 GCS、實體手機相機／GPS／跨裝置 QR。未對雲端寫入案件、清空、按讚、重設模擬、執行 pytest 或部署；原始資料／歷史未改。未串接的道路站點、通知等仍依後續票單進行。
+
+## 雙桶況詳情頁視覺整理
+
+2026-10-19，依使用者指定的 emil-design-eng 調整桶詳情：縮小吉祥物，將一般垃圾／資源回收並排為可選取的狀態卡，顯示各自滿度、可用性、滿度條與目前選擇；未知滿度不畫成 0%。點擊或鍵盤 Enter 使用原種類切換流程，導航／回報仍保留 waste_type。分類與來源可展開，展示假設及 simulated 提示仍保留。
+
+導航與回報集中於主要狀態下方；歷史、最近清運／感謝、位置來源與地圖改為獨立區塊。修正位置詳情沿用地圖浮層的高度上限與定位，讓座標／來源完整顯示，關閉鈕留在卡片內。動態僅用主操作按壓的 transform 回饋，鍵盤選取即時、支援 reduced-motion；沒有新增動畫套件。
+
+擴充既有雙種類瀏覽器案例，驗證卡片鍵盤與指標選取、aria-pressed、對應種類的導航連結與 320px 無水平溢出。截圖使用攔截 API 資料（一般 95%、回收 20%），不代表雲端當前桶況；底圖依測試環境可用性顯示。調整前後桌面／手機截圖保留於 .scratch/frontend-api-integration/waste-compartments-*.png，preview 為首屏。
+
+本輪驗證：typecheck、data:check、build、Prettier、git diff --check 通過；完整 test:e2e **184 項通過（4.5 分鐘）**。已檢視 1440px 桌面及 320px 手機模擬截圖。保留既有大型 bundle 與底圖供應端警告；未驗證實體手機與真實角色操作。未寫入雲端業務資料、未部署或推送。
+
+## 第 6 票：後端站點與道路指引（GitHub #11）
+
+依 `/staff/route-stops` 的 origin、有序 stops、waste_types 及 work_order_ids 建立正式 `#staff/route`。不查舊展示帳本、不自行派序／合併案件、不按市民可投垃圾條件過濾；全部／general／recycling 篩選送回後端。同桶每張工單皆有獨立連結，從工單可回清運路線。
+
+將既有 Valhalla UI 與請求共用為 CrewRoutePlanner，舊展示只保留 adapter。起點改為必填並驗證有效座標；對外 payload 僅含公開起點、有序桶位、車種設定，不含 session、案件 UUID、照片或說明。路線標記稱「清運站點」，不冒充 CSV 公布來源；滿度未知，不造桶況。沿用兩車種成本、polyline6、中文轉彎與來源署名，無 GPS／即時路況／順序最佳化。
+
+前景每 10 秒重讀，背景停止、離頁 abort；資料與角色 session 隔離，401 連回原入口登入，403 不借用管理員或市民權限。站點座標／順序／起點／工單集合／車種變更取消舊請求並移除結果，generated_at 單獨變更不清指引。重讀失敗仍可看先前站點與工單，但標為過期、停用計算並清道路；恢復後須手動規劃，不復活舊路線。路線服務失敗／429／20 秒逾時不畫直線替代。
+
+先以 API 瀏覽器案例確認正式入口未開放，再實作首個有序合站與雙車種流程，接續驗證延遲回應、同桶工單變動、空站點、種類篩選、失敗與恢復、403／401／角色隔離、背景／離頁停止及跨隊員分頁實際 finish 後站點移除。新案例在桌面與手機皆已通過；既有道路指引回歸通過。已檢視桌面 1440px 與手機 320px 截圖 `.scratch/frontend-api-integration/api-route-*.png`，保留完整底圖署名及清單替代入口。測試採 HTTP 攔截，不代表真實 Cloud Run／Valhalla 整合或現場行駛驗收。
+
+### Standards
+
+獨立 reviewer 以 `git diff a6d455e...0affa7d` 核對 AGENTS.md、frontend/AGENTS.md、GLOSSARY.md、專案背景與 smell baseline，0 項硬違規、0 項需處理的 heuristic finding。站點順序、各工單 UUID、未知桶況、座標、session 隔離與來源署名均符合規範；共用介面未導入舊展示帳本。
+
+### Spec
+
+獨立 reviewer 比對 #11、RouteStops 契約與後端實作，0 項 actionable finding。起點與站序、雙種類合站及各工單入口、外傳座標限制、取消舊路線、失敗保留操作、前景重讀與身份失效均符合範圍。Review 結果：Standards 0／Spec 0，兩軸均無待修問題。
+
+完整回歸首次揭露既有滿桶流程測試的導航斷言時序問題：點「導航過去」後仍等待桶詳情 H1，可能在 hash 切換完成前提前通過。實際頁面已為步行導航，目的桶是 H2。測試改為同時確認導航 URL、步行導航 H1 與正確目的桶 H2，保留 evidence→finish→demo-clear→like 的命令順序斷言；未修改產品流程。
+
+補充 review：兩位 reviewer 核對 `0affa7d...f16c2c4`，確認導航斷言改為穩定的 URL／H1／H2，強化驗收且未放寬命令條件，Standards 0／Spec 0。修正後的原失敗案例在桌面／手機 2 項通過（14.5 秒），再完整執行 **200 項全部通過（5.1 分鐘）**：114 項 API 流程＋86 項歷史展示回歸，含新道路流程 16 項。
+
+本輪 typecheck、data:check（681 桶＋130 場所、十二區）、build、Prettier 與 git diff --check 均通過。production build 未帶入舊展示帳本或測試密碼；保留既有大型 MapLibre bundle 提示與底圖供應端警告。已檢視 1440px 桌面／320px 手機，無水平溢出，底圖署名及工單清單可用。
+
+限制：未取得真實帳密、未驗證 Cloud Run 授權路線／真實角色完整操作、實體手機、GPS 或現場車種通行限制；本輪 Valhalla 回應採攔截，沒有新做外部服務實測。滿度仍 simulated，CSV 無種類／現勘證據。未對雲端建立案件、上傳證據、清空、按讚、重設或跑 pytest，未建立資源或部署，原始資料與歷史未修改。
+
+## 合併 main 設計系統（PR #22）
+
+使用者要求推送並合併 #10／#11 時，fetch 發現 main 已前進至 e1a58c3（設計系統 #22）。以 merge 保留兩側提交歷史，解決 AppNav、桶詳情、回報、隊員、DTO 及測試重疊；未 force push。保留 main 深色 token、三態、StationCard、手機抽屜及自訂灰綠底圖，同時保留種類深連結、照片草稿／未知命令隔離、工單完成／待修繕／無需處理與後端道路站點。
+
+StationCard 的各槽可直接選取，保留全站 n/2 可用視覺；所選種類仍控制導航／回報／歷史／感謝。回報改用 main 的 WastePicker；切換會重掛對應種類表單，瀏覽器測試以點擊後重新確認新 radio 的 checked 狀態，避免檢查已卸載的舊元素。照片草稿驗證維持不跨槽。一般需求不自動轉成回收，另提供明確回收導航選項。已檢視桌面及 320px 手機深色畫面並修正窄螢幕標籤／滿度與歷史排版。
+
+2026-10-20 合併 review 修正：Standards 指出隊員／管理員 Compartment 仍用舊視覺，以及新增字級未用 token；Spec 指出替代導航被降為外框按鈕。已統一為 StationCard 與共用 API 三態／文案轉接、來源說明保留，字級改 token、替代導航恢復 teal 主按鈕。新增的三態卡使狀態文字同時出現在桶槽與所選操作區，既有流程測試改精確驗證所選槽狀態，保留原有滿度、權限、命令順序與結果斷言。
+
+補充合併 review：兩位 reviewer 已核對 `a86b061..f84eeb6`，確認三態共用、字級 token 與 primary 導航修復完成；沒有新增標準問題或 #10／#11 功能遺失。精確鎖定所選槽的狀態斷言未放寬驗收。修正後工單／雙種類集中回歸 60 項全數通過（1.8 分鐘），道路／手機導覽集中回歸 38 項通過（57 秒）。
+
+合併後最終驗證：`npm run test:e2e` **206 項全部通過（5.5 分鐘）**，涵蓋桌面與 Pixel 7 專案，另含 320px 響應式案例。typecheck、data:check、build、Prettier 與 diff 檢查皆通過；桌面／手機畫面已檢視。Standards／Spec review 無待修問題。保留既有大型 bundle 提示與地圖生命週期 console 警告；未驗證實體手機、真實角色登入或 Cloud Run／Valhalla 完整外部整合，滿度仍 simulated。未寫入雲端業務資料或部署。

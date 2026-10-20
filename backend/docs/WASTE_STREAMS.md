@@ -1,6 +1,6 @@
 # 一般垃圾與資源回收：資料模型及API串接
 
-本輪程式已改為每個Bin點位包含兩種獨立桶槽：`general`（一般垃圾）、`recycling`（資源回收）。Bin UUID、座標、來源及existing/proposed意義不變；不新增另一個地圖點，不將681個官方位置宣稱為1362個已確認實體桶。frontend未修改。本機與Cloud Run schema=0006；雙種類正式revision為binsoon-api-00008-v7k，100%流量。
+本輪程式已改為每個Bin點位包含兩種獨立桶槽：`general`（一般垃圾）、`recycling`（資源回收）。Bin UUID、座標、來源及existing/proposed意義不變；不新增另一個地圖點，不將681個官方位置宣稱為1362個已確認實體桶。前端已在功能分支接入種類切換、查詢／歷史、回報／工單與按讚隔離；驗證範圍見 [前端 README](../../frontend/README.md) 與 [串接驗證](../../docs/FRONTEND_API_INTEGRATION_VALIDATION.md)。本機與Cloud Run schema=0006；雙種類正式revision為binsoon-api-00008-v7k，100%流量。
 
 ## 1. 資料來源與遷移假設
 

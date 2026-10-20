@@ -1,3 +1,4 @@
+import { type WasteMetadata, type WasteType } from "./waste";
 export type Role = "citizen" | "staff" | "admin";
 export type User = {
   id: string;
@@ -12,10 +13,10 @@ export type Session = {
   token_type: "bearer";
   user: User;
 };
-import { stationState, type BinState, type WasteType } from "./binState";
+import { stationState, type BinState } from "./binState";
 export type { WasteType };
 export type Position = { latitude: number; longitude: number };
-export type BinStatus = {
+export type BinStatus = WasteMetadata & {
   fill_level_pct: number | null;
   capacity_liters: number | null;
   estimated_used_liters: number | null;
@@ -51,9 +52,9 @@ export type ApiLocation = Position & {
   distance_m: number | null;
   walking_estimate_seconds: number | null;
   bin_status: BinStatus | null;
-  compartments?: BinStatus[];
+  compartments: BinStatus[];
 };
-export type Cleanup = {
+export type Cleanup = WasteMetadata & {
   id: string;
   bin_id: string;
   work_order_id: string;
@@ -62,7 +63,8 @@ export type Cleanup = {
   liked_by_me: boolean;
   can_like: boolean;
 };
-export type TaskReading = {
+export type TaskReading = Omit<WasteMetadata, "waste_type"> & {
+  waste_type: WasteType | null;
   id: string;
   bin_id: string;
   work_order_id: string;
@@ -75,7 +77,7 @@ export type TaskReading = {
 export type BinView = {
   location: ApiLocation;
   status: BinStatus;
-  compartments?: BinStatus[];
+  compartments: BinStatus[];
   adopter: { display_name: string } | null;
   latest_cleanup: Cleanup | null;
   my_adoption_id: string | null;
@@ -84,6 +86,8 @@ export type BinView = {
   report_block_reason: string | null;
 };
 export type Reading = {
+  waste_type: WasteType | null;
+  classification_source: string;
   id: string;
   recorded_at: string;
   fill_level_pct: number;
@@ -95,6 +99,17 @@ export type PageData<T> = {
   items: T[];
   page: { limit: number; offset: number; total: number };
 };
+export type RouteStops = {
+  origin: Position & { source: "demo_fixed" };
+  stops: (Position & {
+    bin_id: string;
+    label: string;
+    work_order_ids: string[];
+    waste_types: WasteType[];
+    priority: string;
+  })[];
+  generated_at: string;
+};
 export type Problem = "full" | "dirty" | "dumping" | "broken" | "other";
 export type WorkStatus =
   | "pending"
@@ -104,7 +119,7 @@ export type WorkStatus =
   | "repair"
   | "completed"
   | "dismissed";
-export type Report = {
+export type Report = WasteMetadata & {
   id: string;
   bin_id: string;
   event_id: string;
@@ -147,7 +162,7 @@ export type PointEntry = {
   created_at: string;
   type: string;
 };
-export type WorkOrder = {
+export type WorkOrder = WasteMetadata & {
   id: string;
   version: number;
   bin_id: string;
@@ -367,9 +382,14 @@ export function time(value: string | null) {
 // 後端：hungry <50、half 50–79、full ≥80、unknown＝未知、維修或撤除。
 // 前端：hungry、half → 餓了；full → 吃飽了；unknown → 失聯。不改後端契約。
 export function apiBinState(status: BinStatus | null | undefined): BinState {
-  if (!status) return "offline";
+  if (
+    !status ||
+    status.fill_level_pct == null ||
+    status.operational_status !== "normal"
+  )
+    return "offline";
   if (status.fill_status === "hungry" || status.fill_status === "half")
-    return "hungry";
+    return status.is_usable ? "hungry" : "offline";
   if (status.fill_status === "full") return "full";
   return "offline";
 }

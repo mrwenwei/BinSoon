@@ -1,3 +1,5 @@
+import { wasteHref, type WasteType } from "../../data/waste";
+import { WasteInfo, Compartments } from "./Waste";
 import { useEffect, useRef, useState } from "react";
 import {
   ApiError,
@@ -26,6 +28,13 @@ const requirementLabels: Record<string, string> = {
   fresh_clear_reading: "本次有效清空回傳",
 };
 export function WorkRequirements({ detail }: { detail: WorkDetail }) {
+  if (detail.work_order.status === "dismissed")
+    return (
+      <section className="card">
+        <h2>結案結果</h2>
+        <p>本案已依現況證據確認無需處理，未產生可計件完成紀錄。</p>
+      </section>
+    );
   return (
     <section className="card">
       <h2>完成條件</h2>
@@ -37,17 +46,22 @@ export function WorkRequirements({ detail }: { detail: WorkDetail }) {
     </section>
   );
 }
-export function CompletionPhoto({
-  scope,
+export function WorkPhoto({
+  scope: workScope,
+  purpose = "completion",
   disabled,
   saved,
   onEvidence,
 }: {
   scope: string;
+  purpose?: "completion" | "site";
   disabled: boolean;
   saved: boolean;
   onEvidence: (mediaId: string) => Promise<unknown>;
 }) {
+  const scope = `${workScope}/${purpose}`;
+  const title = purpose === "site" ? "現況照片" : "完成照片";
+  const photo = purpose === "site" ? "現況照" : "完成照";
   const { session, invalidate } = useSession();
   const store = useWorkCommands();
   const candidate = store.photos[scope];
@@ -127,7 +141,7 @@ export function CompletionPhoto({
       if (!mediaId) {
         const form = new FormData();
         form.append("file", draft.file);
-        form.append("purpose", "completion");
+        form.append("purpose", purpose);
         const { data } = await request<{ id: string }>("/media", {
           method: "POST",
           body: form,
@@ -152,16 +166,17 @@ export function CompletionPhoto({
       if (alive.current) setBusy(false);
     }
   }
-  if (saved) return <p>完成照已保存</p>;
+  if (saved) return <p>{photo}已保存</p>;
   return (
     <section className="api-form api-completion-photo">
-      <h3>完成照片</h3>
+      <h3>{title}</h3>
       <p className="tiny">
         到場後再拍攝／上傳，一張 JPEG、PNG 或 WebP，最多 5 MiB／2000
-        萬像素。上傳後須掛到本工單，再明確提交完成。
+        萬像素。上傳後須掛到本工單，再明確
+        {purpose === "site" ? "確認無需處理" : "提交完成"}。
       </p>
       <label>
-        完成照片
+        {title}
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
@@ -173,7 +188,7 @@ export function CompletionPhoto({
         />
       </label>
       {preview && (
-        <img className="api-photo" src={preview} alt="待送出的完成照片" />
+        <img className="api-photo" src={preview} alt={`待送出的${title}`} />
       )}
       {error && <p role="alert">{error}</p>}
       {draft?.mediaId && <p>照片已上傳，尚待確認掛到本工單；不會重複上傳。</p>}
@@ -187,10 +202,10 @@ export function CompletionPhoto({
         }}
       >
         {busy
-          ? "處理完成照中…"
+          ? `處理${photo}中…`
           : draft?.mediaId
-            ? "掛上已上傳的完成照"
-            : "上傳並掛上完成照"}
+            ? `掛上已上傳的${photo}`
+            : `上傳並掛上${photo}`}
       </button>
     </section>
   );
@@ -199,6 +214,7 @@ export function WorkEvidence({ detail }: { detail: WorkDetail }) {
   return (
     <section className="card" aria-label="工單證據">
       <h2>工單證據</h2>
+      <WasteInfo value={detail.work_order} />
       {detail.evidence.length ? (
         detail.evidence.map((e) => (
           <div key={e.id}>
@@ -212,6 +228,7 @@ export function WorkEvidence({ detail }: { detail: WorkDetail }) {
       {detail.latest_reading && (
         <div>
           <h3>本次清空證據</h3>
+          <WasteInfo value={detail.latest_reading} />
           <p>
             桶內滿度 {detail.latest_reading.fill_level_pct}% ·{" "}
             {detail.latest_reading.source_type}
@@ -228,6 +245,21 @@ export function WorkEvidence({ detail }: { detail: WorkDetail }) {
     </section>
   );
 }
+export function DismissalRecord({ detail }: { detail: WorkDetail }) {
+  const work = detail.work_order;
+  if (work.status !== "dismissed") return null;
+  return (
+    <section className="card">
+      <h2>已確認無需處理</h2>
+      <WasteInfo value={work} />
+      <p>結案時間：{time(work.completed_at)}</p>
+      <p>原因：{work.reason || "未提供"}</p>
+      <p>
+        依現況照片與逐筆查證結案，不計完成件數，也不產生本次可讚成果。其他同桶工單仍依各自狀態處理。
+      </p>
+    </section>
+  );
+}
 export function CompletionRecord({ detail }: { detail: WorkDetail }) {
   const { session } = useSession();
   const work = detail.work_order;
@@ -238,6 +270,7 @@ export function CompletionRecord({ detail }: { detail: WorkDetail }) {
     <section className="card" aria-label="工單完成紀錄">
       <span className="demo-tag">有證據的工作成果</span>
       <h2>工作已完成</h2>
+      <WasteInfo value={work} />
       <p>完成紀錄 {work.completion_id}</p>
       <p>完成時間：{time(work.completed_at)}</p>
       <p>查證與點數結算是獨立結果，不會再次發點。</p>
@@ -332,6 +365,8 @@ function AdminWork({ id }: { id: string }) {
             <h2>{detail.data.location.label}</h2>
             <p>工單狀態：{workLabels[work!.status]}</p>
             <p>工單版本 v{work!.version}</p>
+            <WasteInfo value={work!} />
+            <Compartments items={detail.data.location.compartments} />
             <p>工單 ID：{id}</p>
             <p>
               桶內滿度：
@@ -388,18 +423,20 @@ function AdminWork({ id }: { id: string }) {
 export function CompletionThanks({
   cleanup,
   binId,
+  wasteType,
   ready,
   refresh,
 }: {
   cleanup: Cleanup | null;
   binId: string;
+  wasteType: WasteType;
   ready: boolean;
   refresh: () => void;
 }) {
   const { session } = useSession();
   const citizen = Boolean(session?.user.roles.includes("citizen"));
   const action = useCommand<Cleanup>({
-    scope: `/bins/${binId}/thanks`,
+    scope: `/bins/${binId}/thanks/${wasteType}`,
     authorized: citizen,
     ready,
     refresh,
@@ -414,6 +451,7 @@ export function CompletionThanks({
       {cleanup ? (
         <>
           <h3>最近一次清運／清潔完成</h3>
+          <WasteInfo value={cleanup} />
           <p>
             {time(cleanup.completed_at)} · {cleanup.like_count} 個感謝
           </p>
@@ -439,7 +477,9 @@ export function CompletionThanks({
             {cleanup.liked_by_me ? "已感謝" : "謝謝清潔隊"}
           </button>
           {!citizen && (
-            <a href={`#login?next=${encodeURIComponent(`bin/${binId}`)}`}>
+            <a
+              href={`#login?next=${encodeURIComponent(wasteHref(`bin/${binId}`, wasteType).slice(1))}`}
+            >
               市民登入後感謝
             </a>
           )}

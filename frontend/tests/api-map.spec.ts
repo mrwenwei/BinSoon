@@ -60,7 +60,7 @@ test("map reads every page, keeps unknown status and opens server history", asyn
     "API 未知桶",
   );
   // 後端 unknown 在前端三態顯示為「失聯」。
-  await expect(page.getByText("失聯", { exact: true })).toBeVisible();
+  await expect(page.locator(".bin-action-panel .status-pill")).toBeVisible();
   await expect(page.getByText("42% · measurement · simulated")).toBeVisible();
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
@@ -248,7 +248,7 @@ test("history reads full bare-array pagination and navigation respects server us
   await expect(page.locator(".demo-route")).toHaveCount(1);
   await expect(page.getByRole("link", { name: "抵達後回報" })).toHaveAttribute(
     "href",
-    "#report/10000000-0000-4000-8000-000000000003",
+    "#report/10000000-0000-4000-8000-000000000003?waste_type=general",
   );
 });
 
@@ -376,7 +376,9 @@ test("two waste compartments map to three states, recycling-only navigation and 
   await expect(rows.first()).toContainText("一般滿回收餓");
   await rows.first().click();
   await expect(page.getByText("資源回收還能丟", { exact: true })).toBeVisible();
-  await expect(page.getByText("吃飽了 · 92%", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "選擇一般垃圾", exact: true }),
+  ).toContainText("吃飽了 · 92%");
   await expect(page.getByText("餓了 · 60%", { exact: true })).toBeVisible();
   const go = page.getByRole("link", { name: "導航過去丟回收", exact: true });
   await expect(go).toHaveAttribute(

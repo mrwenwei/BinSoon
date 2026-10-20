@@ -62,6 +62,8 @@ export function StationCard({
   stats,
   children,
   className = "",
+  selectedWaste,
+  onSelectWaste,
 }: {
   title?: ReactNode;
   subtitle?: ReactNode;
@@ -71,6 +73,8 @@ export function StationCard({
   stats?: { label: string; value: ReactNode }[];
   children?: ReactNode;
   className?: string;
+  selectedWaste?: WasteType;
+  onSelectWaste?: (type: WasteType) => void;
 }) {
   const state = compartments.length
     ? stationState(compartments)
@@ -143,23 +147,49 @@ export function StationCard({
         </>
       ) : (
         <ul className="compartments" aria-label="一般垃圾與資源回收">
-          {compartments.map((c) => (
-            <li
-              key={c.wasteType}
-              className={`compartment ${stateVisual[c.state].className}`}
-            >
-              <span className="compartment-name">
-                <WasteIcon type={c.wasteType} />
-                {wasteLabels[c.wasteType]}
-                <span className="compartment-status">{c.statusText}</span>
-              </span>
-              <span className="compartment-pct">
-                {c.pct ?? "—"}
-                {c.pct !== null && <small>%</small>}
-              </span>
-              <FillBar c={c} />
-            </li>
-          ))}
+          {compartments.map((c) => {
+            const content = (
+              <>
+                <span className="compartment-name">
+                  <WasteIcon type={c.wasteType} />
+                  {wasteLabels[c.wasteType]}
+                  <span className="compartment-status">{c.statusText}</span>
+                </span>
+                <span className="compartment-pct">
+                  {c.pct ?? "—"}
+                  {c.pct !== null && <small>%</small>}
+                </span>
+                <FillBar c={c} />
+                {onSelectWaste && (
+                  <span className="compartment-choice">
+                    {selectedWaste === c.wasteType
+                      ? "✓ 目前選擇"
+                      : "選擇此種類 →"}
+                  </span>
+                )}
+              </>
+            );
+            return (
+              <li
+                key={c.wasteType}
+                className={`compartment ${stateVisual[c.state].className}${onSelectWaste ? " selectable" : ""}`}
+              >
+                {onSelectWaste ? (
+                  <button
+                    type="button"
+                    className="compartment-select"
+                    aria-label={`選擇${wasteLabels[c.wasteType]}`}
+                    aria-pressed={selectedWaste === c.wasteType}
+                    onClick={() => onSelectWaste(c.wasteType)}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  content
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       {!single && stats && (
