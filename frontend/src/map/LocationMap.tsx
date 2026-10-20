@@ -57,8 +57,9 @@ export function LocationMap({
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
   const markerRecords = useRef<
-    { marker: L.Marker; location: LocationRecord }[]
+    { marker: L.Marker; location: LocationRecord; iconSignature: string }[]
   >([]);
+  const markerPositions = useRef("");
   const [basemapFailed, setBasemapFailed] = useState(false);
   useEffect(() => {
     const instance = L.map(container.current!, {
@@ -111,53 +112,95 @@ export function LocationMap({
       observer.disconnect();
       instance.remove();
       map.current = null;
+      markerRecords.current = [];
+      markerPositions.current = "";
     };
   }, []);
   useEffect(() => {
     const instance = map.current!;
-    markers.current!.clearLayers();
-    markerRecords.current = [];
+    const previous = new Map(
+      markerRecords.current.map((record) => [
+        `${record.location.kind}/${record.location.id}`,
+        record,
+      ]),
+    );
+    const next: typeof markerRecords.current = [];
     for (const location of locations) {
-      const marker = L.marker([location.latitude, location.longitude], {
-        icon: locationMarkerIcon(location, false, removedIds, operations),
-        title: `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`,
-        alt: `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`,
-        riseOnHover: true,
-      })
-        .on("click", () => onSelect(location))
-        .addTo(markers.current!);
-      marker
-        .getElement()
-        ?.setAttribute(
-          "aria-label",
-          `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`,
-        );
-      markerRecords.current.push({ marker, location });
+      const key = `${location.kind}/${location.id}`;
+      const label = `${location.kind === "bin" && binMarkerLabel ? binMarkerLabel : kindLabel[location.kind]}：${location.label}`;
+      const icon = locationMarkerIcon(
+        location,
+        location.id === selected?.id,
+        removedIds,
+        operations,
+      );
+      const iconSignature = JSON.stringify(icon.options);
+      let record = previous.get(key);
+      if (!record) {
+        record = {
+          marker: L.marker([location.latitude, location.longitude], {
+            icon,
+            title: label,
+            alt: label,
+            riseOnHover: true,
+          }).addTo(markers.current!),
+          location,
+          iconSignature,
+        };
+      } else {
+        if (
+          !record.marker
+            .getLatLng()
+            .equals([location.latitude, location.longitude])
+        )
+          record.marker.setLatLng([location.latitude, location.longitude]);
+        if (record.iconSignature !== iconSignature) record.marker.setIcon(icon);
+        record.location = location;
+        record.iconSignature = iconSignature;
+      }
+      record.marker.off("click").on("click", () => onSelect(location));
+      const element = record.marker.getElement();
+      element?.setAttribute("aria-label", label);
+      element?.setAttribute("title", label);
+      record.marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
+      next.push(record);
+      previous.delete(key);
     }
-    if (locations.length && !selectionBounds)
+    for (const record of previous.values())
+      markers.current!.removeLayer(record.marker);
+    markerRecords.current = next;
+    // Only a different set of positions reframes results. Status polls must
+    // preserve the user's current pan and zoom, even when DTO objects are new.
+    const positions = locations
+      .map((p) => JSON.stringify([p.kind, p.id, p.latitude, p.longitude]))
+      .sort()
+      .join(";");
+    if (
+      positions !== markerPositions.current &&
+      locations.length &&
+      !selectionBounds
+    )
       instance.fitBounds(
         L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
         { padding: [45, 50], maxZoom: 15, animate: false },
       );
-  }, [locations, onSelect, removedIds, selectionBounds, binMarkerLabel]);
+    markerPositions.current = positions;
+  }, [
+    locations,
+    onSelect,
+    removedIds,
+    selectionBounds,
+    binMarkerLabel,
+    operations,
+    selected?.id,
+  ]);
   useEffect(() => {
-    for (const { marker, location } of markerRecords.current) {
-      marker.setIcon(
-        locationMarkerIcon(
-          location,
-          location.id === selected?.id,
-          removedIds,
-          operations,
-        ),
-      );
-      marker.setZIndexOffset(location.id === selected?.id ? 1000 : 0);
-    }
     if (!selected) return;
     const point: L.LatLngExpression = [selected.latitude, selected.longitude];
     map.current!.setView(point, Math.max(map.current!.getZoom(), 16), {
       animate: false,
     });
-  }, [selected, locations, removedIds, operations]);
+  }, [selected?.id, selected?.latitude, selected?.longitude]);
   useEffect(() => {
     const points = roadRoute || demoRoute;
     const start = routeOrigin || points?.[0];

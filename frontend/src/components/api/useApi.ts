@@ -102,6 +102,7 @@ export function useApi<T>(
     stale: Boolean(visible?.result && visible.error),
     retryAt: visible?.retryAt,
     loading: key !== null && (!visible || visible.loading),
+    refreshing: Boolean(visible?.result && visible.loading),
     reload,
   };
 }

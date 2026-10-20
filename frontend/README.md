@@ -33,6 +33,12 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 
 新契約與資料限制見 [WASTE_STREAMS](../backend/docs/WASTE_STREAMS.md)。認養快捷回報也按種類及認養 UUID 隔離草稿。
 
+## 背景更新與手動驗收
+
+桶詳情與清單前景每 10 秒讀後端，保留現有內容直到新資料到達；有資料時不插入會推動版面的載入提示，首次載入及更新失敗仍有提示。地圖按位置 ID 更新標記，只有外觀改變才替換圖示；桶況更新不重設使用者縮放／拖曳，查詢位置集合改變時才重新框選範圍。背景停止、離頁取消與操作版本檢查維持原規則。
+
+提案列表為空時，可從「建立提案」開始；逐步流程與單帳號可驗收的範圍見 [提案投票操作手冊](../docs/PROPOSAL_VOTING_WALKTHROUGH.md)。桶詳情更新修正見 [驗證紀錄](../docs/FRONTEND_REFRESH_VALIDATION.md)。
+
 ## API 設定與身份
 
 `frontend/.env.example` 提供公開 `VITE_API_BASE_URL`，未設定時使用已部署的 Cloud Run `/api/v1`。可改成本機 API；變更後重啟 dev 或重新 build。這是公開 URL，密碼／token 絕不放入 VITE_* 或 Git。
@@ -170,6 +176,8 @@ npm run preview
 完整規格見 [B_FLOW.md](../docs/B_FLOW.md)，驗證紀錄見 [B_FLOW_VALIDATION.md](../docs/B_FLOW_VALIDATION.md)。
 
 ## 驗證
+
+完整回歸包含開發專用的 `tests/legacy/`，必須使用 Vite dev server。若 5173 正在執行 `npm run preview`，先停止該預覽再跑完整測試，避免 Playwright 誤用不含歷史入口的 production 產物。
 
 另開終端機，在 `frontend/` 執行：
 
