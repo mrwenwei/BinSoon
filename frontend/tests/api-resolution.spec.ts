@@ -31,7 +31,11 @@ test("dirty work finishes with completion evidence without any clearing and the 
     citizen.getByText("工單進度：已完成", { exact: true }),
   ).toBeVisible();
   await citizen.getByRole("link", { name: "查看這個桶", exact: true }).click();
-  await expect(citizen.getByText("餓了 · 40%", { exact: true })).toBeVisible();
+  await expect(
+    citizen
+      .locator(".bin-action-panel .status-pill")
+      .filter({ hasText: "餓了 · 40%" }),
+  ).toBeVisible();
   await expect(
     citizen.getByRole("button", { name: "謝謝清潔隊", exact: true }),
   ).toBeEnabled();
@@ -78,7 +82,11 @@ test("broken work keeps repair restrictions until repaired without zeroing capac
     page.getByRole("heading", { name: "工作已完成", exact: true }),
   ).toBeVisible();
   await citizen.bringToFront();
-  await expect(citizen.getByText("餓了 · 40%", { exact: true })).toBeVisible({
+  await expect(
+    citizen
+      .locator(".bin-action-panel .status-pill")
+      .filter({ hasText: "餓了 · 40%" }),
+  ).toBeVisible({
     timeout: 15000,
   });
   await expect(
@@ -209,7 +217,9 @@ test("a rejected dumping report can still need work and another work order stays
   ).toBeVisible();
   await citizen.getByRole("link", { name: "查看這個桶", exact: true }).click();
   await expect(
-    citizen.getByText("吃飽了 · 90%", { exact: true }),
+    citizen
+      .locator(".bin-action-panel .status-pill")
+      .filter({ hasText: "吃飽了 · 90%" }),
   ).toBeVisible();
 });
 

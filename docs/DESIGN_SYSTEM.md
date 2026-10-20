@@ -90,7 +90,7 @@
 | `full` | 吃飽了 | 80% 以上 | `status-full` 橘，滿度條加斜紋 |
 | `offline` | 失聯 | 沒有讀值、維修中或撤除 | `status-offline` 灰＋虛線外框 |
 
-**後端 API 仍回四態 `fill_status`**（hungry <50、half 50–79、full ≥80、unknown＝未知／維修／撤除）。前端只在 API 轉接層對照，不改後端與 API 契約：`src/data/api.ts` 的 `apiBinState()`：`hungry`、`half` → hungry；`full` → full；`unknown` → offline。狀態列文字由 `components/api/MapPages.tsx` 的 `statusText()` 產生（撤除→「已撤除」、維修→「維修中」、無讀值→「失聯」、其餘「餓了 · 62%」）。視覺對照（token、虛線、class）集中在 `src/components/binVisual.ts` 的 `stateVisual`，CSS 用 `.state-hungry/.state-full/.state-offline`。
+**後端 API 仍回四態 `fill_status`**（hungry <50、half 50–79、full ≥80、unknown＝未知／維修／撤除）。前端只在 API 轉接層對照，不改後端與 API 契約：`src/data/api.ts` 的 `apiBinState()`：`hungry`、`half` → hungry；`full` → full；`unknown` → offline。狀態列文字由 `components/api/Waste.tsx` 的 `statusText()` 產生（撤除→「已撤除」、維修→「維修中」、無讀值→「失聯」、其餘「餓了 · 62%」）。視覺對照（token、虛線、class）集中在 `src/components/binVisual.ts` 的 `stateVisual`，CSS 用 `.state-hungry/.state-full/.state-offline`。
 
 **一個點兩個桶**（與 `backend/docs/WASTE_STREAMS.md` 一致）：
 

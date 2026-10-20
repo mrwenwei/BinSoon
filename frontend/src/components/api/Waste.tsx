@@ -1,4 +1,6 @@
-import { type BinStatus } from "../../data/api";
+import { stateLabels } from "../../data/binState";
+import { StationCard, type CardCompartment } from "../StationCard";
+import { apiBinState, apiCompartments, type BinStatus } from "../../data/api";
 import {
   classificationName,
   wasteName,
@@ -46,76 +48,31 @@ export function WasteInfo({
     </p>
   );
 }
-export function Compartments({
-  items,
-  selected,
-  onSelect,
-}: {
-  items?: BinStatus[];
-  selected?: WasteType;
-  onSelect?: (value: WasteType) => void;
-}) {
-  if (!items?.length) return null;
+export function statusText(status: BinStatus | null) {
+  return status?.operational_status === "removed"
+    ? "已撤除"
+    : status?.operational_status === "repair"
+      ? "維修中"
+      : status?.fill_level_pct == null
+        ? stateLabels.offline
+        : `${stateLabels[apiBinState(status)]} · ${status.fill_level_pct}%`;
+}
+export function compartmentCards(items: BinStatus[]): CardCompartment[] {
+  return items.map((item) => ({
+    wasteType: item.waste_type,
+    state: apiBinState(item),
+    pct: item.operational_status === "removed" ? null : item.fill_level_pct,
+    statusText: statusText(item),
+  }));
+}
+export function CompartmentSources({ items }: { items: BinStatus[] }) {
   return (
-    <section
-      className={`api-compartments${onSelect ? " compartment-picker" : ""}`}
-      aria-label="各類桶槽"
-    >
-      <h3>同一點位的獨立桶槽</h3>
-      <div className="compartment-grid">
-        {items.map((item) => {
-          const content = (
-            <>
-              <span className="compartment-label">
-                {wasteName(item.waste_type)}：
-                <strong>
-                  {item.fill_level_pct == null
-                    ? "滿度未知"
-                    : `${item.fill_level_pct}%`}
-                </strong>
-              </span>
-              <span className="compartment-availability">
-                {item.is_usable
-                  ? "可使用"
-                  : item.operational_status === "repair"
-                    ? "維修中"
-                    : "目前不可用"}
-              </span>
-              {item.fill_level_pct != null && (
-                <meter
-                  min="0"
-                  max="100"
-                  value={item.fill_level_pct}
-                  aria-label={`${wasteName(item.waste_type)}滿度`}
-                />
-              )}
-              {onSelect && (
-                <span className="compartment-choice">
-                  {selected === item.waste_type ? "✓ 目前選擇" : "選擇此種類 →"}
-                </span>
-              )}
-            </>
-          );
-          return onSelect ? (
-            <button
-              key={item.waste_type}
-              type="button"
-              className="compartment-card"
-              data-usable={item.is_usable}
-              aria-pressed={selected === item.waste_type}
-              aria-label={`選擇${wasteName(item.waste_type)}`}
-              onClick={() => onSelect(item.waste_type)}
-            >
-              {content}
-            </button>
-          ) : (
-            <div key={item.waste_type} className="compartment-card">
-              {content}
-            </div>
-          );
-        })}
-      </div>
-      <p className="tiny">分類為展示假設，未經現場盤點；兩槽仍是同一個位置。</p>
+    <>
+      <p className="tiny">
+        {items.length > 1
+          ? "分類為展示假設，未經現場盤點；兩槽仍是同一個位置。"
+          : "後端未提供完整分槽資料，僅顯示已回傳種類；分類為展示假設，未經現場盤點。"}
+      </p>
       <details className="compartment-sources">
         <summary>分類與讀值來源</summary>
         {items.map((item) => (
@@ -126,6 +83,18 @@ export function Compartments({
           </p>
         ))}
       </details>
+    </>
+  );
+}
+export function Compartments({ items }: { items?: BinStatus[] }) {
+  if (!items?.length) return null;
+  return (
+    <section className="api-compartments" aria-label="各類桶槽">
+      <h3>同一點位的獨立桶槽</h3>
+      <StationCard
+        compartments={compartmentCards(apiCompartments(items[0], items))}
+      />
+      <CompartmentSources items={items} />
     </section>
   );
 }

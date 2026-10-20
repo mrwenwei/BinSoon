@@ -4,7 +4,13 @@ import {
   wasteHref,
   type WasteControls,
 } from "../../data/waste";
-import { WasteSelect, WasteInfo } from "./Waste";
+import {
+  WasteSelect,
+  WasteInfo,
+  statusText,
+  compartmentCards,
+  CompartmentSources,
+} from "./Waste";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   allPages,
@@ -18,11 +24,10 @@ import {
   type BinStatus,
   type BinView,
   type Reading,
-  type WasteType,
 } from "../../data/api";
-import { stateLabels, usableCount, wasteLabels } from "../../data/binState";
+import { stateLabels, usableCount } from "../../data/binState";
 import { stateVisual } from "../binVisual";
-import { StationCard, type CardCompartment } from "../StationCard";
+import { StationCard } from "../StationCard";
 import {
   districts,
   kindLabel,
@@ -47,16 +52,6 @@ const reasonLabels: Record<string, string> = {
   login_required: "需登入",
   suspended: "回報資格暫停",
 };
-// 列上的狀態文字：三態標籤（API 四態在 apiBinState 轉成三態）＋滿度。
-export function statusText(status: BinStatus | null) {
-  return status?.operational_status === "removed"
-    ? "已撤除"
-    : status?.operational_status === "repair"
-      ? "維修中"
-      : status?.fill_level_pct == null
-        ? stateLabels.offline
-        : `${stateLabels[apiBinState(status)]} · ${status.fill_level_pct}%`;
-}
 export function Status({ status }: { status: BinStatus | null }) {
   return (
     <span
@@ -65,14 +60,6 @@ export function Status({ status }: { status: BinStatus | null }) {
       {statusText(status)}
     </span>
   );
-}
-function toCard(list: ReturnType<typeof apiCompartments>): CardCompartment[] {
-  return list.map((c) => ({
-    wasteType: c.waste_type,
-    state: apiBinState(c),
-    pct: c.operational_status === "removed" ? null : c.fill_level_pct,
-    statusText: statusText(c),
-  }));
 }
 export function MapPage({ wasteType, onWasteChange }: WasteControls) {
   const { session } = useSession();
@@ -500,23 +487,11 @@ export function BinPage({
         </div>
         <section aria-label="各類桶槽" className="bin-compartment-overview">
           <StationCard
-            compartments={toCard(parts)}
+            compartments={compartmentCards(parts)}
             selectedWaste={wasteType}
             onSelectWaste={onWasteChange}
           />
-          <p className="tiny">
-            分類為展示假設，未經現場盤點；兩槽仍是同一個位置。
-          </p>
-          <details className="compartment-sources">
-            <summary>分類與讀值來源</summary>
-            {parts.map((part) => (
-              <p key={part.waste_type}>
-                {wasteName(part.waste_type)} ·{" "}
-                {classificationName(part.classification_source)} ·{" "}
-                {part.reading_source_type || "讀值來源未知"}
-              </p>
-            ))}
-          </details>
+          <CompartmentSources items={parts} />
         </section>
         <div className="bin-action-panel">
           <div>
@@ -541,7 +516,7 @@ export function BinPage({
                 </a>
               ) : (
                 <a
-                  className="button secondary"
+                  className="button primary"
                   href={wasteHref(`nav/${id}`, wasteType)}
                 >
                   尋找可用桶並導航

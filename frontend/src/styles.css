@@ -5581,80 +5581,14 @@ input[type="file"]::file-selector-button {
 }
 .bin-overview-heading .api-waste-select {
   margin: 0;
-  font-size: 12px;
-}
-.api-compartments .compartment-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-.api-compartments .compartment-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--chrome);
-  text-align: left;
-}
-.compartment-label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-}
-.compartment-label strong {
-  font-family: var(--font-display);
-  font-size: 32px;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-}
-.compartment-availability {
-  font-size: 12px;
-}
-.api-compartments meter {
-  width: 100%;
-  height: 12px;
-  accent-color: var(--teal);
-}
-.api-compartments meter::-webkit-meter-bar {
-  background: var(--line);
-  border: 0;
-}
-.api-compartments meter::-webkit-meter-optimum-value {
-  background: var(--status-full);
-}
-.api-compartments [data-usable="true"] meter::-webkit-meter-optimum-value {
-  background: var(--status-hungry);
-}
-.api-compartments .compartment-card[aria-pressed="true"] {
-  background: var(--field);
-  border-color: var(--teal);
-  outline: 2px solid var(--teal);
-  outline-offset: -2px;
+  font: var(--text-caption);
 }
 .compartment-choice {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--teal);
-}
-.api-bin-detail .compartment-picker {
-  padding: 0;
-  border: 0;
-  margin: 20px 0;
-}
-.compartment-picker h3 {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
+  font: var(--text-caption);
+  color: var(--text-body);
 }
 .compartment-sources {
-  font-size: 12px;
+  font: var(--text-caption);
   color: var(--text-muted);
 }
 .compartment-sources summary {
@@ -5672,7 +5606,7 @@ input[type="file"]::file-selector-button {
 }
 .bin-action-panel p {
   margin: 8px 0 0;
-  font-size: 13px;
+  font: var(--text-caption);
 }
 .bin-actions {
   display: flex;
@@ -5729,11 +5663,6 @@ input[type="file"]::file-selector-button {
 .api-bin-detail .button:active:not(:focus-visible) {
   transform: scale(0.98);
 }
-@media (hover: hover) and (pointer: fine) {
-  .compartment-picker .compartment-card:hover {
-    border-color: var(--teal);
-  }
-}
 @media (max-width: 760px) {
   .api-bin-detail .bin-overview {
     padding: 16px;
@@ -5758,17 +5687,8 @@ input[type="file"]::file-selector-button {
   .bin-overview-heading .api-waste-select {
     width: 100%;
   }
-  .api-compartments .compartment-card {
-    padding: 12px;
-  }
-  .compartment-label {
-    font-size: 12px;
-  }
-  .compartment-label strong {
-    font-size: 28px;
-  }
   .compartment-choice {
-    font-size: 11px;
+    font: var(--text-caption);
   }
   .bin-action-panel {
     align-items: stretch;
@@ -5815,7 +5735,7 @@ input[type="file"]::file-selector-button {
 }
 .crew-route-origin small {
   display: block;
-  font-size: 11px;
+  font: var(--text-caption);
 }
 @media (max-width: 760px) {
   .api-route-refresh {

@@ -124,12 +124,18 @@ test("work lists filter by waste and administrator clearing follows the work str
   await admin
     .getByRole("button", { name: "送出示範清空", exact: true })
     .click();
-  await expect(admin.getByRole("region", { name: "各類桶槽" })).toContainText(
-    "一般垃圾：95%",
-  );
-  await expect(admin.getByRole("region", { name: "各類桶槽" })).toContainText(
-    "資源回收：0%",
-  );
+  await expect(
+    admin
+      .getByRole("region", { name: "各類桶槽" })
+      .getByRole("listitem")
+      .filter({ hasText: "一般垃圾" }),
+  ).toContainText("95%");
+  await expect(
+    admin
+      .getByRole("region", { name: "各類桶槽" })
+      .getByRole("listitem")
+      .filter({ hasText: "資源回收" }),
+  ).toContainText("0%");
   const clearing = f.requests.find((r) => r.path.endsWith("/demo-clear"))!;
   expect(Object.keys(clearing.body)).toEqual(["reading_id"]);
   expect(clearing.etag).toBe('"v3"');
@@ -221,7 +227,11 @@ test("switching waste preserves separate photo drafts and does not expose a stal
   );
   f.state.delayRecycling = 400;
   await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
-  await expect(page.getByText("吃飽了 · 95%", { exact: true })).toHaveCount(0);
+  await expect(
+    page
+      .locator(".bin-action-panel .status-pill")
+      .filter({ hasText: "吃飽了 · 95%" }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
   ).toHaveCount(0);
