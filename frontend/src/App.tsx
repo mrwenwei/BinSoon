@@ -9,7 +9,8 @@ import {
   useSession,
 } from "./components/api/SessionContext";
 import { AdminPage } from "./components/api/CompletionPages";
-import { MapPage, BinPage } from "./components/api/MapPages";
+import { MapPage } from "./components/api/MapPage";
+import { BinPage } from "./components/api/BinPage";
 
 import {
   ReportDraftProvider,
