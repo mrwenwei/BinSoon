@@ -23,12 +23,12 @@ test("one map point exposes independent general and recycling availability and p
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("region", { name: "各類桶槽" })).toContainText(
-    "一般垃圾：95%",
-  );
-  await expect(page.getByRole("region", { name: "各類桶槽" })).toContainText(
-    "資源回收：20%",
-  );
+  await expect(
+    page.getByRole("button", { name: "選擇一般垃圾", exact: true }),
+  ).toContainText("95%");
+  await expect(
+    page.getByRole("button", { name: "選擇資源回收", exact: true }),
+  ).toContainText("20%");
   await page.getByRole("link", { name: "導航過去", exact: true }).click();
   await expect(page).toHaveURL(/waste_type=recycling/);
   await expect(
@@ -187,7 +187,10 @@ test("switching waste preserves separate photo drafts and does not expose a stal
   await expect(
     page.getByRole("img", { name: "待送出的現場照片", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("general");
+  await page.getByRole("radio", { name: "一般垃圾", exact: true }).click();
+  await expect(
+    page.getByRole("radio", { name: "一般垃圾", exact: true }),
+  ).toBeChecked();
   await expect(
     page.getByRole("textbox", { name: "說明", exact: true }),
   ).toHaveValue("");
@@ -197,7 +200,10 @@ test("switching waste preserves separate photo drafts and does not expose a stal
   await page
     .getByRole("textbox", { name: "說明", exact: true })
     .fill("一般垃圾另一份草稿");
-  await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
+  await page.getByRole("radio", { name: "資源回收", exact: true }).click();
+  await expect(
+    page.getByRole("radio", { name: "資源回收", exact: true }),
+  ).toBeChecked();
   await expect(
     page.getByRole("textbox", { name: "說明", exact: true }),
   ).toHaveValue("回收投入口情況");
@@ -210,7 +216,9 @@ test("switching waste preserves separate photo drafts and does not expose a stal
   ).toBeVisible();
   f.state.repairRecycling = true;
   await page.getByLabel("垃圾種類", { exact: true }).selectOption("general");
-  await expect(page.getByText("吃飽了 · 95%", { exact: true })).toBeVisible();
+  await expect(page.locator(".bin-action-panel .status-pill")).toHaveText(
+    "吃飽了 · 95%",
+  );
   f.state.delayRecycling = 400;
   await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
   await expect(page.getByText("吃飽了 · 95%", { exact: true })).toHaveCount(0);
@@ -239,9 +247,9 @@ test("report list filtering and waste choice stay usable on desktop and 320px sc
   await page.evaluate((id) => {
     location.hash = `bin/${id}?waste_type=recycling`;
   }, binId);
-  await expect(page.getByRole("region", { name: "各類桶槽" })).toContainText(
-    "資源回收：20%",
-  );
+  await expect(
+    page.getByRole("button", { name: "選擇資源回收", exact: true }),
+  ).toContainText("20%");
   const general = page.getByRole("button", {
     name: "選擇一般垃圾",
     exact: true,
@@ -316,9 +324,9 @@ test("expired recycling report restores the same waste draft and original comman
     .getByLabel("密碼", { exact: true })
     .fill("fixture-only-not-a-real-password");
   await page.getByRole("button", { name: "登入", exact: true }).click();
-  await expect(page.getByLabel("垃圾種類", { exact: true })).toHaveValue(
-    "recycling",
-  );
+  await expect(
+    page.getByRole("radio", { name: "資源回收", exact: true }),
+  ).toBeChecked();
   await page.getByRole("button", { name: "重試原回報", exact: true }).click();
   await expect(page.getByText(/資源回收 · 分類依據/).first()).toBeVisible();
   const commands = f.requests.filter(

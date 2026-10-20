@@ -63,7 +63,7 @@ test("broken work keeps repair restrictions until repaired without zeroing capac
   const citizen = await context.newPage();
   await f.setup(citizen);
   await login(citizen, "citizen", `bin/${binId}`);
-  await expect(citizen.getByText("維修中", { exact: true })).toBeVisible();
+  await expect(citizen.locator(".bin-action-panel .status-pill")).toBeVisible();
   await expect(
     citizen.getByRole("link", { name: "導航過去", exact: true }),
   ).toHaveCount(0);
@@ -229,7 +229,7 @@ test("other work completes without clearing and another broken incident keeps th
   const citizen = await context.newPage();
   await f.setup(citizen);
   await login(citizen, "citizen", `bin/${binId}`);
-  await expect(citizen.getByText("維修中", { exact: true })).toBeVisible();
+  await expect(citizen.locator(".bin-action-panel .status-pill")).toBeVisible();
   await expect(
     citizen.getByRole("link", { name: "導航過去", exact: true }),
   ).toHaveCount(0);
@@ -431,7 +431,7 @@ test("repairing one broken work cannot unlock a zero-capacity bin with another b
   const citizen = await context.newPage();
   await f.setup(citizen);
   await login(citizen, "citizen", `bin/${binId}`);
-  await expect(citizen.getByText("維修中", { exact: true })).toBeVisible();
+  await expect(citizen.locator(".bin-action-panel .status-pill")).toBeVisible();
   await expect(citizen.getByText("0%（模擬）", { exact: true })).toBeVisible();
   await expect(
     citizen.getByRole("link", { name: "導航過去", exact: true }),

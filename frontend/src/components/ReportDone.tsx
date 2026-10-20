@@ -50,7 +50,7 @@ export function ReportDone({
           <Icon name="clock" />
           <span className="eyebrow">REVIEW BEFORE REWARD</span>
           <strong className="done-points">+{award}</strong>
-          <span className="status-pill half">
+          <span className="status-pill neutral">
             {reportStatusLabels[report.status]}
           </span>
           <p>

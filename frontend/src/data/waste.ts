@@ -1,4 +1,5 @@
-export type WasteType = "general" | "recycling";
+import type { WasteType } from "./binState";
+export type { WasteType };
 export type WasteMetadata = {
   waste_type: WasteType;
   classification_source: string;

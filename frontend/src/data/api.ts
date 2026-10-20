@@ -13,6 +13,8 @@ export type Session = {
   token_type: "bearer";
   user: User;
 };
+import { stationState, type BinState } from "./binState";
+export type { WasteType };
 export type Position = { latitude: number; longitude: number };
 export type BinStatus = WasteMetadata & {
   fill_level_pct: number | null;
@@ -29,6 +31,9 @@ export type BinStatus = WasteMetadata & {
   observed_at: string | null;
   received_at: string | null;
   last_emptied_at: string | null;
+  // 後端雙槽：舊回應沒有這兩欄時視為一般垃圾（legacy_assumed_general）。
+  waste_type?: WasteType;
+  classification_source?: string;
 };
 export type ApiLocation = Position & {
   id: string;
@@ -120,6 +125,7 @@ export type Report = WasteMetadata & {
   event_id: string;
   work_order_id: string | null;
   type: Problem;
+  waste_type?: WasteType;
   description: string;
   photo_ids: string[];
   status: "pending" | "processing" | "approved" | "rejected";
@@ -162,6 +168,7 @@ export type WorkOrder = WasteMetadata & {
   bin_id: string;
   event_id: string;
   type: Problem;
+  waste_type?: WasteType;
   status: WorkStatus;
   district: string;
   source: string;
@@ -369,4 +376,48 @@ export function time(value: string | null) {
   return value
     ? new Date(value).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })
     : "無資料";
+}
+
+// ── API 轉接層：後端四態 fill_status → 前端三態 BinState ──────────────
+// 後端：hungry <50、half 50–79、full ≥80、unknown＝未知、維修或撤除。
+// 前端：hungry、half → 餓了；full → 吃飽了；unknown → 失聯。不改後端契約。
+export function apiBinState(status: BinStatus | null | undefined): BinState {
+  if (
+    !status ||
+    status.fill_level_pct == null ||
+    status.operational_status !== "normal"
+  )
+    return "offline";
+  if (status.fill_status === "hungry" || status.fill_status === "half")
+    return status.is_usable ? "hungry" : "offline";
+  if (status.fill_status === "full") return "full";
+  return "offline";
+}
+export type ApiCompartment = BinStatus & { waste_type: WasteType };
+// 回傳一般垃圾、資源回收兩槽；後端沒給 compartments 時安全降級成只用
+// 選定種類的 status（預設一般垃圾），卡片會改用單桶樣式。
+export function apiCompartments(
+  status: BinStatus | null | undefined,
+  compartments?: BinStatus[],
+): ApiCompartment[] {
+  if (compartments?.length)
+    return compartments
+      .map((c) => ({ ...c, waste_type: c.waste_type || "general" }))
+      .sort(
+        (a, b) =>
+          (a.waste_type === "general" ? -1 : 1) -
+          (b.waste_type === "general" ? -1 : 1),
+      );
+  return status
+    ? [{ ...status, waste_type: status.waste_type || "general" }]
+    : [];
+}
+export function apiStationState(
+  status: BinStatus | null | undefined,
+  compartments?: BinStatus[],
+): BinState {
+  const list = apiCompartments(status, compartments);
+  return list.length
+    ? stationState(list.map((c) => ({ state: apiBinState(c) })))
+    : "offline";
 }

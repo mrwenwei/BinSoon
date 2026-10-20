@@ -1,6 +1,8 @@
 import { isWasteType, wasteHref, type WasteType } from "./data/waste";
 import { useEffect, useRef, useState } from "react";
-import { Mascot } from "./components/Mascot";
+import { AppNav } from "./components/AppNav";
+import { request, type Membership } from "./data/api";
+import { useApi } from "./components/api/useApi";
 import {
   SessionProvider,
   Login,
@@ -69,40 +71,114 @@ function AppContent() {
   const loginRoute = role === "citizen" ? "login" : `${role}/login`;
   const loginHref = `#${loginRoute}?next=${encodeURIComponent(route)}`;
   const isLogin = page === "login" || id === "login";
+  const signOut = () => {
+    drafts.clear();
+    workCommands.clear();
+    void logout();
+  };
   return (
     <div className="app-shell api-app">
-      <header className="topbar">
-        <a className="brand" href={wasteHref("map", wasteType)}>
-          <Mascot />
-          <span>
-            BinSoon<span className="brand-sub">台北丟垃圾變順</span>
-          </span>
-        </a>
-        <nav className="desktop-nav" aria-label="主選單">
-          <a href={wasteHref("map", wasteType)}>找垃圾桶</a>
-          <a href="#reports">我的回報</a>
-          <a href="#member">會員中心</a>
-          <a href="#staff/tasks">清潔隊工作台</a>
-          <a href="#admin">管理員</a>
-        </nav>
-        {session ? (
-          <div className="api-account">
-            <span>{session.user.display_name}</span>
-            <button
-              className="text-button"
-              onClick={() => {
-                drafts.clear();
-                workCommands.clear();
-                void logout();
-              }}
-            >
-              登出
-            </button>
-          </div>
-        ) : (
-          <a href={loginHref}>登入</a>
-        )}
-      </header>
+      <AppNav
+        tabs={[
+          {
+            href: wasteHref("map", wasteType),
+            label: "地圖",
+            current: ["map", "bin", "nav"].includes(page),
+          },
+          { href: "#vote", label: "要桶投票", current: page === "vote" },
+        ]}
+        desktopLinks={[
+          {
+            href: wasteHref("map", wasteType),
+            label: "找垃圾桶",
+            current: ["map", "bin", "nav"].includes(page),
+          },
+          { href: "#reports", label: "我的回報", current: page === "reports" },
+          { href: "#member", label: "會員中心", current: page === "member" },
+          {
+            href: "#staff/tasks",
+            label: "清潔隊工作台",
+            current: page === "staff",
+          },
+          { href: "#admin", label: "管理員", current: page === "admin" },
+        ]}
+        sections={[
+          {
+            title: "CITIZEN · 市民",
+            links: [
+              {
+                href: wasteHref("map", wasteType),
+                label: "找垃圾桶",
+                current: page === "map",
+              },
+              { href: "#vote", label: "要桶投票（尚未開放）" },
+              {
+                href: "#reports",
+                label: "我的回報",
+                current: page === "reports",
+              },
+              {
+                href: "#member",
+                label: "會員中心",
+                current: page === "member",
+              },
+              {
+                href: "#stamps",
+                label: "集章與等級",
+                current: page === "stamps",
+              },
+              { href: "#rewards", label: "兌換獎勵（尚未開放）" },
+              { href: "#adopt", label: "認養電子雞（尚未開放）" },
+            ],
+          },
+          {
+            title: "CREW · 清潔隊與管理",
+            links: [
+              {
+                href: "#staff/tasks",
+                label: "清潔隊工作台",
+                current: page === "staff" && id === "tasks",
+              },
+              {
+                href: "#staff/route",
+                label: "清運道路指引",
+                current: page === "staff" && id === "route",
+              },
+              { href: "#admin", label: "管理員", current: page === "admin" },
+            ],
+          },
+          ...(session
+            ? []
+            : [
+                {
+                  title: "ACCOUNT · 帳號",
+                  links: [
+                    { href: loginHref, label: "市民登入" },
+                    {
+                      href: `#staff/login?next=staff%2Ftasks`,
+                      label: "隊員登入",
+                    },
+                    { href: `#admin/login?next=admin`, label: "管理員登入" },
+                  ],
+                },
+              ]),
+        ]}
+        right={
+          session?.user.roles.includes("citizen") ? (
+            <PointsButton />
+          ) : session ? (
+            <span className="role-chip">
+              {session.user.roles.includes("staff") ? "隊員模式" : "管理員模式"}
+            </span>
+          ) : (
+            <a className="points-button" href={loginHref}>
+              登入
+            </a>
+          )
+        }
+        account={session && <Account onLogout={signOut} />}
+        drawerFooter={session && <Account onLogout={signOut} />}
+      />
       {notice && (
         <p className="storage-warning" role="status">
           {notice} <button onClick={clearNotice}>關閉提示</button>
@@ -187,5 +263,40 @@ export default function App() {
         </WorkCommandProvider>
       </ReportDraftProvider>
     </SessionProvider>
+  );
+}
+
+// 右上點數按鈕＝會員中心（市民登入時讀 /me/membership 的可用點數）。
+function PointsButton() {
+  const { session } = useSession();
+  const membership = useApi(
+    "/me/membership",
+    (signal) =>
+      request<Membership>("/me/membership", {
+        signal,
+        token: session?.access_token,
+      }),
+    true,
+  );
+  const points = membership.data?.available_points;
+  return (
+    <a
+      className="points-button"
+      href="#member"
+      aria-label={`會員中心，目前 ${points ?? "—"} 點`}
+    >
+      <strong>{points ?? "—"}</strong>PTS
+    </a>
+  );
+}
+function Account({ onLogout }: { onLogout: () => void }) {
+  const { session } = useSession();
+  return (
+    <div className="api-account">
+      <span>{session?.user.display_name}</span>
+      <button className="text-button" onClick={onLogout}>
+        登出
+      </button>
+    </div>
   );
 }

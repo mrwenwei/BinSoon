@@ -34,6 +34,8 @@ import {
   type Report,
 } from "../../data/api";
 import { useSession } from "./SessionContext";
+import { WastePicker, WasteTag } from "../WasteType";
+import { Mascot } from "../Mascot";
 import { LoadState } from "./LoadState";
 import { useApi, useCooldown } from "./useApi";
 
@@ -290,12 +292,6 @@ export function ReportForm({
         返回桶詳情
       </a>
       <h1>回報問題</h1>
-      <WasteSelect
-        value={wasteType}
-        onChange={(value) => {
-          if (value) onWasteChange(value);
-        }}
-      />
       <p className="tiny">每一種類的照片與草稿分開保留；重試沿用原回報種類。</p>
       <p>{view.data?.location.label}</p>
       <LoadState {...view} />
@@ -316,6 +312,12 @@ export function ReportForm({
           void submit();
         }}
       >
+        <WastePicker
+          name="report-waste-type"
+          value={wasteType}
+          disabled={frozen}
+          onChange={onWasteChange}
+        />
         <fieldset disabled={frozen}>
           <legend>現場問題</legend>
           <label>
@@ -533,8 +535,9 @@ export function PrivatePhoto({
 }
 export function ReportSummary({ report }: { report: Report }) {
   return (
-    <section className="card">
+    <section className="card report-summary-card">
       <h2>{problemLabels[report.type]}</h2>
+      <WasteTag type={report.waste_type} />
       <WasteInfo value={report} />
       <p>查證狀態：{reportLabels[report.status]}</p>
       <p>
@@ -587,8 +590,14 @@ export function ReportDetail({
     true,
   );
   return (
-    <main className="page api-narrow">
+    <main className={`page api-narrow ${done ? "done-page" : ""}`}>
+      {done && (
+        <span className="login-mascot" aria-hidden="true">
+          <Mascot />
+        </span>
+      )}
       <h1>{done ? "謝謝你幫城市變乾淨！" : "回報進度"}</h1>
+      {done && <p>清潔隊收到後會到場查證；屬實才會入帳點數。</p>}
       <LoadState {...result} />
       {result.data && <ReportSummary report={result.data} />}
       <a className="button secondary" href="#reports">
@@ -645,21 +654,23 @@ export function ReportsList() {
           </li>
         ))}
       </ul>
-      <button
-        disabled={!offset}
-        onClick={() => setOffset((o) => Math.max(0, o - 20))}
-      >
-        上一頁
-      </button>
-      <button
-        disabled={
-          !result.data ||
-          offset + result.data.items.length >= result.data.page.total
-        }
-        onClick={() => setOffset((o) => o + 20)}
-      >
-        下一頁
-      </button>
+      <div className="pager">
+        <button
+          disabled={!offset}
+          onClick={() => setOffset((o) => Math.max(0, o - 20))}
+        >
+          上一頁
+        </button>
+        <button
+          disabled={
+            !result.data ||
+            offset + result.data.items.length >= result.data.page.total
+          }
+          onClick={() => setOffset((o) => o + 20)}
+        >
+          下一頁
+        </button>
+      </div>
     </main>
   );
 }
@@ -691,7 +702,7 @@ export function Member() {
       <h1>會員中心</h1>
       <LoadState {...membership} />
       {membership.data && (
-        <section className="card">
+        <section className="card member-summary">
           <h2>{membership.data.current_tier.name}</h2>
           <p>累積點數 {membership.data.cumulative_points}</p>
           <p>可用點數 {membership.data.available_points}</p>

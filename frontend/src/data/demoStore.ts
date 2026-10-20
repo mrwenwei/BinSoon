@@ -56,6 +56,8 @@ function isReport(value: unknown): value is DemoReport {
     (item.eventId === undefined ||
       (typeof item.eventId === "string" && item.eventId.length > 0)) &&
     (item.quick === undefined || typeof item.quick === "boolean") &&
+    (item.wasteType === undefined ||
+      ["general", "recycling"].includes(String(item.wasteType))) &&
     (item.acceptedAt === undefined || validDate(item.acceptedAt)) &&
     (item.reviewedAt === undefined || validDate(item.reviewedAt)) &&
     (!["approved", "rejected"].includes(String(item.status)) ||
@@ -155,6 +157,8 @@ export function loadDemoState(): DemoState {
         t.id.length > 0 &&
         reportTypes.some((type) => type.id === t.type) &&
         ["citizen", "sensor", "inspection"].includes(t.source) &&
+        (t.wasteType === undefined ||
+          ["general", "recycling"].includes(t.wasteType)) &&
         [
           "pending",
           "processing",
@@ -179,9 +183,13 @@ export function loadDemoState(): DemoState {
     );
     const validReadings =
       !Array.isArray(value.readings) &&
-      Object.entries(value.readings).every(
-        ([id, r]) =>
+      Object.entries(value.readings).every(([key, r]) => {
+        // 一般槽 key 是位置 id，回收槽是「位置 id:recycling」。
+        const [id, wasteType, extra] = key.split(":");
+        return (
           binIds.has(id) &&
+          (wasteType === undefined || wasteType === "recycling") &&
+          extra === undefined &&
           r &&
           typeof r.id === "string" &&
           r.source === "demo" &&
@@ -191,8 +199,9 @@ export function loadDemoState(): DemoState {
             (Number.isFinite(r.capacity) &&
               r.capacity >= 0 &&
               r.capacity <= 100)) &&
-          value.tasks.some((t) => t.id === r.taskId && t.locationId === id),
-      );
+          value.tasks.some((t) => t.id === r.taskId && t.locationId === id)
+        );
+      });
     if (
       !validTasks ||
       !validReadings ||

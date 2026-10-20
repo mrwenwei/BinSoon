@@ -15,6 +15,7 @@ import {
   type Session,
   type User,
 } from "../../data/api";
+import { Mascot } from "../Mascot";
 
 type Auth = {
   session: Session | null;
@@ -102,7 +103,10 @@ export function Login({ role, next }: { role: Role; next: string }) {
     return () => clearInterval(timer);
   }, []);
   return (
-    <main className="page api-narrow">
+    <main className="page api-narrow login-page">
+      <span className="login-mascot" aria-hidden="true">
+        <Mascot />
+      </span>
       <h1>
         {role === "citizen"
           ? "市民登入"

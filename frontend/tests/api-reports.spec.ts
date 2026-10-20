@@ -53,6 +53,9 @@ test("citizen uploads a real file and retries the same report command after lost
     }
   });
   await login(page, "citizen", `report/${binId}`);
+  // 後端照片回報依 waste_type 指定哪一槽；預設一般垃圾，這裡改選資源回收。
+  await expect(page.getByRole("radio", { name: "一般垃圾" })).toBeChecked();
+  await page.getByRole("radio", { name: "資源回收" }).check();
   await page
     .getByLabel("現場照片", { exact: true })
     .setInputFiles({ name: "report.png", mimeType: "image/png", buffer: png });
@@ -68,7 +71,7 @@ test("citizen uploads a real file and retries the same report command after lost
   expect(commands[1]).toEqual(commands[0]);
   expect(commands[0].body).toEqual({
     bin_id: binId,
-    waste_type: "general",
+    waste_type: "recycling",
     type: "full",
     description: "",
     photo_ids: report.photo_ids,

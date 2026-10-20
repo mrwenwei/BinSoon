@@ -389,7 +389,7 @@ export function ParticipationPage({
               · 需至少 60%
             </p>
             <p>再 {totals.remaining} 人達人數門檻</p>
-            <span className="status-pill half">
+            <span className="status-pill neutral">
               {proposalStatusLabels[proposal.status]}
             </span>
             {proposal.status === "collecting" ? (

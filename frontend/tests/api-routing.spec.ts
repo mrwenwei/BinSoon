@@ -5,6 +5,7 @@ import {
   binId,
   workId,
   login,
+  logoutButton,
   arrivedWork,
   location,
 } from "./api-fixtures";
@@ -411,7 +412,7 @@ test("route access requires a staff session and expiry never leaves personal sto
     .fill("fixture-only-not-a-real-password");
   await page.getByRole("button", { name: "登入", exact: true }).click();
   await expect(page.locator(".crew-route-stop")).toHaveCount(2);
-  await page.getByRole("button", { name: "登出", exact: true }).click();
+  await (await logoutButton(page)).click();
   await expect(page.locator(".crew-route-stop")).toHaveCount(0);
 });
 

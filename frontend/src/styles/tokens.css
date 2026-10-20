@@ -1,0 +1,165 @@
+/* BinSoon 色票 — generated from tokens.json */
+:root,
+[data-theme="console"] {
+  --chrome: #232826; /* 頂欄、桶況卡片、圖例列、縮放鈕的底色。上面用 text、text-muted。 */
+  --panel: #181d1c; /* 桌面版左側面板與手機版深色區塊，比 chrome 再深一階，帶出控制台的底板感。 */
+  --field: #222827; /* 深色面板裡的輸入框底，比 panel 亮一階，看得出可以輸入。 */
+  --mint: #bfd9c5; /* 薄荷色：已選的分頁、已選篩選、Logo 底塊。上面文字用 text-on-light。 */
+  --map: #d7e3da; /* 地圖底色（灰綠）。實際底圖也調成這個色調。 */
+  --map-block: #cbd9cf; /* 地圖上的街區塊。 */
+  --map-park: #b3d0bc; /* 地圖上的公園綠地。 */
+  --map-road: #f4f6f1; /* 地圖上的道路。 */
+  --text: #f1eee4; /* 深色底（chrome、panel）上的主要文字與大數字。 */
+  --text-muted: #a9b5ad; /* 深色底上的次要文字、英文小標、單位。chrome 上 6.9:1、panel 上 8:1。 */
+  --text-body: #d4dbd5; /* 卡片裡的說明句子。 */
+  --text-on-light: #1f2523; /* 淺色底（mint、map、teal、signal 色帶）上的文字，也是電子雞外框色。 */
+  --text-on-light-muted: #34413b; /* 薄荷版面板上的次要文字。 */
+  --line: #3a413e; /* 卡片內的分隔線、狀態列之間的線，1px。 */
+  --line-control: #5a645f; /* 外框按鈕（回報狀況）與標籤的外框。 */
+  --line-input: #3e4744; /* 深色面板裡搜尋框與未選篩選的外框。 */
+  --divider: rgba(
+    241,
+    238,
+    228,
+    0.16
+  ); /* 深色面板的區塊分隔線（區塊標題下方），2px。刻意調淡，不搶內容。 */
+  --hairline: rgba(
+    241,
+    238,
+    228,
+    0.07
+  ); /* 深色面板清單每一列之間的細線，1px。 */
+  --teal: #4aba94; /* 品牌主色兼主要行動色：主按鈕、目前分頁底線、編號與步行分鐘數、可以丟的狀態。按鈕上文字用 text-on-light（6.6:1）。 */
+  --teal-on-mint: #1d6650; /* 需要在薄荷底上放青綠文字時用這個（4.5:1）；#4ABA94 在薄荷上只有 1.6:1。 */
+  --signal: #f2673a; /* 訊號橘，只代表「吃飽了／要注意」：滿的色帶、斜紋警示條、滿度數字、標題問號。不拿來當按鈕。 */
+  --signal-on-light: #c9461c; /* 淺色底上的橘色文字（薄荷版標題問號）。 */
+  --status-hungry: var(--teal); /* 桶況「餓了」0–79%：電子雞身體、圖例。 */
+  --status-full: var(
+    --signal
+  ); /* 桶況「吃飽了」80% 以上：電子雞身體、色帶、滿度條斜紋。 */
+  --status-offline: #8e9691; /* 桶況「失聯」：灰色身體，一定要加虛線外框，不能只靠顏色。 */
+  --mascot-eye: #fff9df; /* 像素電子雞的眼白。 */
+  --mascot-blush: #eea990; /* 像素電子雞的腮紅。 */
+  --place: #e9e4f2; /* 場所代表點電子雞的身體（頭上有星星），用來跟桶區分。 */
+  --focus-ring: #4aba94; /* 鍵盤焦點外框，2px。 */
+}
+:root {
+  --space-1: 4px; /* 圖示與文字、色塊之間。 */
+  --space-2: 8px; /* 按鈕之間、同組元素。 */
+  --space-3: 12px; /* 卡片內狀態列的上下內距。 */
+  --space-4: 16px; /* 手機版左右邊界、卡片段落間。 */
+  --space-5: 18px; /* 卡片左右內距。 */
+  --space-6: 28px; /* 桌面版面板、地圖浮層與邊緣的距離。 */
+  --radius-xs: 2px; /* 分頁切換裡的按鈕。 */
+  --radius-sm: 4px; /* 按鈕、輸入框、標籤、分頁切換外框。 */
+  --radius-md: 6px; /* 桶況卡片。 */
+  --radius-pill: 999px; /* 篩選膠囊。 */
+  --font-display: "Chakra Petch", "Noto Sans TC", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans:
+    "Noto Sans TC", system-ui, -apple-system, "PingFang TC", sans-serif;
+  --font-pixel: "Silkscreen", monospace;
+  --text-numeral-xl: 700 64px/54px var(--font-display); /* 單桶卡片色帶上的滿度。 */
+  --text-numeral-lg: 700 56px/48px var(--font-display); /* 兩桶一組卡片色帶上的「幾桶能丟」。 */
+  --text-numeral-md: 700 30px/30px var(--font-display); /* 卡片裡各桶的滿度。 */
+  --text-numeral-sm: 700 20px/24px var(--font-display); /* 清單編號、步行分鐘數、資訊格數值。 */
+  --text-label: 500 10px/14px var(--font-mono); /* 色帶標籤、資訊格標題、清單副標。 */
+  --text-label-lg: 500 11px/16px var(--font-mono); /* 面板頂端的區塊標示、頂欄資訊。 */
+  --text-title: 900 46px/52px var(--font-sans); /* 桌面版面板大標。 */
+  --text-card-title: 700 20px/28px var(--font-sans); /* 卡片地址。 */
+  --text-heading: 700 16px/24px var(--font-sans); /* 區塊標題。 */
+  --text-status: 900 18px/26px var(--font-sans); /* 色帶上的狀態總結。 */
+  --text-caption: 400 12px/19px var(--font-sans); /* 卡片說明句、地址下方的類型。 */
+  --text-pixel: 400 11px/14px var(--font-pixel); /* 極少量的英文狀態字。 */
+}
+.numeral-xl {
+  font-family: var(--font-display);
+  font-size: 64px;
+  line-height: 54px;
+  font-weight: 700;
+  letter-spacing: -2px;
+}
+.numeral-lg {
+  font-family: var(--font-display);
+  font-size: 56px;
+  line-height: 48px;
+  font-weight: 700;
+  letter-spacing: -2px;
+}
+.numeral-md {
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 30px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.numeral-sm {
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+}
+.label-lg {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+}
+.title {
+  font-family: var(--font-sans);
+  font-size: 46px;
+  line-height: 52px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+.card-title {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.heading {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.status {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.caption {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 19px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.pixel {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+}

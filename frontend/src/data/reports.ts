@@ -1,3 +1,4 @@
+import type { WasteType } from "./binState";
 export const reportTypes = [
   { id: "full", label: "滿了", points: 1, icon: "▤", hint: "小夥伴吃太飽了" },
   { id: "dirty", label: "很髒", points: 1, icon: "✳", hint: "需要清潔一下" },
@@ -29,6 +30,8 @@ export interface DemoReport {
   id: string;
   locationId: string;
   type: ReportType;
+  // 回報的是哪一槽；舊紀錄沒有這欄時視為一般垃圾。
+  wasteType?: WasteType;
   description: string;
   createdAt: string;
   status: ReportStatus;
@@ -44,6 +47,7 @@ export interface DemoReport {
 }
 export interface ReportDraft {
   type: ReportType | null;
+  wasteType: WasteType;
   description: string;
   photo: boolean;
   proximity: "unchecked" | "near" | "far" | "denied";
@@ -52,6 +56,7 @@ export interface ReportDraft {
 }
 export const emptyDraft: ReportDraft = {
   type: null,
+  wasteType: "general",
   description: "",
   photo: false,
   proximity: "unchecked",

@@ -13,6 +13,7 @@ import {
   type WorkOrder,
 } from "../../data/api";
 import { useSession } from "./SessionContext";
+import { WasteTag } from "../WasteType";
 import { LoadState } from "./LoadState";
 import { ReportSummary } from "./ReportPages";
 import { useApi } from "./useApi";
@@ -172,7 +173,10 @@ function WorkList() {
       {result.data?.items.length === 0 && <p>目前沒有符合的工單</p>}
       <ul className="api-items">
         {result.data?.items.map((w) => (
-          <li className="card" key={w.id}>
+          <li
+            className={`card work-card ${w.priority === "high" || w.is_overdue ? "urgent" : ""}`}
+            key={w.id}
+          >
             <span className={`staff-status ${w.status}`}>
               {workLabels[w.status]}
             </span>
