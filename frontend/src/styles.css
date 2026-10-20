@@ -5803,12 +5803,14 @@ input[type="file"]::file-selector-button {
     width: 100%;
   }
 }
-
 /* ── 地圖瀏覽模式（components/api/MapPage.tsx） ──────────────────────
    手機（≤760px）：地圖滿版＋下方抽屜（收起／半開／全開，高度由
    --mx-drawer-h 控制）；桌面：左側面板＋右側地圖。清單列、篩選膠囊、
-   狀態膠囊、圖例沿用既有元件；這裡只放沒有現成元件的部分（mx- 前綴），
-   以及既有元件放進面板時的版面調整（限定在 .mx-panel／.mx-map 底下）。 */
+   狀態膠囊、圖例、圖示按鈕沿用既有元件；這裡只放沒有現成元件的部分
+   （mx- 前綴），以及既有元件放進面板時的版面調整（限定在 .mx-* 底下）。
+   不沿用舊地圖首頁的 .explore-layout／.explorer／.map-section：那組是
+   「地圖在上、面板在下、整頁捲動」的版面（目前只剩 tests/legacy 使用），
+   和這裡的固定一屏＋可拖曳抽屜行為不同，改它會影響舊展示頁。 */
 .mx-layout {
   --mx-panel-w: clamp(360px, 32vw, 440px);
   position: relative;
@@ -5816,7 +5818,8 @@ input[type="file"]::file-selector-button {
   grid-template-columns: var(--mx-panel-w) minmax(0, 1fr);
   height: calc(100dvh - var(--topbar-h));
   min-height: 480px;
-  overflow: hidden;
+  /* clip（不是 hidden）：聚焦到邊緣元素時不會把整個版面捲動 1px。 */
+  overflow: clip;
   background: var(--map);
 }
 .mx-panel {
@@ -5881,16 +5884,32 @@ input[type="file"]::file-selector-button {
 }
 .mx-filters {
   display: grid;
-  gap: var(--space-3);
-  margin: var(--space-4) 0 var(--space-3);
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
 }
-.mx-filters .api-waste-select {
+.mx-filters .search-field input {
+  min-height: 44px;
+}
+/* 篩選膠囊＋種類選單同一列；放不下時整列橫向捲動。 */
+.mx-filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.mx-filter-row .filter-chips {
+  flex: none;
+  flex-wrap: nowrap;
+}
+.mx-filter-row .api-waste-select {
+  flex: none;
   margin: 0;
 }
 /* 清單：.location-row 自帶左右內距，所以清單左右貼齊面板邊。 */
 .mx-list {
   list-style: none;
-  margin: var(--space-3) calc(var(--space-6) * -1) 0;
+  margin: var(--space-2) calc(var(--space-6) * -1) 0;
   padding: 0;
   border-top: 2px solid var(--divider);
 }
@@ -5934,7 +5953,7 @@ input[type="file"]::file-selector-button {
   border-left: 3px solid var(--mint);
   background: var(--field);
   color: var(--text);
-  font: 500 14px/1.55 var(--font-sans);
+  font: var(--text-caption);
 }
 /* 面板裡的既有內容：位置詳情改成一般區塊；桶資訊收成單欄。 */
 .api-app .mx-panel .details {
@@ -5962,10 +5981,6 @@ input[type="file"]::file-selector-button {
 .mx-panel .api-bin-detail .bin-overview {
   padding: var(--space-4);
 }
-.mx-panel .bin-overview-heading {
-  flex-direction: column;
-  align-items: flex-start;
-}
 .mx-panel .bin-action-panel {
   flex-direction: column;
   align-items: stretch;
@@ -5987,22 +6002,40 @@ input[type="file"]::file-selector-button {
   position: relative;
   z-index: 0;
   isolation: isolate;
-  container: mx-map / inline-size;
   min-width: 0;
   min-height: 0;
   background: var(--map);
 }
-.mx-map .leaflet-bottom {
-  bottom: var(--legend-h);
+/* 圖例：地圖右上角一顆 .menu-button 圖示按鈕，點開在下方顯示 popover。
+   外框底色用 chrome，讓透明的圖示按鈕在淺色地圖上看得清楚。 */
+.mx-legend {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 1000;
+  border-radius: var(--radius-sm);
+  background: var(--chrome);
 }
-/* MapLegend 的擴充：標題「依〈種類〉」、地標旗子、建議點、收合按鈕。 */
-.map-legend-items {
-  display: contents;
+.mx-legend-popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--chrome);
 }
-.map-legend-items > span {
-  display: inline-flex;
-  align-items: center;
+/* MapLegend 的擴充：直式排列（放進 popover）、標題、地標旗子、建議點。 */
+.map-legend.stacked {
+  position: static;
+  height: auto;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
 }
 .map-legend-title {
   color: var(--text-muted);
@@ -6024,48 +6057,8 @@ input[type="file"]::file-selector-button {
   border: 1.5px dashed var(--text-muted);
   border-radius: var(--radius-xs);
   color: var(--text-muted);
-  font: normal 700 10px/1 var(--font-sans);
-}
-.map-legend-toggle {
-  display: none;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--line-control);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font-weight: 700;
-}
-/* 地圖寬度不夠放完整圖例（手機與 761–1000px 的窄桌面）：收成「圖例」按鈕，
-   點開後在圖例列上方換行顯示，不會被截掉。 */
-@container mx-map (max-width: 680px) {
-  .map-legend.collapsible {
-    overflow: visible;
-  }
-  /* 展開時蓋在 Leaflet 縮放鈕與比例尺之上（它們的 z-index 是 1000）。 */
-  .map-legend.collapsible.open {
-    z-index: 1001;
-  }
-  .map-legend.collapsible .map-legend-toggle {
-    display: inline-flex;
-  }
-  .map-legend.collapsible .map-legend-items {
-    display: none;
-  }
-  .map-legend.collapsible.open .map-legend-items {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background: var(--chrome);
-    border-top: 1px solid var(--line);
-    white-space: normal;
-  }
+  font: var(--text-label);
+  font-style: normal;
 }
 /* 地圖標記：地標旗子、建議點虛線方框、示意起點。 */
 .mx-landmark .marker-body svg {
@@ -6089,7 +6082,8 @@ input[type="file"]::file-selector-button {
   border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--mascot-eye) 70%, transparent);
   color: var(--text-on-light);
-  font: 700 15px/1 var(--font-sans);
+  font: var(--text-heading);
+  line-height: 1;
 }
 .mx-proposed.selected span {
   outline: 2.5px solid var(--signal);
@@ -6110,18 +6104,19 @@ input[type="file"]::file-selector-button {
   justify-content: center;
   width: 24px;
   height: 24px;
-  margin: 3px;
+  margin: var(--space-1);
   border-radius: var(--radius-xs);
   background: var(--text-on-light);
   color: var(--mint);
-  font: 700 12px/1 var(--font-sans);
+  font: var(--text-caption);
+  font-weight: 700;
 }
 .mx-origin-label {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-xs);
   background: var(--chrome);
   color: var(--text);
-  font: 500 11px/1.4 var(--font-sans);
+  font: var(--text-caption);
   white-space: nowrap;
 }
 @media (max-width: 760px) {
@@ -6164,12 +6159,9 @@ input[type="file"]::file-selector-button {
     margin-inline: calc(var(--space-4) * -1);
   }
   .mx-map .leaflet-bottom {
-    bottom: calc(var(--mx-drawer-h, 50%) + var(--legend-h));
-  }
-  .mx-map .map-legend {
     bottom: var(--mx-drawer-h, 50%);
   }
-  .mx-layout[data-drawer="full"] .mx-map .map-legend,
+  .mx-layout[data-drawer="full"] .mx-legend,
   .mx-layout[data-drawer="full"] .mx-map .leaflet-bottom {
     visibility: hidden;
   }

@@ -38,6 +38,8 @@ interface Props {
   /** 初始中心（zoom 15）；有給時，位置清單變動不自動 fitBounds（除非 autoFit）。 */
   initialCenter?: [number, number];
   autoFit?: boolean;
+  /** 瀏覽模式：這個字串變了（例如搜尋字）且有資料時，框住目前的點一次；輪詢不會再框。 */
+  fitKey?: string;
   /** 自訂標記圖示與無障礙名稱。 */
   markerIcon?: (location: LocationRecord, selected: boolean) => L.DivIcon;
   markerLabel?: (location: LocationRecord) => string;
@@ -72,7 +74,9 @@ export function LocationMap({
   origin,
   focusOffsetY,
   focusKey,
+  fitKey,
 }: Props) {
+  const fittedKey = useRef<string | undefined>(undefined);
   const browse = focusOffsetY !== undefined;
   const offsetRef = useRef(focusOffsetY ?? 0);
   offsetRef.current = focusOffsetY ?? 0;
@@ -203,12 +207,22 @@ export function LocationMap({
     }
     for (const stale of byId.values()) stale.marker.remove();
     markerRecords.current = next;
-    if (locations.length && !selectionBounds && autoFit)
-      instance.fitBounds(
-        L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
-        { padding: [45, 50], maxZoom: 15, animate: false },
-      );
-  }, [browse, locations, selectionBounds, markerLabel, autoFit]);
+    if (!fitKey) fittedKey.current = undefined;
+    else if (fittedKey.current !== fitKey && locations.length) {
+      fittedKey.current = fitKey;
+      // 手機抽屜蓋住下半部：下方留白加上半開抽屜的高度（offset 的兩倍）。
+      if (!selectionBounds)
+        instance.fitBounds(
+          L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
+          {
+            paddingTopLeft: [50, 45],
+            paddingBottomRight: [50, 45 + offsetRef.current * 2],
+            maxZoom: 15,
+            animate: false,
+          },
+        );
+    }
+  }, [browse, locations, selectionBounds, markerLabel, fitKey]);
   // 瀏覽模式：標記可用鍵盤 Enter／空白鍵選取（Leaflet 預設不會觸發 click）。
   useEffect(() => {
     if (!browse || !container.current) return;
@@ -311,8 +325,8 @@ export function LocationMap({
       icon: L.divIcon({
         className: "mx-origin",
         html: `<span class="mx-origin-pin" aria-hidden="true">起</span><span class="mx-origin-label">${origin.label}</span>`,
-        iconSize: [112, 30],
-        iconAnchor: [15, 15],
+        iconSize: [112, 32],
+        iconAnchor: [16, 16],
       }),
       interactive: false,
       keyboard: false,
@@ -465,19 +479,21 @@ export function LocationMap({
           底圖暫時無法完整載入，請確認網路後重新整理。位置標記與清單仍可查看。
         </p>
       )}
-      <span className="map-note">
-        {onPointChange
-          ? "點擊地圖或拖曳＋選點 · 方塊為市民提案"
-          : selected
-            ? "已選取位置 · 可縮放地圖查看周邊"
-            : roadRoute
-              ? routeLabel || "沿道路規劃的路線"
-              : demoRoute
-                ? "虛線為示意路線 · 未依實際道路規劃"
-                : routeOrigin
-                  ? "選擇交通方式後，產生道路路線"
-                  : "點選像素小夥伴，查看位置詳情"}
-      </span>
+      {!browse && (
+        <span className="map-note">
+          {onPointChange
+            ? "點擊地圖或拖曳＋選點 · 方塊為市民提案"
+            : selected
+              ? "已選取位置 · 可縮放地圖查看周邊"
+              : roadRoute
+                ? routeLabel || "沿道路規劃的路線"
+                : demoRoute
+                  ? "虛線為示意路線 · 未依實際道路規劃"
+                  : routeOrigin
+                    ? "選擇交通方式後，產生道路路線"
+                    : "點選像素小夥伴，查看位置詳情"}
+        </span>
+      )}
     </div>
   );
 }

@@ -6,7 +6,13 @@ export function useApi<T>(
   key: string | null,
   load: (signal: AbortSignal) => Promise<Result<T>>,
   poll = false,
+  // 選用：paused＝暫停輪詢（恢復時立刻重抓一次）；stopOnNotFound＝拿到 404 就不再輪詢。
+  options: { paused?: boolean; stopOnNotFound?: boolean } = {},
 ) {
+  const paused = Boolean(options.paused);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const stopOnNotFound = Boolean(options.stopOnNotFound);
   const { session, invalidate } = useSession();
   const token = session?.access_token;
   const identity = JSON.stringify([key, token]);
@@ -33,6 +39,10 @@ export function useApi<T>(
     let disposed = false;
     let controller: AbortController | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
+    const tick = () => {
+      if (!pausedRef.current) void refresh();
+    };
     async function refresh() {
       controller?.abort();
       let delay = 10000;
@@ -69,18 +79,27 @@ export function useApi<T>(
           }));
           if (e instanceof ApiError && e.status === 401 && token)
             invalidate(token);
+          if (stopOnNotFound && e instanceof ApiError && e.status === 404)
+            stopped = true;
         }
       } finally {
-        if (!disposed && !current.signal.aborted && poll && !document.hidden)
-          timer = setTimeout(refresh, delay);
+        if (
+          !disposed &&
+          !current.signal.aborted &&
+          poll &&
+          !stopped &&
+          !pausedRef.current &&
+          !document.hidden
+        )
+          timer = setTimeout(tick, delay);
       }
     }
     const visibility = () => {
       clearTimeout(timer);
       controller?.abort();
-      if (!document.hidden) {
+      if (!document.hidden && !stopped && !pausedRef.current) {
         if (Date.now() < retryAfter.current)
-          timer = setTimeout(refresh, retryAfter.current - Date.now());
+          timer = setTimeout(tick, retryAfter.current - Date.now());
         else void refresh();
       }
     };
@@ -92,7 +111,13 @@ export function useApi<T>(
       controller?.abort();
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [identity, revision, poll, invalidate]);
+  }, [identity, revision, poll, invalidate, stopOnNotFound]);
+  // 從暫停恢復：立刻重抓一次，之後照常輪詢。
+  const wasPaused = useRef(paused);
+  useEffect(() => {
+    if (wasPaused.current && !paused) reload();
+    wasPaused.current = paused;
+  }, [paused, reload]);
   const visible =
     key !== null && state.identity === identity ? state : undefined;
   return {

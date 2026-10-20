@@ -142,6 +142,8 @@ export function MapPage({
       replayed: false,
     }),
     true,
+    // 開著桶面板時暫停清單輪詢（用不到清單）；回到清單立刻重抓一次再恢復。
+    { paused: Boolean(binId) },
   );
   const items = list.data;
   // 清單只列桶；選「建議點」時才列建議點。所選種類還能丟的排前面，其餘照後端距離順序。
@@ -177,38 +179,40 @@ export function MapPage({
       : shown;
   }, [items, rows, filter, selected]);
   // 選桶、選地標都寫進網址（push），瀏覽器返回鍵回到清單；選完把焦點移到面板標題。
-  const pendingFocus = useRef(false);
+  const pendingFocus = useRef<string | null>(null);
   const layoutRef = useRef<HTMLElement>(null);
-  const focusTitle = useCallback(() => {
-    if (!pendingFocus.current) return;
+  const focusTitle = useCallback((id: string) => {
+    if (pendingFocus.current !== id) return;
     const title = layoutRef.current?.querySelector<HTMLElement>(
       ".mx-panel-body h1, .mx-panel-body h2",
     );
     if (!title) return;
-    pendingFocus.current = false;
+    pendingFocus.current = null;
     title.setAttribute("tabindex", "-1");
     title.focus({ preventScroll: true });
   }, []);
   const select = useCallback(
     (item: LocationRecord) => {
-      pendingFocus.current = true;
+      // 再點一次已選取的桶／地標不做任何事（焦點只在選取對象改變時移動一次）。
+      if (item.id === (item.kind === "bin" ? binId : placeId)) return;
+      pendingFocus.current = item.id;
       window.location.hash = (
         item.kind === "bin"
           ? wasteHref(`bin/${item.id}`, wasteType)
           : wasteHref(`map?place=${encodeURIComponent(item.id)}`, wasteType)
       ).slice(1);
     },
-    [wasteType],
+    [wasteType, binId, placeId],
   );
   const binLoaded = useCallback(
     (location: ApiLocation) => {
       setBinLocation(location);
-      focusTitle();
+      focusTitle(location.id);
     },
     [focusTitle],
   );
   useEffect(() => {
-    if (place) focusTitle();
+    if (place) focusTitle(place.id);
   }, [place?.id, focusTitle]);
   const iconFor = useCallback(
     (location: LocationRecord, active: boolean) =>
@@ -389,7 +393,6 @@ export function MapPage({
               key={`${binId}/${wasteType}`}
               id={binId!}
               wasteType={wasteType}
-              onWasteChange={replaceWaste}
               onLocation={binLoaded}
             />
           ) : view === "place" ? (
@@ -421,29 +424,29 @@ export function MapPage({
                     onChange={(e) => setQ(e.target.value)}
                   />
                 </label>
-                <div className="filter-chips" role="group" aria-label="篩選">
-                  {filters.map(([value, label]) => (
-                    <button
-                      type="button"
-                      key={value}
-                      aria-pressed={filter === value}
-                      onClick={() => setFilter(value)}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                {/* 篩選膠囊與種類選單同一列，放不下時這一列橫向捲動。 */}
+                <div className="mx-filter-row">
+                  <div className="filter-chips" role="group" aria-label="篩選">
+                    {filters.map(([value, label]) => (
+                      <button
+                        type="button"
+                        key={value}
+                        aria-pressed={filter === value}
+                        onClick={() => setFilter(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <WasteSelect
+                    value={wasteType}
+                    hideLabel
+                    onChange={(value) => {
+                      if (value) replaceWaste(value);
+                    }}
+                  />
                 </div>
-                <WasteSelect
-                  value={wasteType}
-                  onChange={(value) => {
-                    if (value) replaceWaste(value);
-                  }}
-                />
               </div>
-              <p className="tiny">
-                {wasteName(wasteType)}
-                還能丟的排前面，再依離地圖上「起點（示意）」的距離排序；起點是固定示意位置，不是你的定位。
-              </p>
               <LoadState {...list} />
               {rows && rows.length > 0 && (
                 <ul className="mx-list" aria-label="附近的桶">
@@ -481,14 +484,14 @@ export function MapPage({
           selected={selected}
           onSelect={select}
           initialCenter={initialCenter}
-          autoFit={search.trim() !== ""}
+          fitKey={search.trim() || undefined}
           markerIcon={iconFor}
           markerLabel={browseMarkerLabel}
           origin={originMarker}
           focusOffsetY={focusOffsetY}
           focusKey={focusKey}
         />
-        <MapLegend wasteType={wasteType} landmarks collapsible />
+        <LegendPopover wasteType={wasteType} />
       </div>
     </main>
   );
@@ -564,74 +567,111 @@ function NearbyRow({
 
 // 圖例：桶況三態＋場所代表點（失聯一定有虛線外框）。
 // 地圖瀏覽模式另外傳 wasteType（標題「依〈種類〉」）、landmarks（地標旗子＋建議點，
-// 取代場所代表點色塊）、collapsible（地圖寬度不夠時收成一顆「圖例」按鈕）。
+// 取代場所代表點色塊）、stacked（直式排列，放進圖例 popover）。
 export function MapLegend({
   wasteType,
   landmarks = false,
-  collapsible = false,
+  stacked = false,
 }: {
   wasteType?: WasteType;
   landmarks?: boolean;
-  collapsible?: boolean;
+  stacked?: boolean;
 } = {}) {
-  const [open, setOpen] = useState(false);
   return (
-    <div
-      className={`map-legend${collapsible ? " collapsible" : ""}${open ? " open" : ""}`}
-      aria-label="圖例"
-    >
-      {collapsible && (
-        <button
-          type="button"
-          className="map-legend-toggle"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          圖例
-        </button>
+    <div className={`map-legend${stacked ? " stacked" : ""}`} aria-label="圖例">
+      {wasteType && (
+        <span className="map-legend-title">依{wasteName(wasteType)}</span>
       )}
-      <div className="map-legend-items">
-        {wasteType && (
-          <span className="map-legend-title">依{wasteName(wasteType)}</span>
-        )}
-        <span>
-          <i className="legend-swatch state-hungry" />
-          {stateLabels.hungry}
-          <small>0–79%</small>
-        </span>
-        <span>
-          <i className="legend-swatch state-full" />
-          {stateLabels.full}
-          <small>80%+</small>
-        </span>
-        <span>
-          <i className="legend-swatch state-offline" />
-          {landmarks ? "失聯／維修／撤除" : stateLabels.offline}
-        </span>
-        {landmarks ? (
-          <>
-            <span>
-              <i
-                className="map-legend-flag"
-                aria-hidden="true"
-                dangerouslySetInnerHTML={{ __html: landmarkSvg }}
-              />
-              地標
-            </span>
-            <span>
-              <i className="map-legend-proposed" aria-hidden="true">
-                ＋
-              </i>
-              建議點
-            </span>
-          </>
-        ) : (
+      <span>
+        <i className="legend-swatch state-hungry" />
+        {stateLabels.hungry}
+        <small>0–79%</small>
+      </span>
+      <span>
+        <i className="legend-swatch state-full" />
+        {stateLabels.full}
+        <small>80%+</small>
+      </span>
+      <span>
+        <i className="legend-swatch state-offline" />
+        {landmarks ? "失聯／維修／撤除" : stateLabels.offline}
+      </span>
+      {landmarks ? (
+        <>
           <span>
-            <i className="legend-swatch place" />
-            場所代表點
+            <i
+              className="map-legend-flag"
+              aria-hidden="true"
+              dangerouslySetInnerHTML={{ __html: landmarkSvg }}
+            />
+            地標
           </span>
-        )}
-      </div>
+          <span>
+            <i className="map-legend-proposed" aria-hidden="true">
+              ＋
+            </i>
+            建議點
+          </span>
+        </>
+      ) : (
+        <span>
+          <i className="legend-swatch place" />
+          場所代表點
+        </span>
+      )}
+    </div>
+  );
+}
+
+// 地圖右上角的圖例按鈕（沿用 .menu-button 圖示按鈕）＋按鈕下方的 popover。
+// 預設收起；點外面、按 Esc、再點一次按鈕都會關閉，Esc 與按鈕關閉後焦點回到按鈕。
+function LegendPopover({ wasteType }: { wasteType: WasteType }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: Event) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      button.current?.focus();
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  return (
+    <div className="mx-legend" ref={root}>
+      <button
+        type="button"
+        ref={button}
+        className="menu-button"
+        aria-label="圖例"
+        aria-expanded={open}
+        aria-controls="mx-legend-popover"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <svg
+          viewBox="0 0 20 20"
+          width="20"
+          height="20"
+          aria-hidden="true"
+          fill="currentColor"
+        >
+          <path d="M3 4h4v4H3zM9 5h8v2H9zM3 12h4v4H3zM9 13h8v2H9z" />
+        </svg>
+      </button>
+      {open && (
+        <div className="mx-legend-popover" id="mx-legend-popover">
+          <MapLegend wasteType={wasteType} landmarks stacked />
+        </div>
+      )}
     </div>
   );
 }

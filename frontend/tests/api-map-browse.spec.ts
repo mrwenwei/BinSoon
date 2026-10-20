@@ -215,11 +215,12 @@ test("desktop keeps the panel on the left and the map on the right", async ({
     "data-drawer",
     /.+/,
   );
-  // 寬地圖時圖例完整顯示，不需要收合按鈕。
-  await expect(page.locator(".map-legend-toggle")).toBeHidden();
+  // 圖例收在右上角按鈕裡（預設收起），內容沒有 STATUS 英文小標。
+  await page.getByRole("button", { name: "圖例", exact: true }).click();
   await expect(page.locator(".map-legend")).toContainText("依一般垃圾");
   await expect(page.locator(".map-legend")).toContainText("建議點");
   await expect(page.locator(".map-legend")).not.toContainText("STATUS");
+  await page.keyboard.press("Escape");
   // 選桶後面板原地顯示桶資訊，地圖仍在右側，沒有獨立桶頁的小地圖。
   await page.locator(".location-row").first().click();
   await expect(page.locator(".mx-panel .api-bin-detail")).toBeVisible();
@@ -228,37 +229,70 @@ test("desktop keeps the panel on the left and the map on the right", async ({
   expect((await page.locator(".mx-map").boundingBox())!.x).toBe(map.x);
 });
 
-test("narrow maps fold the legend into a button that opens without clipping", async ({
+test("the legend is a map-corner button with a keyboard-friendly popover", async ({
   page,
 }) => {
-  for (const width of [320, 430, 768]) {
+  for (const width of [360, 768, 1440]) {
     await page.setViewportSize({ width, height: 800 });
     await setup(page);
     await page.goto("/#map");
     await page.reload();
     await expect(page.locator(".location-row")).toHaveCount(3);
-    const toggle = page.getByRole("button", { name: "圖例", exact: true });
-    await expect(toggle).toBeVisible();
-    await expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-expanded", "true");
-    const items = page.locator(".map-legend-items");
+    // 沒有底部圖例列與地圖提示；右上角一顆沿用 .menu-button 的 44×44 圖示按鈕。
+    await expect(page.locator(".mx-map .map-note")).toHaveCount(0);
+    await expect(page.locator(".map-legend")).toHaveCount(0);
+    const button = page.getByRole("button", { name: "圖例", exact: true });
+    await expect(button).toHaveClass(/menu-button/);
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    const box = (await button.boundingBox())!;
     const map = (await page.locator(".mx-map").boundingBox())!;
-    for (const text of [
-      "依一般垃圾",
-      "餓了",
-      "吃飽了",
-      "失聯",
-      "地標",
-      "建議點",
-    ]) {
-      const box = (await items
-        .getByText(text, { exact: false })
-        .first()
-        .boundingBox())!;
-      expect(box.x).toBeGreaterThanOrEqual(map.x);
-      expect(box.x + box.width).toBeLessThanOrEqual(map.x + map.width + 1);
+    expect(Math.round(box.width)).toBe(44);
+    expect(Math.round(box.height)).toBe(44);
+    expect(box.x + box.width).toBeGreaterThan(map.x + map.width - 60);
+    expect(box.y).toBeLessThan(map.y + 60);
+    // 開：直式排列 6 項，都在地圖範圍內；版面不會位移（N3）。
+    await button.click();
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    const legend = page.locator(".mx-legend-popover .map-legend.stacked");
+    await expect(legend.locator(":scope > span")).toHaveText([
+      /依一般垃圾/,
+      /餓了/,
+      /吃飽了/,
+      /失聯／維修／撤除/,
+      /地標/,
+      /建議點/,
+    ]);
+    const items = await legend.locator(":scope > span").all();
+    let lastY = -1;
+    for (const item of items) {
+      const b = (await item.boundingBox())!;
+      expect(b.y).toBeGreaterThan(lastY);
+      lastY = b.y;
+      expect(b.x).toBeGreaterThanOrEqual(map.x);
+      expect(b.x + b.width).toBeLessThanOrEqual(map.x + map.width + 1);
     }
+    expect(
+      await page.evaluate(
+        () => document.querySelector(".mx-layout")!.scrollTop,
+      ),
+    ).toBe(0);
+    expect((await page.locator(".mx-map").boundingBox())!.y).toBe(map.y);
+    // 再點一次按鈕關閉
+    await button.click();
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator(".mx-legend-popover")).toHaveCount(0);
+    // 鍵盤：Enter 開、Esc 關，焦點回到按鈕
+    await button.focus();
+    await page.keyboard.press("Enter");
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("Escape");
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await expect(button).toBeFocused();
+    // 點外面關閉
+    await page.keyboard.press("Space");
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    await page.getByRole("heading", { name: "附近的桶", level: 1 }).click();
+    await expect(page.locator(".mx-legend-popover")).toHaveCount(0);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -313,7 +347,9 @@ test("four filters and the waste type drive the list, sorting and marker colours
   await expect(marker(page, "垃圾桶：一般滿回收空")).toHaveClass(
     /state-hungry/,
   );
+  await page.getByRole("button", { name: "圖例", exact: true }).click();
   await expect(page.locator(".map-legend")).toContainText("依資源回收");
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "全部", exact: true }).click();
   await expect(rows).toHaveCount(3);
   await expect(rows.first()).toContainText("一般滿回收空");
@@ -350,12 +386,14 @@ test("a recycling deep link opens the map with the bin panel selected and back r
     page.getByRole("heading", { name: "一般空回收滿", level: 1 }),
   ).toBeVisible();
   await expect(page.locator(".mx-panel")).toHaveAttribute("data-view", "bin");
-  await expect(page.getByLabel("垃圾種類", { exact: true })).toHaveValue(
-    "recycling",
-  );
+  // 面板同時顯示兩槽：沒有種類選單、「一個定點」標題，槽也不能點。
+  await expect(page.getByLabel("垃圾種類", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("一個定點，兩種桶況")).toHaveCount(0);
+  await expect(page.getByText(/目前選擇|選擇此種類/)).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "選擇資源回收", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("button", { name: /^選擇(一般垃圾|資源回收)$/ }),
+  ).toHaveCount(0);
+  await expect(page.locator(".mx-panel .compartment")).toHaveCount(2);
   const selected = marker(page, "垃圾桶：一般空回收滿");
   await expect(selected).toHaveClass(/selected/);
   await expect(selected).toHaveClass(/state-full/);
@@ -518,18 +556,134 @@ test("markers work from the keyboard, focus follows selection and polling keeps 
   await expect(
     page.getByRole("heading", { name: "一般空回收滿", level: 1 }),
   ).toBeFocused();
-  // 輪詢（每 10 秒）後，標記上的焦點與選取都還在
+  // 再點一次已選的桶不會改變什麼；把焦點放到別的標記，之後的更新不會把焦點拉回標題（N2）。
+  await marker(page, "垃圾桶：一般空回收滿").click();
+  const other = marker(page, "垃圾桶：兩槽都滿");
+  await other.focus();
+  await page.waitForTimeout(11500);
+  await expect(other).toBeFocused();
+  await expect(marker(page, "垃圾桶：一般空回收滿")).toHaveClass(/selected/);
+  // 清單畫面的輪詢（每 10 秒）後，標記上的焦點仍在、元素沒有重建。
+  await page.getByRole("link", { name: "← 返回清單" }).click();
   const target = marker(page, "垃圾桶：兩槽都滿");
   await target.focus();
-  await expect(target).toBeFocused();
+  await target.evaluate((el) => el.setAttribute("data-probe", "1"));
   await page.waitForTimeout(11500);
   await expect(target).toBeFocused();
-  await expect(marker(page, "垃圾桶：一般空回收滿")).toHaveClass(/selected/);
-  // 在面板內切換種類不多一筆瀏覽紀錄：返回鍵直接回清單
+  await expect(target).toHaveAttribute("data-probe", "1");
+  // 在清單換種類不多一筆瀏覽紀錄。
+  const before = await page.evaluate(() => history.length);
   await page.getByLabel("垃圾種類", { exact: true }).selectOption("recycling");
   await expect(page).toHaveURL(/waste_type=recycling$/);
-  await page.goBack();
-  await expect(
-    page.getByRole("heading", { name: "附近的桶", level: 1 }),
-  ).toBeVisible();
+  expect(await page.evaluate(() => history.length)).toBe(before);
+});
+
+test("polling with a search term never moves the map or the selection (N1)", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.goto("/#map");
+  await expect(page.locator(".location-row")).toHaveCount(3);
+  await page.getByRole("searchbox").fill("兩槽");
+  const probe = marker(page, "垃圾桶：兩槽都滿");
+  // 搜尋字改變後框住結果一次
+  await page.waitForTimeout(800);
+  // 把地圖移開（Leaflet 方向鍵），等一次輪詢，位置不變
+  await page.locator(".leaflet-container").focus();
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForTimeout(350);
+  }
+  const moved = (await probe.boundingBox())!;
+  await page.waitForTimeout(11500);
+  const after = (await probe.boundingBox())!;
+  expect(Math.abs(after.x - moved.x)).toBeLessThan(1);
+  expect(Math.abs(after.y - moved.y)).toBeLessThan(1);
+  // 搜尋字還在時選桶：置中後，輪詢也不會再改變位置或選取
+  await page.locator(".location-row").first().click();
+  await expect(page.locator(".mx-panel")).toHaveAttribute("data-view", "bin");
+  await page.getByRole("link", { name: "← 返回清單" }).click();
+  await expect(page.getByRole("searchbox")).toHaveValue("兩槽");
+  const centred = (await probe.boundingBox())!;
+  await page.waitForTimeout(11500);
+  const later = (await probe.boundingBox())!;
+  expect(Math.abs(later.x - centred.x)).toBeLessThan(1);
+  expect(Math.abs(later.y - centred.y)).toBeLessThan(1);
+});
+
+test("a fresh half drawer shows at least one whole row at 360 and 390 wide", async ({
+  page,
+}) => {
+  for (const [width, height] of [
+    [360, 780],
+    [390, 844],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await setup(page);
+    await page.goto("/#map");
+    await page.reload();
+    await expect(page.locator(".location-row").first()).toBeVisible();
+    await expect(page.locator(".mx-layout")).toHaveAttribute(
+      "data-drawer",
+      "half",
+    );
+    const panel = (await page.locator(".mx-panel").boundingBox())!;
+    const row = (await page.locator(".location-row").first().boundingBox())!;
+    expect(row.y).toBeGreaterThanOrEqual(panel.y);
+    expect(row.y + row.height).toBeLessThanOrEqual(panel.y + panel.height);
+    // 種類選單與篩選膠囊在同一列，搜尋框觸控高度不低於 44px。
+    const chips = (await page.locator(".filter-chips").boundingBox())!;
+    const select = (await page
+      .getByLabel("垃圾種類", { exact: true })
+      .boundingBox())!;
+    expect(
+      Math.abs(select.y + select.height / 2 - (chips.y + chips.height / 2)),
+    ).toBeLessThan(4);
+    const search = (await page.getByRole("searchbox").boundingBox())!;
+    expect(search.height).toBeGreaterThanOrEqual(44);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+});
+
+test("a missing bin stops polling after 404 (L8)", async ({ page }) => {
+  const views: number[] = [];
+  await setup(page);
+  await page.route("**/api/v1/bins/does-not-exist/**", async (route) => {
+    views.push(Date.now());
+    await route.fulfill({
+      status: 404,
+      json: {
+        detail: { code: "NOT_FOUND", message: "找不到資料", fields: [] },
+      },
+    });
+  });
+  await page.goto("/#bin/does-not-exist");
+  await expect(page.getByText("找不到資料").first()).toBeVisible();
+  await page.waitForTimeout(1000);
+  const settled = views.length;
+  await page.waitForTimeout(11500);
+  expect(views.length).toBe(settled);
+});
+
+test("the list stops polling while a bin is open and refreshes on return (X7)", async ({
+  page,
+}) => {
+  const reads = await setup(page);
+  await page.goto("/#map");
+  await expect(page.locator(".location-row")).toHaveCount(3);
+  await page.locator(".location-row").first().click();
+  await expect(page.locator(".mx-panel")).toHaveAttribute("data-view", "bin");
+  await page.waitForTimeout(500);
+  const opened = reads.length;
+  await page.waitForTimeout(11500);
+  expect(reads.length).toBe(opened);
+  await page.getByRole("link", { name: "← 返回清單" }).click();
+  await expect.poll(() => reads.length, { timeout: 3000 }).toBe(opened + 1);
+  await expect
+    .poll(() => reads.length, { timeout: 13000 })
+    .toBeGreaterThan(opened + 1);
 });

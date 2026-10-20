@@ -388,12 +388,14 @@ test("two waste compartments map to three states, recycling-only navigation and 
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("一般滿回收餓");
   await expect(rows.first()).toContainText("資源回收 · 餓了 · 60%");
-  await rows.first().click();
-  // 面板裡切回一般垃圾，確認一般滿、回收能丟時仍提供「導航過去丟回收」。
+  // 桶面板沒有種類選單：在地圖篩選列切回一般垃圾再選這個桶，
+  // 確認一般滿、回收能丟時仍提供「導航過去丟回收」。
   await page.getByLabel("垃圾種類", { exact: true }).selectOption("general");
+  await page.getByRole("button", { name: "全部", exact: true }).click();
+  await rows.filter({ hasText: "一般滿回收餓" }).click();
   await expect(page.getByText("資源回收還能丟", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "選擇一般垃圾", exact: true }),
+    page.locator(".mx-panel .compartment").filter({ hasText: "一般垃圾" }),
   ).toContainText("吃飽了 · 92%");
   await expect(page.getByText("餓了 · 60%", { exact: true })).toBeVisible();
   const go = page.getByRole("link", { name: "導航過去丟回收", exact: true });

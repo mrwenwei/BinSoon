@@ -4,12 +4,7 @@ import {
   wasteHref,
   type WasteControls,
 } from "../../data/waste";
-import {
-  WasteSelect,
-  WasteInfo,
-  compartmentCards,
-  CompartmentSources,
-} from "./Waste";
+import { WasteInfo, compartmentCards, CompartmentSources } from "./Waste";
 import { useEffect, useState } from "react";
 import {
   apiBinState,
@@ -40,6 +35,7 @@ export function useBinView(id: string, wasteType: string) {
     (signal) =>
       request<BinView>(viewPath, { signal, token: session?.access_token }),
     true,
+    { stopOnNotFound: true },
   );
 }
 // 地圖瀏覽模式：選桶後在面板內原地顯示的桶資訊。內容先沿用原獨立桶頁，
@@ -47,9 +43,8 @@ export function useBinView(id: string, wasteType: string) {
 export function BinPanel({
   id,
   wasteType,
-  onWasteChange,
   onLocation,
-}: WasteControls & {
+}: Pick<WasteControls, "wasteType"> & {
   id: string;
   onLocation?: (location: ApiLocation) => void;
 }) {
@@ -95,6 +90,7 @@ export function BinPanel({
       };
     },
     true,
+    { stopOnNotFound: true },
   );
   if (!view.data)
     return (
@@ -130,24 +126,10 @@ export function BinPanel({
       </div>
       <LoadState {...view} />
       <section className="card bin-overview">
-        <div className="bin-overview-heading">
-          <div>
-            <h2>一個定點，兩種桶況</h2>
-            <p className="tiny">選擇這次要使用的種類，查看可用性與操作。</p>
-          </div>
-          <WasteSelect
-            value={wasteType}
-            onChange={(value) => {
-              if (value) onWasteChange(value);
-            }}
-          />
-        </div>
         <section aria-label="各類桶槽" className="bin-compartment-overview">
-          <StationCard
-            compartments={compartmentCards(parts)}
-            selectedWaste={wasteType}
-            onSelectWaste={onWasteChange}
-          />
+          {/* 面板同時顯示兩槽、由使用者自己判斷；不傳 onSelectWaste，槽只顯示不能點。
+              種類由地圖篩選列的選單決定。 */}
+          <StationCard compartments={compartmentCards(parts)} />
           <CompartmentSources items={parts} />
         </section>
         <div className="bin-action-panel">
