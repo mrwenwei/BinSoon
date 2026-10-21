@@ -38,8 +38,14 @@ test("suggested Bin opens a shared local ballot with persistent change and withd
     { demo: true },
   );
   await page.goto("/");
-  await page.getByRole("button", { name: "建議點", exact: true }).click();
-  await page.locator(".location-row").click();
+  await page
+    .getByRole("navigation", { name: "主要分頁" })
+    .getByRole("link", { name: "要桶投票", exact: true })
+    .click();
+  await page
+    .locator(".location-row")
+    .filter({ hasText: suggested.label })
+    .click();
   const ballot = page.getByRole("region", { name: "設置點投票" });
   await expect(
     ballot.getByRole("heading", { name: suggested.label }),

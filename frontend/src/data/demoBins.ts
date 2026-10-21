@@ -1,5 +1,5 @@
 import type { ApiLocation, BinStatus, BinView } from "./api";
-import { isDemoToken } from "./demoMode";
+import { DEMO_STORE_KEY, DEMO_UPDATED, isDemoToken } from "./demoMode";
 import type { WasteType } from "./waste";
 
 const levels = [0, 18, 35, 50, 66, 79, 85, 96, 100, null];
@@ -7,6 +7,36 @@ const observed = new Date().toISOString();
 export const demoBinLocations = new Map<string, ApiLocation>();
 let cityLoaded = false;
 export const demoCityLoaded = () => cityLoaded;
+type ClearReport = {
+  bin_id: string;
+  waste_type: string;
+  type: string;
+  work_status: string | null;
+  event_id: string;
+  event_status: string;
+  created_at: string;
+};
+type ClearSnapshot = {
+  reports?: ClearReport[];
+  crew_completions?: Record<string, { photo: string; completedAt: string }>;
+};
+let clearSnapshot: ClearSnapshot | undefined;
+window.addEventListener(DEMO_UPDATED, () => {
+  clearSnapshot = undefined;
+});
+window.addEventListener("storage", (event) => {
+  if (event.key === DEMO_STORE_KEY || event.key === null)
+    clearSnapshot = undefined;
+});
+function demoClearSnapshot(): ClearSnapshot {
+  if (clearSnapshot) return clearSnapshot;
+  try {
+    clearSnapshot = JSON.parse(localStorage.getItem(DEMO_STORE_KEY) || "{}");
+  } catch {
+    clearSnapshot = {};
+  }
+  return clearSnapshot || {};
+}
 function compartment(
   id: string,
   original: BinStatus,
@@ -17,7 +47,51 @@ function compartment(
     (value, char) => (value * 31 + char.charCodeAt(0)) >>> 0,
     0,
   );
-  const fill = levels[(hash + (waste === "recycling" ? 3 : 0)) % levels.length];
+  let fill = levels[(hash + (waste === "recycling" ? 3 : 0)) % levels.length];
+  let clearedAt: string | undefined;
+  try {
+    const saved = demoClearSnapshot();
+    const reports = Array.isArray(saved.reports) ? saved.reports : [];
+    const completed = reports.filter(
+      (r: {
+        bin_id: string;
+        waste_type: string;
+        type: string;
+        work_status: string | null;
+        event_id: string;
+      }) =>
+        r.bin_id === id &&
+        r.waste_type === waste &&
+        r.type === "full" &&
+        r.work_status === "completed" &&
+        saved.crew_completions?.[r.event_id]?.photo,
+    );
+    clearedAt = completed
+      .map(
+        (r: { event_id: string }) =>
+          saved.crew_completions?.[r.event_id]?.completedAt || "",
+      )
+      .sort()
+      .at(-1);
+    if (
+      clearedAt &&
+      !reports.some(
+        (r: {
+          bin_id: string;
+          waste_type: string;
+          event_status: string;
+          created_at: string;
+        }) =>
+          r.bin_id === id &&
+          r.waste_type === waste &&
+          r.event_status === "open" &&
+          r.created_at > clearedAt!,
+      )
+    )
+      fill = 0;
+  } catch {
+    /* No committed demo clear reading. */
+  }
   const operational = original.operational_status || "normal";
   const reasons =
     operational !== "normal"
@@ -50,7 +124,7 @@ function compartment(
     reading_source_type: "simulated",
     observed_at: fill === null ? null : observed,
     received_at: fill === null ? null : observed,
-    last_emptied_at: fill === 0 ? observed : null,
+    last_emptied_at: fill === 0 ? clearedAt || observed : null,
   };
 }
 export function demoLocation(item: ApiLocation, waste: WasteType): ApiLocation {

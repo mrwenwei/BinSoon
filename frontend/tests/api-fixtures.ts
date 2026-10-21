@@ -176,59 +176,27 @@ export async function login(page: Page, role = "citizen", next = "map") {
   await expect(page).not.toHaveURL(/#(?:staff\/|admin\/)?login(?:\?|$)/);
   await expectSignedIn(page);
 }
-// 手機版頂欄只有「地圖｜要桶投票」與點數按鈕，其他入口與帳號都在左側漢堡選單。
-export async function isCompactNav(page: Page) {
-  return !(await page.locator(".desktop-nav").isVisible());
-}
-export async function openMenu(page: Page) {
-  await page.getByRole("button", { name: "開啟選單", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-}
-export async function closeMenu(page: Page) {
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toBeHidden();
-}
-// 確認登入成功：桌面在頂欄看到登出；手機打開側邊欄看到登出後再用 Esc 關閉。
+// M flow：帳號在共用頂欄，三分頁在桌面頂部／手機底部。
 export async function expectSignedIn(page: Page) {
-  if (await isCompactNav(page)) {
-    await expect(page.locator(".topbar-right")).not.toContainText("登入");
-    await openMenu(page);
-    await expect(
-      page
-        .getByRole("dialog")
-        .getByRole("button", { name: "登出", exact: true }),
-    ).toBeVisible();
-    await closeMenu(page);
-  } else
-    await expect(
-      page.getByRole("button", { name: "登出", exact: true }),
-    ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "登出", exact: true }),
+  ).toBeVisible();
 }
-// 點選頂欄或側邊欄的入口（手機需先打開側邊欄）。
 export async function navLink(page: Page, name: string) {
-  if (await isCompactNav(page)) {
-    await openMenu(page);
-    return page.getByRole("dialog").getByRole("link", { name, exact: true });
-  }
   return page
-    .getByRole("navigation", { name: "主選單" })
-    .getByRole("link", { name, exact: true });
+    .getByRole("navigation", { name: "主要分頁" })
+    .getByRole("link", {
+      name: name === "會員中心" ? "我的" : name === "找垃圾桶" ? "地圖" : name,
+      exact: true,
+    });
 }
 export async function logoutButton(page: Page) {
-  if (await isCompactNav(page)) await openMenu(page);
   return page.getByRole("button", { name: "登出", exact: true });
 }
 export async function expectAccountName(page: Page, name: string) {
-  if (await isCompactNav(page)) {
-    await openMenu(page);
-    await expect(
-      page.getByRole("dialog").getByText(name, { exact: true }),
-    ).toBeVisible();
-    await closeMenu(page);
-  } else
-    await expect(
-      page.getByRole("banner").getByText(name, { exact: true }),
-    ).toBeVisible();
+  await expect(
+    page.getByRole("banner").getByText(name, { exact: true }),
+  ).toHaveText(name);
 }
 
 export const report = {

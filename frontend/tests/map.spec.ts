@@ -11,7 +11,19 @@ test("811 original records, twelve districts and source precision survive A flow
   await page.locator("#district").selectOption("all");
   await page.getByRole("button", { name: "全部", exact: true }).click();
   await expect(page.locator(".location-row")).toHaveCount(811);
-  await expect(page.locator(".leaflet-marker-icon")).toHaveCount(811);
+  // 重疊桶會群聚；每個標記代表的原始點總數仍須完整保留。
+  await expect
+    .poll(() =>
+      page.locator(".leaflet-marker-icon").evaluateAll((icons) =>
+        icons.reduce((total, icon) => {
+          const count = icon
+            .getAttribute("title")
+            ?.match(/^(\d+) 個桶，放大查看$/);
+          return total + (count ? Number(count[1]) : 1);
+        }, 0),
+      ),
+    )
+    .toBe(811);
   await page.locator("#district").selectOption("大安區");
   await expect(page.locator(".location-row")).toHaveCount(65);
   await page.getByRole("button", { name: "公布桶位置", exact: true }).click();

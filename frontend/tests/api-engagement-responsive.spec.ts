@@ -106,7 +106,7 @@ test("API failure and private access denial stay explicit without fixture fallba
   await expect(page.getByRole("alert")).toContainText("服務暫時無法使用");
   await expect(page.getByText("完成件數 0", { exact: true })).toHaveCount(0);
   await page.evaluate(() => {
-    location.hash = "vote";
+    location.hash = "vote/all";
   });
   await expect(page.getByRole("alert")).toContainText("服務暫時無法使用");
   await expect(page.getByRole("heading", { name: proposal.name })).toHaveCount(

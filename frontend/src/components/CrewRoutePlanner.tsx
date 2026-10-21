@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { distanceLabel } from "../data/binDemo";
 import {
   requestCrewRoute,
@@ -10,6 +16,8 @@ import type { LocationRecord } from "../data/locations";
 import type { OperationalState } from "../data/workOrders";
 import { LocationMap } from "../map/LocationMap";
 import { Icon } from "./Icon";
+
+const defaultTaskHref = (id: string) => "#staff/tasks/" + id;
 
 export type RouteTask = { id: string; locationId: string; label: string };
 
@@ -23,6 +31,10 @@ export function CrewRoutePlanner({
   ready = true,
   available = true,
   stopNotes,
+  taskHref = defaultTaskHref,
+  title = "今日示範清運路線",
+  afterMap,
+  backHref = "#staff/tasks",
 }: {
   bins: LocationRecord[];
   tasks: RouteTask[];
@@ -31,6 +43,10 @@ export function CrewRoutePlanner({
   ready?: boolean;
   available?: boolean;
   stopNotes?: Record<string, string>;
+  taskHref?: (id: string) => string;
+  title?: string;
+  afterMap?: ReactNode;
+  backHref?: string;
   vehicle: CrewVehicle;
   onVehicleChange: (value: CrewVehicle) => void;
 }) {
@@ -55,9 +71,9 @@ export function CrewRoutePlanner({
   const selectBin = useCallback(
     (bin: LocationRecord) => {
       const task = tasks.find((task) => task.locationId === bin.id);
-      if (task) window.location.hash = "staff/tasks/" + task.id;
+      if (task) window.location.hash = taskHref(task.id).slice(1);
     },
-    [tasks],
+    [tasks, taskHref],
   );
   useEffect(() => {
     setResult(undefined);
@@ -121,7 +137,7 @@ export function CrewRoutePlanner({
       <header className="crew-route-heading">
         <div>
           <span className="eyebrow">清潔隊 · 路線規劃</span>
-          <h1>今日示範清運路線</h1>
+          <h1>{title}</h1>
         </div>
         <span className="crew-route-count">
           <strong>{bins.length}</strong> 站<span aria-hidden="true">／</span>
@@ -270,6 +286,7 @@ export function CrewRoutePlanner({
             依 OpenStreetMap
             計算。預估時間不含即時路況與停靠作業；請依現場標誌及車種限制行駛。
           </p>
+          {afterMap}
         </section>
         <section className="crew-route-itinerary" aria-label="清運站點">
           <header>
@@ -332,7 +349,7 @@ export function CrewRoutePlanner({
                         <a
                           key={task.id}
                           className="button secondary"
-                          href={"#staff/tasks/" + task.id}
+                          href={taskHref(task.id)}
                         >
                           {task.label} · 查看工單
                           <Icon name="arrow" />
@@ -350,7 +367,7 @@ export function CrewRoutePlanner({
               </span>
               <h2>已無一般清運下一站</h2>
               <p>待修繕與待感測工單可在派工清單查看。</p>
-              <a className="button secondary" href="#staff/tasks">
+              <a className="button secondary" href={backHref}>
                 回到派工清單
                 <Icon name="arrow" />
               </a>

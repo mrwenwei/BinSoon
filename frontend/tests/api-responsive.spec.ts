@@ -50,61 +50,34 @@ test("API map, details, login and report stay usable on desktop and narrow phone
   });
 });
 
-test("hamburger drawer reaches every entry, traps focus and closes with Esc or the scrim", async ({
+test("M navigation has three responsive tabs and identity switches through login", async ({
   page,
-}) => {
-  await apiFixture(page);
+}, info) => {
+  await apiFixture(page, undefined, { demo: true });
   await page.goto("/#map");
-  const menu = page.getByRole("button", { name: "開啟選單", exact: true });
-  // 手機頂欄：地圖｜要桶投票兩個分頁（桌面版改顯示原主選單）。
-  await expect(page.locator(".primary-tabs a")).toHaveText([
-    "地圖",
-    "要桶投票",
-  ]);
-  await menu.click();
-  const drawer = page.getByRole("dialog");
-  await expect(drawer).toBeVisible();
-  await expect(menu).toHaveAttribute("aria-expanded", "true");
-  for (const name of [
-    "找垃圾桶",
-    "要桶投票",
-    "會員中心",
-    "清潔員管理入口",
-    "市民登入",
-  ])
-    await expect(drawer.getByRole("link", { name, exact: true })).toBeVisible();
-  for (const name of [
-    "我的回報",
-    "集章與等級",
-    "兌換獎勵",
-    "認養Bin友",
-    "站內通知",
-    "清潔隊工作台",
-    "清運道路指引",
-    "隊員登入",
-    "管理員登入",
-  ])
-    await expect(drawer.getByRole("link", { name, exact: true })).toHaveCount(
-      0,
-    );
-  // 焦點鎖在側邊欄：從最後一個項目按 Tab 回到第一個。
-  await drawer.getByRole("link", { name: "市民登入", exact: true }).focus();
-  await page.keyboard.press("Tab");
-  await expect(drawer.getByRole("button", { name: "關閉選單" })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(drawer).toBeHidden();
-  await expect(menu).toBeFocused();
-  await menu.click();
+  await expect(page.getByRole("button", { name: "開啟選單" })).toHaveCount(0);
+  const nav = page.getByRole("navigation", { name: "主要分頁" });
+  await expect(nav.getByRole("link")).toHaveCount(3);
+  for (const name of ["地圖", "要桶投票", "我的"])
+    await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
+  const box = await nav.boundingBox();
+  if (info.project.name === "mobile")
+    expect(box!.y + box!.height).toBeCloseTo(page.viewportSize()!.height, 0);
+  else expect(box!.y).toBeLessThan(150);
+  const identity = page.getByRole("navigation", { name: "Demo 身份切換" });
+  await identity.getByRole("link", { name: "清潔隊", exact: true }).click();
   await page
-    .locator(".drawer-scrim")
-    .click({ position: { x: 380, y: 400 }, force: true });
-  await expect(drawer).toBeHidden();
-  await menu.click();
-  await drawer
-    .getByRole("link", { name: "清潔員管理入口", exact: true })
+    .getByRole("button", { name: "以模擬清潔員登入", exact: true })
     .click();
-  await expect(drawer).toBeHidden();
-  await expect(page).toHaveURL(/#crew$/);
-  // 手機版沒有底部導覽列。
-  await expect(page.locator(".mobile-nav")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "今日派工", exact: true }),
+  ).toBeVisible();
+  await identity.getByRole("link", { name: "市民", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "市民登入", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .click();
+  await expect(page).toHaveURL(/#map$/);
 });

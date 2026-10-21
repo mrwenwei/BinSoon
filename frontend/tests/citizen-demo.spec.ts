@@ -93,13 +93,21 @@ test("citizen signs in without credentials and sees a persistent fictional membe
     .getByRole("button", { name: "以展示市民登入", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "會員中心", exact: true }),
+    page.getByRole("heading", { name: "我的", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("累積點數 128", { exact: true })).toBeVisible();
-  await expect(page.getByText("可用點數 93", { exact: true })).toBeVisible();
-  await expect(page.getByText(/屬實回報 3 次/)).toBeVisible();
+  await expect(page.getByText(/累積 128 點/)).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "我的點數" })
+      .getByText("93", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/共 4 筆/)).toBeVisible();
   await page.reload();
-  await expect(page.getByText("可用點數 93", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "我的點數" })
+      .getByText("93", { exact: true }),
+  ).toBeVisible();
   expect(privateRequests).toBe(0);
 });
 
@@ -165,18 +173,24 @@ test("citizen reports, creates proposals, votes and redeems entirely locally acr
   ).toBeVisible();
   await page.goto("/#rewards");
   await page
-    .getByRole("button", { name: "選擇 Bin友超商展示券", exact: true })
+    .getByRole("button", { name: "選擇 超商咖啡（試營運展示）", exact: true })
     .click();
   await page.getByRole("button", { name: "確認兌換", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "兌換成功", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "會員中心，目前 58 點", exact: true }),
+    page.getByRole("link", { name: "會員中心，目前 90 點", exact: true }),
   ).toBeVisible();
   await page.goto("/#member");
-  await expect(page.getByText("可用點數 58", { exact: true })).toBeVisible();
-  await expect(page.getByText("待確認點數 3", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "我的點數" })
+      .getByText("90", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("另有 3 點審核中", { exact: true }),
+  ).toBeVisible();
   await page.goto(reportUrl);
   await expect(
     page.getByRole("heading", { name: "謝謝你幫城市變乾淨！", exact: true }),
@@ -250,7 +264,11 @@ test("demo surfaces fit desktop and 320px phones and use the Bin友 wording", as
   await page
     .getByRole("button", { name: "以展示市民登入", exact: true })
     .click();
-  await expect(page.getByText("可用點數 93", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "我的點數" })
+      .getByText("93", { exact: true }),
+  ).toBeVisible();
   expect(await page.locator("body").innerText()).not.toContain("電子雞");
   await page.screenshot({
     path: info.outputPath("demo-member.png"),
@@ -275,8 +293,32 @@ test("two demo tabs cannot spend the same points twice", async ({
     await tab
       .getByRole("button", { name: "以展示市民登入", exact: true })
       .click();
+    if (
+      !(await tab.evaluate(() =>
+        localStorage.getItem("binsoon-citizen-demo-v1"),
+      ))
+    ) {
+      await tab.evaluate(async () => {
+        const path = "/src/data/demoCitizen.ts";
+        const { demoCitizenSnapshot } = await import(path);
+        const state = demoCitizenSnapshot();
+        state.entries = [
+          {
+            id: "concurrency-balance",
+            type: "展示測試餘額",
+            amount: 3,
+            balance_after: 3,
+            report_id: null,
+            redemption_id: null,
+            created_at: new Date().toISOString(),
+          },
+        ];
+        localStorage.setItem("binsoon-citizen-demo-v1", JSON.stringify(state));
+        window.dispatchEvent(new Event("binsoon-demo-updated"));
+      });
+    }
     await tab
-      .getByRole("button", { name: "選擇 Bin友咖啡展示券", exact: true })
+      .getByRole("button", { name: "選擇 超商咖啡（試營運展示）", exact: true })
       .click();
   };
   await setup(page);
@@ -298,7 +340,11 @@ test("two demo tabs cannot spend the same points twice", async ({
     )
     .toBe(1);
   await page.goto("/#member");
-  await expect(page.getByText("可用點數 23", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "我的點數" })
+      .getByText("0", { exact: true }),
+  ).toBeVisible();
   expect(writes).toEqual([]);
 });
 

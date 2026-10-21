@@ -1,9 +1,14 @@
+import {
+  CitizenHome,
+  CitizenReports,
+  CitizenBins,
+} from "./components/api/CitizenPages";
 import { CrewDemo } from "./components/api/CrewDemo";
 import { ProposalVoteDone } from "./components/api/ProposalVoteDone";
-import { useDemoData } from "./data/demoMode";
+import { isDemoToken, useDemoData } from "./data/demoMode";
 import { isWasteType, wasteHref, type WasteType } from "./data/waste";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { AppNav } from "./components/AppNav";
+import { DemoNav } from "./components/DemoNav";
 import { request, type Membership } from "./data/api";
 import { useApi } from "./components/api/useApi";
 import {
@@ -57,6 +62,7 @@ function AppContent() {
   const workCommands = useWorkCommands();
   const main = useRef<HTMLDivElement>(null);
   const { session, logout, notice, clearNotice } = useSession();
+  const citizenDemo = isDemoToken(session?.access_token);
   // 只換 ?waste_type= 時（例如在種類單選或下拉按方向鍵），頁面若因 key 重建，
   // 原本聚焦的控制項會被換掉、焦點掉到 BODY。換之前記下控制項，換完把焦點
   // 放回新畫面上同一個控制項（單選：目前選中的那格）。
@@ -122,7 +128,12 @@ function AppContent() {
   const loginHref = `#${loginRoute}?next=${encodeURIComponent(route)}`;
   const isLogin = page === "login" || id === "login";
   // 地圖瀏覽模式（#map、#bin/<id>）是一屏 app，不接頁尾；揭露句改在面板底部。
-  const isMapView = !isLogin && (page === "map" || (page === "bin" && !!id));
+  const isMapView =
+    !isLogin &&
+    (page === "map" ||
+      page === "nav" ||
+      (page === "vote" && !id) ||
+      (page === "bin" && !!id));
   const signOut = () => {
     drafts.clear();
     proposalDraft.clear();
@@ -130,91 +141,65 @@ function AppContent() {
     void logout();
   };
   return (
-    <div className="app-shell api-app">
-      <AppNav
-        tabs={[
-          {
-            href: wasteHref("map", wasteType),
-            label: "地圖",
-            current: ["map", "bin", "nav"].includes(page),
-          },
-          {
-            href: "#vote",
-            label: "要桶投票",
-            current: ["vote", "vote-done"].includes(page),
-          },
-        ]}
-        desktopLinks={[
-          {
-            href: wasteHref("map", wasteType),
-            label: "找垃圾桶",
-            current: ["map", "bin", "nav"].includes(page),
-          },
-          {
-            href: "#member",
-            label: "會員中心",
-            current: [
-              "member",
-              "point-history",
-              "stamps",
-              "reports",
-              "review",
-              "rewards",
-              "redemptions",
-              "notifications",
-            ].includes(page),
-          },
-          {
-            href: "#crew",
-            label: "清潔員管理入口",
-            current: page === "crew",
-          },
-        ]}
-        sections={[
-          {
-            title: "CITIZEN · 市民",
-            links: [
-              {
-                href: wasteHref("map", wasteType),
-                label: "找垃圾桶",
-                current: page === "map",
-              },
-              { href: "#vote", label: "要桶投票" },
-              {
-                href: "#member",
-                label: "會員中心",
-                current: [
-                  "member",
-                  "point-history",
-                  "stamps",
-                  "reports",
-                  "review",
-                  "rewards",
-                  "redemptions",
-                  "notifications",
-                ].includes(page),
-              },
-            ],
-          },
-          {
-            title: "CREW · 清潔員",
-            links: [
-              {
-                href: "#crew",
-                label: "清潔員管理入口",
-                current: page === "crew",
-              },
-            ],
-          },
-          ...(session
-            ? []
+    <div
+      className={`app-shell api-app m-app ${page === "crew" ? "m-crew" : ""}`}
+    >
+      <DemoNav
+        crew={page === "crew"}
+        tabs={
+          page === "crew"
+            ? [
+                {
+                  href: "#crew",
+                  label: "工單",
+                  current: !id || id === "task" || id === "login",
+                },
+                { href: "#crew/route", label: "路線", current: id === "route" },
+                {
+                  href: "#crew/ranking",
+                  label: "榮譽榜",
+                  current: id === "ranking",
+                },
+              ]
             : [
                 {
-                  title: "ACCOUNT · 帳號",
-                  links: [{ href: loginHref, label: "市民登入" }],
+                  href: wasteHref("map", wasteType),
+                  label: "地圖",
+                  current:
+                    [
+                      "map",
+                      "bin",
+                      "nav",
+                      "report",
+                      "quick-report",
+                      "report-done",
+                    ].includes(page) && params.get("tab") !== "vote",
                 },
-              ]),
-        ]}
+                {
+                  href: "#vote",
+                  label: "要桶投票",
+                  current:
+                    ["vote", "vote-done", "proposals"].includes(page) ||
+                    params.get("tab") === "vote",
+                },
+                {
+                  href: "#member",
+                  label: "我的",
+                  current: [
+                    "member",
+                    "levels",
+                    "point-history",
+                    "stamps",
+                    "reports",
+                    "review",
+                    "rewards",
+                    "redemptions",
+                    "notifications",
+                    "adopt",
+                  ].includes(page),
+                },
+              ]
+        }
         right={
           page === "crew" ? (
             <span className="role-chip">清潔員模擬模式</span>
@@ -231,9 +216,6 @@ function AppContent() {
           )
         }
         account={page !== "crew" && session && <Account onLogout={signOut} />}
-        drawerFooter={
-          page !== "crew" && session && <Account onLogout={signOut} />
-        }
       />
       {!isMapView && page !== "crew" && useDemoData(session?.access_token) && (
         <p className="demo-mode-notice">
@@ -288,11 +270,14 @@ function AppContent() {
             key={workId || "admin"}
             id={id === "work-orders" ? workId : undefined}
           />
-        ) : page === "map" || (page === "bin" && id) ? (
+        ) : page === "map" ||
+          (page === "vote" && !id) ||
+          (page === "bin" && id) ? (
           // 地圖與桶資訊同一個元件：#bin/<id> 是「地圖＋已選該桶的面板」，
           // 切換時地圖不重建。
           <MapPage
             {...wasteControls}
+            voting={page === "vote" || params.get("tab") === "vote"}
             binId={page === "bin" ? id : undefined}
             placeId={
               page === "map" ? params.get("place") || undefined : undefined
@@ -316,6 +301,10 @@ function AppContent() {
               key={`${workId}/${session?.user.id}`}
               binId={workId}
             />
+          ) : citizenDemo && !id && !params.has("manage") ? (
+            <RequireCitizen next={route}>
+              <CitizenBins wasteType={wasteType} />
+            </RequireCitizen>
           ) : (
             <Adoptions key={`${id || "list"}/${session?.user.id}`} id={id} />
           )
@@ -354,7 +343,7 @@ function AppContent() {
           </RequireCitizen>
         ) : page === "reports" ? (
           <RequireCitizen next={route}>
-            <ReportsList />
+            {citizenDemo ? <CitizenReports /> : <ReportsList />}
           </RequireCitizen>
         ) : page === "rewards" || page === "redemptions" ? (
           <RequireCitizen next={route}>
@@ -371,9 +360,9 @@ function AppContent() {
           <RequireCitizen next={route}>
             <PointHistory key={session?.user.id} />
           </RequireCitizen>
-        ) : ["member", "stamps"].includes(page) ? (
+        ) : ["member", "stamps", "levels"].includes(page) ? (
           <RequireCitizen next={route}>
-            <Member />
+            {citizenDemo && page !== "levels" ? <CitizenHome /> : <Member />}
           </RequireCitizen>
         ) : (
           <main className="page">

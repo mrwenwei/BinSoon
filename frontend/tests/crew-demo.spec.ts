@@ -44,28 +44,23 @@ test("one crew menu entry opens one-click local login, three dispatch tabs and r
   page,
 }, info) => {
   const requests = await setup(page);
-  await page.getByRole("button", { name: "開啟選單", exact: true }).click();
-  const menu = page.getByRole("navigation", { name: "側邊選單" });
-  await expect(menu.locator('a[href^="#crew"]')).toHaveCount(1);
+  const identity = page.getByRole("navigation", { name: "Demo 身份切換" });
   await expect(
-    menu.getByRole("link", { name: "清潔員管理入口", exact: true }),
+    identity.getByRole("link", { name: "清潔隊", exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: "開啟選單" })).toHaveCount(0);
   await expect(
-    menu.locator('a[href^="#staff"], a[href^="#admin"], a[href="#outcomes"]'),
-  ).toHaveCount(0);
-  await page.getByRole("button", { name: "關閉選單", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "待處理 5", exact: true }),
+    page.getByRole("button", { name: "待處理 6", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".crew-task-list > a")).toHaveCount(5);
+  await expect(page.locator(".crew-task-list .crew-task-card")).toHaveCount(6);
   await page.screenshot({
     path: info.outputPath("p18-dispatch.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "處理中 1", exact: true }).click();
-  await expect(page.locator(".crew-task-list > a")).toHaveCount(1);
-  await page.getByRole("button", { name: "已完成 9", exact: true }).click();
-  await expect(page.locator(".crew-task-list > a")).toHaveCount(9);
+  await expect(page.locator(".crew-task-list .crew-task-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "已完成 12", exact: true }).click();
+  await expect(page.locator(".crew-task-list .crew-task-card")).toHaveCount(12);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "今日派工", exact: true }),
@@ -115,7 +110,7 @@ test("phone field work requires arrival, verdict, composition and fake completio
   });
   await complete.click();
   await expect(
-    page.getByRole("heading", { name: "已完成清運", exact: true }),
+    page.getByRole("heading", { name: "結案完成", exact: true }),
   ).toBeVisible();
   await page.reload();
   await expect(
@@ -129,10 +124,10 @@ test("phone field work requires arrival, verdict, composition and fake completio
   ).toHaveCount(0);
   await page.getByRole("link", { name: "返回今日派工", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "待處理 4", exact: true }),
+    page.getByRole("button", { name: "待處理 5", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "已完成 10", exact: true }),
+    page.getByRole("button", { name: "已完成 13", exact: true }),
   ).toBeVisible();
   // A second task can complete without an optional interior image.
   await page.getByRole("button", { name: "處理中 1", exact: true }).click();
@@ -144,7 +139,7 @@ test("phone field work requires arrival, verdict, composition and fake completio
     .click();
   await page.getByRole("button", { name: "完成清運", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "已完成清運", exact: true }),
+    page.getByRole("heading", { name: "結案完成", exact: true }),
   ).toBeVisible();
   expect(await page.evaluate(() => (window as any).crewHardwareCalls)).toBe(0);
   expect(requests).toEqual([]);
@@ -175,54 +170,76 @@ test("desktop cannot perform field work even at phone width", async ({
   }
 });
 
-test("illustrative routes switch walking scooter and car without GPS, tiles or a routing service", async ({
+test("S3 shares road planning, invalidates the old mode and shows completed bins and progress", async ({
   page,
 }, info) => {
   const requests = await setup(page);
-  const external: string[] = [];
-  await page.route(/valhalla|tiles\.openfreemap/, async (route) => {
-    external.push(route.request().url());
-    await route.abort();
-  });
-  await page
-    .getByRole("link", { name: "看今日建議路線（4 個桶 · 模擬）", exact: true })
-    .click();
-  await expect(page.locator(".crew-route-stops li")).toHaveCount(4);
-  await expect(page.locator(".crew-route-stops")).not.toContainText("D-021");
-  const paths = new Set<string>();
-  for (const [label, time] of [
-    ["步行", 35],
-    ["機車", 12],
-    ["汽車", 18],
-  ] as const) {
-    await page.getByRole("button", { name: label, exact: true }).click();
-    await expect(
-      page.getByRole("img", {
-        name: `${label}模擬清運路線，4 個停靠點`,
-        exact: true,
-      }),
-    ).toBeVisible();
-    await expect(page.getByText(new RegExp(`約 ${time} 分鐘`))).toBeVisible();
-    paths.add((await page.locator(".crew-route-line").getAttribute("points"))!);
+  const modes: string[] = [];
+  await page.route(
+    "https://valhalla1.openstreetmap.de/route",
+    async (route) => {
+      const body = route.request().postDataJSON();
+      modes.push(body.costing);
+      const legs = body.locations
+        .slice(1)
+        .map(() => ({
+          shape: "_x{vn@gx}xfFu@|@qFCcAjA",
+          summary: { length: 0.2, time: 60 },
+          maneuvers: [
+            {
+              type: 8,
+              instruction: "Continue",
+              length: 0.2,
+              travel_type: body.costing === "auto" ? "car" : "motor_scooter",
+            },
+          ],
+        }));
+      await route.fulfill({
+        json: {
+          trip: {
+            status: 0,
+            units: "kilometers",
+            summary: { length: legs.length * 0.2, time: legs.length * 60 },
+            legs,
+          },
+        },
+      });
+    },
+  );
+  await page.goto("/#crew/route");
+  await expect(
+    page.getByRole("heading", { name: "今日清運路線", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("progressbar", { name: "已完成清運桶數" }),
+  ).toHaveAttribute("value", "9");
+  await expect(page.locator(".crew-completed-bins li")).toHaveCount(9);
+  await expect(page.locator(".staff-route-list")).not.toContainText("D-021");
+  for (const [label, costing] of [
+    ["機車（一般機車）", "motor_scooter"],
+    ["汽車", "auto"],
+  ]) {
+    await page.getByRole("radio", { name: label, exact: true }).check();
+    await expect(page.locator(".road-route")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "產生路線指引", exact: true })
+      .click();
+    await expect(page.locator(".road-route")).toHaveCount(1);
+    expect(modes).toContain(costing);
   }
-  expect(paths.size).toBe(3);
   await page.screenshot({
-    path: info.outputPath("p20-route.png"),
+    path: info.outputPath("s3-road-progress.png"),
     fullPage: true,
   });
   await page
-    .getByRole("button", { name: "開始導航（模擬）", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "汽車模擬導航已開始", exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole("link", { name: "前往第一張派工單", exact: true })
+    .getByRole("link", {
+      name: "即刻處理 · 滿溢 92%＋桶旁堆放 · 查看工單",
+      exact: true,
+    })
     .click();
   await expect(
     page.getByRole("heading", { name: "新生南路一段 #A-012", exact: true }),
   ).toBeVisible();
   expect(await page.evaluate(() => (window as any).crewHardwareCalls)).toBe(0);
-  expect(external).toEqual([]);
   expect(requests).toEqual([]);
 });

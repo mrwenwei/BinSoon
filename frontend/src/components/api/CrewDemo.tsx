@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CREW_STORE,
   CREW_UPDATED,
@@ -7,11 +7,16 @@ import {
   readCrewTasks,
   updateCrewTask,
   crewPhoto,
-  crewModes,
+  crewRanking,
+  crewTaskLocation,
   type CrewTask,
   type CrewStatus,
-  type CrewMode,
 } from "../../data/crewDemo";
+import { DEMO_STORE_KEY, DEMO_UPDATED } from "../../data/demoMode";
+import { taipeiMonth } from "../../data/calendar";
+import { districts } from "../../data/locations";
+import { type CrewVehicle } from "../../data/crewRouting";
+import { CrewRoutePlanner } from "../CrewRoutePlanner";
 import { isPhoneBrowser } from "../../data/phone";
 
 const statusNames: Record<CrewStatus, string> = {
@@ -24,12 +29,19 @@ function useCrewDemo() {
   useEffect(() => {
     const update = () => refresh((v) => v + 1);
     const storage = (event: StorageEvent) => {
-      if (event.key === CREW_STORE || event.key === null) update();
+      if (
+        event.key === CREW_STORE ||
+        event.key === DEMO_STORE_KEY ||
+        event.key === null
+      )
+        update();
     };
     window.addEventListener(CREW_UPDATED, update);
+    window.addEventListener(DEMO_UPDATED, update);
     window.addEventListener("storage", storage);
     return () => {
       window.removeEventListener(CREW_UPDATED, update);
+      window.removeEventListener(DEMO_UPDATED, update);
       window.removeEventListener("storage", storage);
     };
   }, []);
@@ -38,7 +50,7 @@ function useCrewDemo() {
 export function CrewDemo({ section, id }: { section?: string; id?: string }) {
   const { signedIn, tasks } = useCrewDemo();
   const [error, setError] = useState("");
-  if (!signedIn)
+  if (!signedIn || section === "login")
     return (
       <main className="page api-narrow login-page">
         <h1>清潔員管理入口</h1>
@@ -53,6 +65,7 @@ export function CrewDemo({ section, id }: { section?: string; id?: string }) {
             onClick={() => {
               try {
                 setCrewSignedIn(true);
+                window.location.hash = "crew";
                 setError("");
               } catch {
                 setError("無法儲存模擬登入，請允許此頁使用瀏覽器儲存空間。");
@@ -72,7 +85,15 @@ export function CrewDemo({ section, id }: { section?: string; id?: string }) {
         <button onClick={() => setCrewSignedIn(false)}>登出清潔員</button>
       </div>
       {section === "task" && id ? (
-        <CrewTaskPage key={id} task={tasks.find((task) => task.id === id)} />
+        <CrewTaskPage
+          key={id}
+          task={tasks.find((task) => task.id === id)}
+          nextTask={tasks.find(
+            (task) => task.id !== id && task.status !== "done" && !task.offline,
+          )}
+        />
+      ) : section === "ranking" ? (
+        <CrewRanking />
       ) : section === "route" ? (
         <CrewRoute tasks={tasks} />
       ) : (
@@ -94,7 +115,12 @@ function CrewList({ tasks }: { tasks: CrewTask[] }) {
             <p>大安區清潔隊 · 清潔員端</p>
             <h1>今日派工</h1>
           </div>
-          <span className="crew-kudos">本月 128 讚 · 示意</span>
+          <a className="crew-kudos" href="#crew/ranking">
+            本月{" "}
+            {crewRanking("大安區", taipeiMonth()).find((row) => row.current)
+              ?.likes || 0}{" "}
+            讚 · 示意
+          </a>
         </div>
         <div className="crew-tabs" aria-label="派工狀態">
           {(Object.keys(statusNames) as CrewStatus[]).map((status) => (
@@ -110,30 +136,57 @@ function CrewList({ tasks }: { tasks: CrewTask[] }) {
         </div>
       </header>
       <div className="crew-task-list">
-        {tasks
-          .filter((task) => task.status === filter)
-          .map((task) => (
-            <a
-              key={task.id}
-              className={`crew-task-card ${task.urgent && task.status !== "done" ? "crew-urgent" : ""} ${task.offline ? "crew-offline" : ""}`}
-              href={`#crew/task/${task.id}`}
-            >
-              <div className="crew-between">
-                <span
-                  className={`crew-issue ${task.urgent && task.status !== "done" ? "crew-issue-urgent" : ""}`}
-                >
-                  {task.status === "done" ? "已完成清運" : task.issue}
-                </span>
-                <span>
-                  {task.minutes >= 60 ? "1 小時前" : `${task.minutes} 分鐘前`}
-                </span>
-              </div>
-              <h2>{task.name}</h2>
-              <p>
-                {task.status === "done" ? "已完成 · 本機模擬紀錄" : task.detail}
-              </p>
-            </a>
-          ))}
+        {[
+          {
+            title: "即刻處理",
+            match: (task: CrewTask) => task.urgent && !task.offline,
+          },
+          {
+            title: "一般派工",
+            match: (task: CrewTask) => !task.urgent && !task.offline,
+          },
+          {
+            title: "讀值異常 · 不列入評分",
+            match: (task: CrewTask) => task.offline,
+          },
+        ].map((group) => {
+          const rows = tasks.filter(
+            (task) => task.status === filter && group.match(task),
+          );
+          return (
+            rows.length > 0 && (
+              <section className="crew-dispatch-group" key={group.title}>
+                <h2>{group.title}</h2>
+                {rows.map((task) => (
+                  <a
+                    key={task.id}
+                    className={`crew-task-card ${task.urgent && task.status !== "done" ? "crew-urgent" : ""} ${task.offline ? "crew-offline" : ""}`}
+                    href={`#crew/task/${task.id}`}
+                  >
+                    <div className="crew-between">
+                      <span
+                        className={`crew-issue ${task.urgent && task.status !== "done" ? "crew-issue-urgent" : ""}`}
+                      >
+                        {task.status === "done" ? "已完成清運" : task.issue}
+                      </span>
+                      <span>
+                        {task.minutes >= 60
+                          ? "1 小時前"
+                          : `${task.minutes} 分鐘前`}
+                      </span>
+                    </div>
+                    <h2>{task.name}</h2>
+                    <p>
+                      {task.status === "done"
+                        ? "已完成 · 本機模擬紀錄"
+                        : task.detail}
+                    </p>
+                  </a>
+                ))}
+              </section>
+            )
+          );
+        })}
         {!tasks.some((task) => task.status === filter) && (
           <p>目前沒有{statusNames[filter]}的派工。</p>
         )}
@@ -146,8 +199,15 @@ function CrewList({ tasks }: { tasks: CrewTask[] }) {
     </main>
   );
 }
-function CrewTaskPage({ task }: { task?: CrewTask }) {
+function CrewTaskPage({
+  task,
+  nextTask,
+}: {
+  task?: CrewTask;
+  nextTask?: CrewTask;
+}) {
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   if (!task)
     return (
       <main className="crew-demo">
@@ -156,12 +216,16 @@ function CrewTaskPage({ task }: { task?: CrewTask }) {
       </main>
     );
   const phone = isPhoneBrowser();
-  const apply = (change: Parameters<typeof updateCrewTask>[1]) => {
+  const apply = async (change: Parameters<typeof updateCrewTask>[1]) => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
     try {
-      updateCrewTask(task.id, change);
-      setError("");
+      await updateCrewTask(task.id, change);
     } catch (error) {
       setError((error as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
   const processing = task.status === "processing";
@@ -192,12 +256,12 @@ function CrewTaskPage({ task }: { task?: CrewTask }) {
       <section className="crew-task-card">
         <img
           className="crew-evidence"
-          src={crewPhoto("report")}
+          src={task.reportPhoto || crewPhoto("report")}
           alt="民眾回報的模擬現場照片"
         />
         <p>
           {task.source === "citizen"
-            ? "民眾回報 · 距桶 32 公尺 · 同事件另有 2 筆"
+            ? `民眾回報 · 同事件 ${task.reportCount || 1} 筆 · 本機模擬照片`
             : "感測器自動派工 · 附圖為模擬現場照片"}
         </p>
       </section>
@@ -211,8 +275,26 @@ function CrewTaskPage({ task }: { task?: CrewTask }) {
       {error && <p role="alert">{error}</p>}
       {task.status === "done" ? (
         <section className="crew-task-card" role="status">
-          <h2>已完成清運</h2>
-          <p>本機模擬結案，不會影響真實桶況或派工。</p>
+          <h2>結案完成</h2>
+          <p>
+            已完成清運 · {task.truth === "yes" ? "查證屬實" : "查證不實"}
+            {task.eventId ? "，市民回報紀錄已同步更新" : " · 本機展示紀錄"}
+          </p>
+          <p>
+            本機模擬結案，不會影響真實桶況或派工；讀值異常及不實案件不列入排名。
+          </p>
+          {nextTask ? (
+            <a className="button primary" href={`#crew/task/${nextTask.id}`}>
+              下一張工單：{nextTask.name}
+            </a>
+          ) : (
+            <a className="button primary" href="#crew">
+              返回今日工單
+            </a>
+          )}
+          <a className="back-link" href="#crew/route">
+            查看清運進度
+          </a>
           {task.completionPhoto && (
             <img
               className="crew-evidence"
@@ -246,7 +328,7 @@ function CrewTaskPage({ task }: { task?: CrewTask }) {
               確認到場，開始處理（模擬）
             </button>
           )}
-          <fieldset className="crew-work-fields" disabled={!processing}>
+          <fieldset className="crew-work-fields" disabled={!processing || busy}>
             <legend>現場處理</legend>
             <h2>回報是否屬實？</h2>
             <div className="crew-choice" role="group" aria-label="回報是否屬實">
@@ -254,6 +336,7 @@ function CrewTaskPage({ task }: { task?: CrewTask }) {
                 <button
                   key={value}
                   aria-pressed={task.truth === value}
+                  disabled={busy || !!task.truth}
                   onClick={() => apply({ truth: value })}
                 >
                   {value === "yes" ? "屬實" : "不實"}
@@ -312,7 +395,7 @@ function CrewTaskPage({ task }: { task?: CrewTask }) {
           <div className="crew-bottom">
             <button
               className="button primary"
-              disabled={!ready}
+              disabled={!ready || busy}
               onClick={() => apply({ status: "done" })}
             >
               完成清運
@@ -324,141 +407,166 @@ function CrewTaskPage({ task }: { task?: CrewTask }) {
     </main>
   );
 }
+const crewTaskHref = (id: string) => `#crew/task/${id}`;
 function CrewRoute({ tasks }: { tasks: CrewTask[] }) {
-  const [mode, setMode] = useState<CrewMode>("walk");
-  const [started, setStarted] = useState(false);
-  const stops = tasks.filter(
-    (task) => task.status === "pending" && !task.offline,
-  );
-  const route = crewModes[mode];
-  const points = [
-    [145, 205],
-    [145, 65],
-    [255, 65],
-    [255, 205],
-  ];
+  const [vehicle, setVehicle] = useState<CrewVehicle>("scooter");
+  const plan = useMemo(() => {
+    const groups = new Map<
+      string,
+      { location: ReturnType<typeof crewTaskLocation>; tasks: CrewTask[] }
+    >();
+    for (const task of tasks.filter((t) => !t.offline)) {
+      const location = crewTaskLocation(task);
+      const group = groups.get(location.id);
+      if (group) group.tasks.push(task);
+      else groups.set(location.id, { location, tasks: [task] });
+    }
+    const all = [...groups.values()];
+    const completed = all.filter((g) =>
+      g.tasks.every((t) => t.status === "done"),
+    );
+    const pending = all.filter((g) => g.tasks.some((t) => t.status !== "done"));
+    return { all, completed, pending };
+  }, [tasks]);
   return (
-    <main className="crew-demo crew-route">
+    <main className="page api-route-page demo-crew-road">
+      <a className="back-link" href="#crew">
+        ← 返回今日工單
+      </a>
+      <p className="tiny">
+        固定展示起點與模擬派工，沒有即時 GPS；沿用 Valhalla
+        地圖道路規劃，未做順序最佳化。
+      </p>
+      <CrewRoutePlanner
+        title="今日清運路線"
+        vehicle={vehicle}
+        onVehicleChange={setVehicle}
+        origin={[25.033, 121.5358]}
+        bins={plan.pending.map((g) => g.location)}
+        tasks={plan.pending.flatMap((g) =>
+          g.tasks
+            .filter((t) => t.status !== "done")
+            .map((t) => ({
+              id: t.id,
+              locationId: g.location.id,
+              label: t.issue,
+            })),
+        )}
+        taskHref={crewTaskHref}
+        backHref="#crew"
+        stopNotes={Object.fromEntries(
+          plan.pending.map((g) => [
+            g.location.id,
+            g.tasks.map((t) => t.detail).join("；"),
+          ]),
+        )}
+        afterMap={
+          <section
+            className="crew-route-progress-section"
+            aria-label="清運進度"
+          >
+            <h2>今日清運進度</h2>
+            <p>
+              已完成 {plan.completed.length} / {plan.all.length} 個桶 · 剩{" "}
+              {plan.pending.length} 個桶
+            </p>
+            <progress
+              aria-label="已完成清運桶數"
+              value={plan.completed.length}
+              max={Math.max(1, plan.all.length)}
+            />
+            <p className="tiny">
+              同點多張工單全數完成才計為完成一個桶；讀值異常不列入此路線。
+            </p>
+            <h3>已完成的桶</h3>
+            <ul className="crew-completed-bins">
+              {plan.completed.map((g) => (
+                <li key={g.location.id}>
+                  <span aria-hidden="true">✓</span>
+                  <div>
+                    <strong>{g.location.label}</strong>
+                    <small>已完成 · 本機展示</small>
+                  </div>
+                  <a href={crewTaskHref(g.tasks[0].id)}>查看結案</a>
+                </li>
+              ))}
+            </ul>
+            {!plan.completed.length && <p>還沒有已完成的桶。</p>}
+          </section>
+        }
+      />
+    </main>
+  );
+}
+function CrewRanking() {
+  const [district, setDistrict] = useState("大安區");
+  const [month, setMonth] = useState(taipeiMonth);
+  const valid = /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
+  const ranking = valid
+    ? crewRanking(district, month).filter((row) => row.completed || row.likes)
+    : [];
+  return (
+    <main className="crew-demo crew-ranking">
       <header className="crew-page-header">
-        <a className="crew-back" href="#crew" aria-label="返回今日派工">
-          ←
-        </a>
         <div>
-          <h1>今日建議路線</h1>
-          <p>
-            {stops.length} 個桶 · {stops.length ? route.distance : "0"} 公里 ·
-            約 {stops.length ? route.minutes : 0} 分鐘 · 示意
-          </p>
+          <h1>清潔隊榮譽榜</h1>
+          <p>依已完成且查證屬實件數排名，讚數另外列出。</p>
         </div>
       </header>
-      <div className="crew-mode-switch" role="group" aria-label="交通方式">
-        {(Object.keys(crewModes) as CrewMode[]).map((value) => (
-          <button
-            key={value}
-            aria-pressed={mode === value}
-            onClick={() => {
-              setMode(value);
-              setStarted(false);
-            }}
+      <div className="card api-form">
+        <label>
+          月份
+          <input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+          />
+        </label>
+        <label>
+          行政區
+          <select
+            aria-label="行政區"
+            value={district}
+            onChange={(e) => setDistrict(e.target.value)}
           >
-            {crewModes[value].label}
-          </button>
-        ))}
-      </div>
-      <p className="crew-demo-caption">
-        固定模擬路線，不使用 GPS
-        或外部道路服務；待處理且讀值正常的桶列入順路清單。
-      </p>
-      <svg
-        className="crew-route-map"
-        viewBox="0 0 360 335"
-        role="img"
-        aria-label={`${route.label}模擬清運路線，${stops.length} 個停靠點`}
-      >
-        <rect width="360" height="335" fill="var(--map)" />
-        <path
-          d="M65 0V335 M145 0V335 M255 0V335 M300 0V335 M0 65H360 M0 205H360 M0 285H360"
-          stroke="var(--map-road)"
-          strokeWidth="10"
-        />
-        {stops.length > 0 && (
-          <>
-            <polyline
-              className="crew-route-line"
-              points={route.points}
-              fill="none"
-              stroke="var(--teal-on-mint)"
-              strokeWidth="5"
-              strokeDasharray="2 9"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <circle
-              cx="95"
-              cy="285"
-              r="10"
-              fill="var(--text-on-light)"
-              stroke="var(--map-road)"
-              strokeWidth="3"
-            />
-            {stops.map((task, index) => (
-              <g key={task.id}>
-                <circle
-                  cx={points[index][0]}
-                  cy={points[index][1]}
-                  r="12"
-                  fill="var(--teal-on-mint)"
-                  stroke="var(--map-road)"
-                  strokeWidth="3"
-                />
-                <text
-                  x={points[index][0]}
-                  y={points[index][1] + 4}
-                  fill="var(--map-road)"
-                  textAnchor="middle"
-                  fontSize="12"
-                >
-                  {index + 1}
-                </text>
-              </g>
+            {districts.map((d) => (
+              <option key={d}>{d}</option>
             ))}
-          </>
-        )}
-      </svg>
-      <ol className="crew-route-stops">
-        {stops.map((task, index) => (
-          <li key={task.id}>
-            <span className="crew-stop-number">{index + 1}</span>
-            <a href={`#crew/task/${task.id}`}>{task.name}</a>
-            <strong>
-              {task.id === "A-012"
-                ? "堆放"
-                : task.id === "C-004"
-                  ? "稽查"
-                  : task.issue}
+          </select>
+        </label>
+      </div>
+      {!valid && <p role="status">請選擇有效月份。</p>}
+      <ol className="crew-ranking-list" aria-label="清潔員榮譽榜">
+        {ranking.map((row) => (
+          <li
+            className={`card ${row.current ? "current" : ""}`}
+            key={row.staffId}
+          >
+            <strong className="numeral-md">{row.rank}</strong>
+            <div>
+              <h2>
+                {row.name}
+                {row.current ? "（你）" : ""}
+              </h2>
+              {row.rank <= 3 && (
+                <span className="status-pill">專案加給 · 示意</span>
+              )}
+              <p>市民給的讚 {row.likes}</p>
+            </div>
+            <strong className="numeral-md">
+              {row.completed}
+              <small> 件</small>
             </strong>
           </li>
         ))}
       </ol>
-      {started && (
-        <section className="crew-task-card" role="status">
-          <h2>{route.label}模擬導航已開始</h2>
-          <p>第 1 站：{stops[0]?.name}。請在手機確認到場後處理。</p>
-          <a className="button primary" href={`#crew/task/${stops[0]?.id}`}>
-            前往第一張派工單
-          </a>
-        </section>
-      )}
-      {!stops.length && <p role="status">今日沒有待處理的建議停靠點。</p>}
-      <div className="crew-bottom">
-        <button
-          className="button primary"
-          disabled={!stops.length || started}
-          onClick={() => setStarted(true)}
-        >
-          開始導航（模擬）
-        </button>
-      </div>
+      {valid && !ranking.length && <p>此行政區與月份尚無展示成果。</p>}
+      <aside className="member-how">
+        <p>
+          本機展示：每月前三名標示專案加給，不發放款項。U3
+          對處理清潔員的讚會同步顯示；每次完成限讚一次，按讚不改變件數排名。不實與讀值異常案件不列入計件。
+        </p>
+      </aside>
     </main>
   );
 }

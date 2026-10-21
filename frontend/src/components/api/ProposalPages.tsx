@@ -1,3 +1,4 @@
+import { ProposalProgress } from "./ProposalProgress";
 import { useDemoData } from "../../data/demoMode";
 import { useCallback, useState } from "react";
 import {
@@ -38,7 +39,8 @@ const voteOptions = [
 export function ProposalLinks() {
   return (
     <nav className="api-pagination" aria-label="提案導覽">
-      <a href="#vote">全部提案</a>
+      <a href="#vote">建議點地圖</a>
+      <a href="#vote/all">全部提案</a>
       <a href="#vote/create">建立提案</a>
       <a href="#vote/mine">我的提案</a>
       <a href="#vote/votes">我的投票</a>
@@ -111,7 +113,7 @@ export function ProposalList({
           ? "要桶投票"
           : mode === "mine"
             ? "我的提案"
-            : "我的投票"}
+            : "投票紀錄"}
       </h1>
       <ProposalLinks />
       <p>
@@ -166,6 +168,7 @@ export function ProposalList({
         {list.data?.items.map((item) => (
           <li className="card" key={item.id}>
             <ProposalSummary item={item} />
+            {mode === "votes" && <ProposalProgress item={item} />}
             <a
               href={
                 admin ? `#admin/proposals/${item.id}` : `#proposals/${item.id}`
