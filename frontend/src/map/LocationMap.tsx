@@ -8,6 +8,13 @@ import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { kindLabel, type LocationRecord } from "../data/locations";
 import { locationMarkerIcon } from "./marker";
+import {
+  BOT_SMALL_MAX_ZOOM,
+  bestState,
+  clusterIcon,
+  groupOverlapping,
+  stateFromIconClass,
+} from "./botClusters";
 import { binsoonBasemapStyle, token } from "./basemapStyle";
 import type { Point } from "../data/participation";
 setWorkerUrl(workerUrl);
@@ -91,6 +98,82 @@ export function LocationMap({
     { marker: L.Marker; location: LocationRecord; iconSignature: string }[]
   >([]);
   const markerPositions = useRef("");
+  const clusters = useRef<L.LayerGroup | null>(null);
+  const selectedId = useRef<string | undefined>(undefined);
+  selectedId.current = selected?.id;
+  // 垃圾桶機器人會疊在一起時合成一隻代表桶（右上角數字＝桶數），點它放大兩級。
+  // 只處理一般的桶標記：選中的桶、撤除、地標、建議點都照常單獨顯示。
+  // 資料更新後與每次縮放結束時重算；被合併的桶先從圖層移開，展開時再加回來。
+  const declutter = useRef(() => {});
+  declutter.current = () => {
+    const instance = map.current;
+    if (!instance || !markers.current || !clusters.current) return;
+    const zoom = instance.getZoom();
+    container.current?.classList.toggle(
+      "bot-small",
+      zoom <= BOT_SMALL_MAX_ZOOM,
+    );
+    clusters.current.clearLayers();
+    const items = markerRecords.current.flatMap((record) => {
+      const className = record.marker.options.icon?.options.className;
+      const state = stateFromIconClass(className);
+      if (
+        !className?.includes("bot-marker") ||
+        className.includes("removed") ||
+        !state ||
+        record.location.id === selectedId.current
+      )
+        return [];
+      return [
+        {
+          record,
+          state,
+          point: instance.project(record.marker.getLatLng(), zoom),
+        },
+      ];
+    });
+    const show = (marker: L.Marker) => {
+      if (markers.current!.hasLayer(marker)) return;
+      markers.current!.addLayer(marker);
+      const element = marker.getElement();
+      if (marker.options.title)
+        element?.setAttribute("aria-label", marker.options.title);
+    };
+    for (const record of markerRecords.current)
+      if (!items.some((item) => item.record === record)) show(record.marker);
+    for (const group of groupOverlapping(items, zoom)) {
+      if (group.items.length === 1) {
+        show(group.items[0].record.marker);
+        continue;
+      }
+      for (const item of group.items)
+        markers.current.removeLayer(item.record.marker);
+      const center = instance.unproject([group.x, group.y], zoom);
+      const label = `${group.items.length} 個桶，放大查看`;
+      const zoomIn = () =>
+        instance.setView(center, Math.min(zoom + 2, instance.getMaxZoom()));
+      L.marker(center, {
+        icon: clusterIcon(
+          bestState(group.items.map((item) => item.state)),
+          group.items.length,
+        ),
+        title: label,
+        alt: label,
+        riseOnHover: true,
+      })
+        .on("click", zoomIn)
+        .on("add", (event) => {
+          const element = (event.target as L.Marker).getElement();
+          element?.setAttribute("aria-label", label);
+          element?.addEventListener("keydown", (key) => {
+            if (key.key !== "Enter" && key.key !== " ") return;
+            key.preventDefault();
+            zoomIn();
+          });
+        })
+        .addTo(clusters.current);
+    }
+  };
   const [basemapFailed, setBasemapFailed] = useState(false);
   useEffect(() => {
     const instance = L.map(container.current!, {
@@ -136,6 +219,8 @@ export function LocationMap({
       failure();
     }
     markers.current = L.layerGroup().addTo(instance);
+    clusters.current = L.layerGroup().addTo(instance);
+    instance.on("zoomend", () => declutter.current());
     const observer = new ResizeObserver(() => instance.invalidateSize());
     observer.observe(container.current!);
     return () => {
@@ -241,6 +326,7 @@ export function LocationMap({
         { padding: [45, 50], maxZoom: 15, animate: false },
       );
     markerPositions.current = positions;
+    declutter.current();
   }, [
     browse,
     locations,
