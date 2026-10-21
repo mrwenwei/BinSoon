@@ -6,20 +6,35 @@ import type { BinState } from "../data/binState";
 import { apiStationState } from "../data/api";
 import { mascotSvg } from "../components/mascotSvg";
 import { stateVisual } from "../components/binVisual";
+import { binBotSvg, removedBinSvg } from "./binBot";
 
-// 一個點位只放一隻Bin友（不加 ♻ 或數字徽章），身體顏色是整個點的狀態。
+// 一個點位只放一個標記（不加 ♻ 或數字徽章）。桶是垃圾桶機器人（binBot.ts），
+// 整隻顏色與表情是整個點的狀態；撤除只剩虛線外框＋中間的「撤」；場所代表點仍是Bin友。
 export function markerIcon(
   kind: LocationKind,
   selected: boolean,
   state: BinState = "hungry",
   lifecycle?: "new" | "removed",
 ) {
-  const visual = kind === "bin" ? stateVisual[state].className : "place";
+  const crosshair = selected
+    ? '<span class="marker-crosshair" aria-hidden="true"></span>'
+    : "";
+  if (kind !== "bin")
+    return L.divIcon({
+      className: `pixel-marker ${kind} place ${selected ? "selected" : ""}`,
+      html: `${crosshair}<span class="marker-body">${mascotSvg(kind, state)}</span>`,
+      iconSize: [44, 44],
+      iconAnchor: [22, 40],
+    });
+  const removed = lifecycle === "removed";
+  const body = removed
+    ? `${removedBinSvg()}<span class="marker-removed-label">撤</span>`
+    : binBotSvg(state);
   return L.divIcon({
-    className: `pixel-marker ${kind} ${visual} ${selected ? "selected" : ""}`,
-    html: `${selected ? '<span class="marker-crosshair" aria-hidden="true"></span>' : ""}<span class="marker-body">${mascotSvg(kind, state)}</span>${lifecycle ? `<span class="marker-lifecycle ${lifecycle}">${lifecycle === "new" ? "新" : "撤"}</span>` : ""}`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 40],
+    className: `pixel-marker bin bot-marker ${removed ? "removed" : stateVisual[state].className} ${selected ? "selected" : ""}`,
+    html: `${crosshair}<span class="marker-body">${body}</span>${lifecycle === "new" ? '<span class="marker-lifecycle new">新</span>' : ""}`,
+    iconSize: [52, 52],
+    iconAnchor: [26, 50],
   });
 }
 

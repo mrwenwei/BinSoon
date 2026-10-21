@@ -109,9 +109,12 @@
 ## 7. 地圖與標記
 
 - **底圖**：`src/map/basemapStyle.ts` 的 `binsoonBasemapStyle()`，來源仍是 OpenFreeMap 的 openmaptiles 向量圖磚與字型；只畫街區、公園、水域、建築、道路、少量路名與地名，配色全取自 map 系列 token。保留 Leaflet 署名（OpenFreeMap · OpenMapTiles · © OpenStreetMap）與載入失敗提示（圖磚來源錯誤或 15 秒未讀到 TileJSON 時顯示 `.map-warning`）。
-- **電子雞標記**（MapMarker）：32×36 像素圖（手機 26×29），底部中心對準位置，外框 `text-on-light`、眼白 `mascot-eye`、腮紅 `mascot-blush`，身體色依點位整體狀態；2px 像素投影。一個點只放一隻，不加 ♻ 或數字徽章。
-- 失聯：1.5px 虛線圓框。場所代表點：`place` 身體＋頭上星星，沒有腮紅。
-- 選中：2.5px `signal` 圓環＋橘色虛線十字準線（`.marker-crosshair`）。新設／撤除的小牌保留（新＝mint 底，撤＝虛線框）。
+- **桶標記：垃圾桶機器人**（MapMarker，2026-10-21 起取代桶的電子雞）：`src/map/binBot.ts`，24×23 像素圖、3/4 視角露出右側面，放大 2 倍（框 52×52，手機同尺寸；像素圖只能整數倍放大），底部中心對準位置，自帶像素影子。外型與配色取自使用者提供的設計稿，螢幕放大成 14×7 讓表情更清楚；外框 `text-on-light`、眼白 `mascot-eye`、腮紅 `mascot-blush`。一個點只放一隻，不加 ♻ 或數字徽章。
+  - 整隻（蓋子＋箱身）依點位整體狀態換色並換表情：餓了＝青綠＋開心臉；吃飽了＝橘＋想睡臉與小 z；失聯＝灰＋傷心臉（含淚）、燈號熄燈，並保留 1.5px 虛線圓框。
+  - 動態只在 hover／鍵盤焦點（循環）與選中（餓了播一輪、其他播兩輪後停回靜態）時播放：餓了＝跳一下後拿零食吃（只有吃東西時出現嘴巴）、吃飽了＝點頭打瞌睡、失聯＝發抖甩眼淚。`prefers-reduced-motion` 一律只顯示靜態表情。換幀規則在 `styles.css` 的 `.bin-bot`。
+  - 撤除：現場已沒有桶，不畫角色，只畫同形狀的虛線外框，「撤」字放在框中間。
+- 場所代表點仍是電子雞：`place` 身體＋頭上星星，沒有腮紅（`mascotSvg()`）。
+- 選中：2.5px `signal` 圓環＋橘色虛線十字準線（`.marker-crosshair`）。新設的「新」小牌保留（mint 底）。
 - 示意起點「起」：`text-on-light` 底、mint 字的小方塊；示意路線為 `text-on-light` 虛線。
 
 ## 8. 手機優先規則與導覽
@@ -132,7 +135,7 @@
 | API 四態 → 三態、compartments | `frontend/src/data/api.ts`（`apiBinState`、`apiCompartments`、`apiStationState`） |
 | 示意雙桶資料 | `frontend/src/data/binDemo.ts`（`binDemo().compartments`、`readingKey`） |
 | 桶況視覺對照 | `frontend/src/components/binVisual.ts` |
-| 電子雞 | `frontend/src/components/mascotSvg.ts`、`Mascot.tsx`、`frontend/src/map/marker.ts` |
+| 電子雞／桶標記 | `frontend/src/components/mascotSvg.ts`、`Mascot.tsx`、`frontend/src/map/marker.ts`、`frontend/src/map/binBot.ts`（垃圾桶機器人） |
 | 桶況卡片 | `frontend/src/components/StationCard.tsx` |
 | 種類圖示、回報選桶、種類標籤 | `frontend/src/components/WasteType.tsx` |
 | 頂欄與側邊選單 | `frontend/src/components/AppNav.tsx`（正式入口 `App.tsx`、歷史展示 `tests/legacy/App.tsx` 共用） |

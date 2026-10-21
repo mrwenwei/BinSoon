@@ -1145,6 +1145,91 @@ input[type="file"]::file-selector-button {
   border: 2.5px solid var(--signal);
   border-radius: 50%;
 }
+/* 垃圾桶機器人（map/binBot.ts）：24×23 像素圖放大 2 倍，框 52×52，手機同尺寸
+   （像素圖只能整數倍放大）。自帶影子，不用 drop-shadow。 */
+.pixel-marker.bot-marker .marker-body {
+  bottom: 2px;
+  filter: none;
+}
+.pixel-marker .marker-body svg.bin-bot,
+.pixel-marker .marker-body svg.bin-bot-removed {
+  width: 52px;
+  height: 52px;
+  overflow: visible;
+}
+.pixel-marker.bot-marker .marker-crosshair {
+  bottom: 26px;
+}
+.pixel-marker.removed .marker-body {
+  outline: 0;
+}
+.marker-removed-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-on-light-muted);
+  font: 700 12px/1 var(--font-sans);
+}
+/* 平常只顯示靜態表情；hover／鍵盤焦點時循環播放，選中時播 --bot-loops 輪後停回靜態。
+   每一格在自己的時段可見（--i × 每格時間），idle 在播放期間隱藏。 */
+.bin-bot {
+  --bot-loops: 2;
+}
+.bin-bot.bot-hungry {
+  --bot-loops: 1;
+}
+.pixel-marker:is(:hover, :focus-visible) .bin-bot {
+  --bot-loops: infinite;
+}
+.bin-bot .bot-anim {
+  display: none;
+}
+.bin-bot .bot-fr {
+  visibility: hidden;
+}
+.pixel-marker:is(:hover, :focus-visible, .selected) .bin-bot .bot-anim {
+  display: inline;
+}
+.pixel-marker:is(:hover, :focus-visible, .selected) .bin-bot .bot-fr {
+  animation: var(--bot-kf) var(--bot-cycle) step-end var(--bot-loops);
+  animation-delay: calc(var(--i) * var(--bot-frame));
+}
+.pixel-marker:is(:hover, :focus-visible, .selected) .bin-bot .bot-idle {
+  animation: bot-hide var(--bot-cycle) step-end var(--bot-loops);
+}
+@keyframes bot-f8 {
+  0% {
+    visibility: visible;
+  }
+  12.5%,
+  100% {
+    visibility: hidden;
+  }
+}
+@keyframes bot-f22 {
+  0% {
+    visibility: visible;
+  }
+  4.5455%,
+  100% {
+    visibility: hidden;
+  }
+}
+@keyframes bot-hide {
+  0%,
+  100% {
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bin-bot .bot-anim {
+    display: none !important;
+  }
+  .bin-bot .bot-idle {
+    animation: none !important;
+  }
+}
 .marker-crosshair {
   position: absolute;
   left: 50%;
