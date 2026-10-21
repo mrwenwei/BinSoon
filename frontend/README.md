@@ -47,7 +47,7 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 
 尚未送出的照片／表單與未確認結果的命令僅保留於同頁記憶體，重新登入同一帳號可重試原命令；重試保留 key、body、ETag。重新整理會失去這些暫存，應先重新讀取案件確認結果，不把逾時當成失敗重建。
 
-後端目前允許 http://localhost:5173、http://127.0.0.1:5173。其他 dev／preview origin 需要後端設定 CORS；API URL 無法取代 CORS。Vercel 尚未部署，未建立雲端資源。
+正式前端使用 https://binsoon.app/，保留 https://binsoon.pages.dev/（Cloudflare Pages）。後端允許 https://binsoon.app、https://binsoon.pages.dev、http://localhost:5173、http://127.0.0.1:5173。其他 dev／preview origin 或自訂網域需要後端另設 CORS；API URL 無法取代 CORS。
 
 桶況皆為 simulated，歷史 recorded_at 為模擬時鐘。照片及查證時間為後端 UTC 實際作業時間；兩者不混比。場所 reported_count 是統計，proposed 仍須依 placement_status 區分待現勘／示範設置。
 
@@ -199,7 +199,11 @@ npm run test:e2e
 
 681 筆公布桶位置＋130 筆場所代表點稱為 **811 筆位置紀錄**。代表點並非個別桶，reported_count 是周邊統計，不展開、不混入缺口分析。所有資料均為公開資料快照，沒有即時桶況與現勘保證；部分來源座標相同或相近，縮小時標記會重疊，可放大或從清單選取每一筆。
 
-## Vercel
+## Cloudflare Pages
+
+GitHub 連接 `mrwenwei/BinSoon`，Production branch 為 `main`；main 更新（含 PR merge）觸發正式部署。Root directory 設 `frontend`、Build command 為 `npm run build`、Output directory 為 `dist`。建置環境設定 `NODE_VERSION=24` 及公開 `VITE_API_BASE_URL=https://binsoon-api-887203439341.asia-east1.run.app/api/v1`。正式自訂網域為 https://binsoon.app/，保留 https://binsoon.pages.dev/；其他預覽及自訂網域需另外加入後端 CORS。此設定僅部署前端，不會部署 Cloud Run 後端。
+
+## Vercel（替代方案，未部署）
 
 Import `mrwenwei/BinSoon`，Framework 選 Vite，Root Directory 設 `frontend`，Build Command `npm run build`，Output Directory `dist`。Node 選 24.x。不需環境變數。Production Branch 使用 `main`；功能分支 PR 可另外產生 Preview deployment。是否能建立部署取決於 repo 的 Vercel 存取權限，本機 build 不需要 Vercel。
 
