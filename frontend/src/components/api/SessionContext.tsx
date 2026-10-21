@@ -1,4 +1,10 @@
 import {
+  demoSession,
+  rememberDemoLogin,
+  restoreDemoLogin,
+} from "../../data/demoCitizen";
+import { isDemoToken, setDemoMode, useDemoData } from "../../data/demoMode";
+import {
   createContext,
   useCallback,
   useContext,
@@ -28,7 +34,9 @@ type Auth = {
 const Context = createContext<Auth | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   // Deliberately tab-local and memory-only: role sessions never overwrite another tab.
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(() =>
+    useDemoData() ? restoreDemoLogin() : null,
+  );
   const [notice, setNotice] = useState("");
   const invalidate = useCallback((token: string) => {
     setSession((current) => {
@@ -54,6 +62,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   async function logout() {
     const current = session;
     setSession(null);
+    if (isDemoToken(current?.access_token)) {
+      rememberDemoLogin(false);
+      return;
+    }
     if (current) {
       try {
         await request<void>("/auth/session", {
@@ -89,6 +101,47 @@ export function useSession() {
 
 export function Login({ role, next }: { role: Role; next: string }) {
   const { setSession } = useSession();
+  if (role === "citizen" && useDemoData())
+    return (
+      <main className="page api-narrow login-page">
+        <span className="login-mascot" aria-hidden="true">
+          <Mascot />
+        </span>
+        <h1>市民登入</h1>
+        <section className="card api-form">
+          <h2>和 Bin友一起讓台北更乾淨</h2>
+          <p>
+            使用「展示市民小安」體驗，不需要帳號或密碼。會員、回報、提案與投票均為本機展示資料，不會寫入後端。
+          </p>
+          <button
+            className="button primary"
+            onClick={() => {
+              setDemoMode(true);
+              rememberDemoLogin(true);
+              setSession(demoSession());
+              window.location.hash = returnPath(next, "citizen");
+            }}
+          >
+            以展示市民登入
+          </button>
+        </section>
+      </main>
+    );
+  return <BackendLogin role={role} next={next} />;
+}
+function returnPath(next: string, role: Role) {
+  return /^(map|bin\/|nav\/|report\/|review\/|report-done\/|reports$|member$|point-history$|stamps$|rewards(?:\/|$)|redemptions(?:\/|$)|vote(?:\/|$)|proposals(?:\/|$)|outcomes(?:\/|$)|adopt(?:\/|$)|quick-report\/|notifications(?:\?|$)|staff(?:\/|$)|admin(?:\/|$))/.test(
+    next,
+  ) && !next.includes("login")
+    ? next
+    : role === "staff"
+      ? "staff/tasks"
+      : role === "admin"
+        ? "admin"
+        : "map";
+}
+function BackendLogin({ role, next }: { role: Role; next: string }) {
+  const { setSession } = useSession();
   const attempt = useRef<AbortController | null>(null);
   const lock = useRef(false);
   useEffect(() => () => attempt.current?.abort(), []);
@@ -114,7 +167,23 @@ export function Login({ role, next }: { role: Role; next: string }) {
             ? "隊員登入"
             : "管理員登入"}
       </h1>
-      <p>展示帳號 session 有效期為 60 分鐘。請使用維運提供的密碼。</p>
+      {role === "citizen" && (
+        <section className="card api-form">
+          <p>不需要密碼即可切換為本機展示市民；後端帳號登入僅供整合驗證。</p>
+          <button
+            className="button primary"
+            onClick={() => {
+              setDemoMode(true);
+              rememberDemoLogin(true);
+              setSession(demoSession());
+              window.location.hash = returnPath(next, "citizen");
+            }}
+          >
+            以展示市民登入
+          </button>
+        </section>
+      )}
+      <p>後端帳號 session 有效期為 60 分鐘。請使用維運提供的密碼。</p>
       <form
         className="card api-form"
         onSubmit={async (e) => {
@@ -144,19 +213,12 @@ export function Login({ role, next }: { role: Role; next: string }) {
               return;
             }
             if (controller.signal.aborted) return;
+            rememberDemoLogin(false);
+            setDemoMode(false);
             setSession({ ...data, user: me });
             setPassword("");
             // Only known internal hash routes are accepted as return destinations.
-            window.location.hash =
-              /^(map|bin\/|nav\/|report\/|review\/|report-done\/|reports$|member$|stamps$|rewards(?:\/|$)|redemptions(?:\/|$)|vote(?:\/|$)|proposals(?:\/|$)|outcomes(?:\/|$)|adopt(?:\/|$)|quick-report\/|notifications(?:\?|$)|staff(?:\/|$)|admin(?:\/|$))/.test(
-                next,
-              ) && !next.includes("login")
-                ? next
-                : role === "staff"
-                  ? "staff/tasks"
-                  : role === "admin"
-                    ? "admin"
-                    : "map";
+            window.location.hash = returnPath(next, role);
           } catch (e) {
             if (controller.signal.aborted) return;
             setError(errorMessage(e));

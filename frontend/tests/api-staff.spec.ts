@@ -223,6 +223,7 @@ test("citizen sees server settlement after staff verification without confusing 
   await expect(page.getByText("可用點數 2", { exact: true })).toBeVisible({
     timeout: 15000,
   });
+  await page.getByRole("link", { name: "點數歷史紀錄", exact: true }).click();
   await page.getByRole("link", { name: "查看回報", exact: true }).click();
   await expect(
     page.getByText("查證屬實不代表工作已完成。", { exact: true }),
@@ -515,5 +516,8 @@ test("a lost verification response replays one command and the citizen ledger st
   expect(keys[1]).toBe(keys[0]);
   await login(page, "citizen", "member");
   await expect(page.getByText("可用點數 1", { exact: true })).toBeVisible();
-  await expect(page.locator(".api-items li")).toHaveCount(1);
+  await page.getByRole("link", { name: "點數歷史紀錄", exact: true }).click();
+  await expect(page.locator(".point-history-page .api-items li")).toHaveCount(
+    1,
+  );
 });

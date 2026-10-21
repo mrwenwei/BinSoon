@@ -1,3 +1,4 @@
+import { isDemoToken, DEMO_UPDATED, DEMO_STORE_KEY } from "../../data/demoMode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, errorMessage, type Result } from "../../data/api";
 import { useSession } from "./SessionContext";
@@ -103,13 +104,23 @@ export function useApi<T>(
         else void refresh();
       }
     };
+    const demoUpdate = () => {
+      if (isDemoToken(token) && key.startsWith("/me/")) visibility();
+    };
+    const storageUpdate = (event: StorageEvent) => {
+      if (event.key === DEMO_STORE_KEY) demoUpdate();
+    };
     if (!document.hidden) void refresh();
+    window.addEventListener(DEMO_UPDATED, demoUpdate);
+    window.addEventListener("storage", storageUpdate);
     document.addEventListener("visibilitychange", visibility);
     return () => {
       disposed = true;
       clearTimeout(timer);
       controller?.abort();
       document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener(DEMO_UPDATED, demoUpdate);
+      window.removeEventListener("storage", storageUpdate);
     };
   }, [identity, revision, poll, invalidate, stopOnNotFound]);
   // 從暫停恢復：立刻重抓一次，之後照常輪詢。

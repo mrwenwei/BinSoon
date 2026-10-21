@@ -7,7 +7,7 @@ import { apiStationState } from "../data/api";
 import { mascotSvg } from "../components/mascotSvg";
 import { stateVisual } from "../components/binVisual";
 
-// 一個點位只放一隻電子雞（不加 ♻ 或數字徽章），身體顏色是整個點的狀態。
+// 一個點位只放一隻Bin友（不加 ♻ 或數字徽章），身體顏色是整個點的狀態。
 export function markerIcon(
   kind: LocationKind,
   selected: boolean,

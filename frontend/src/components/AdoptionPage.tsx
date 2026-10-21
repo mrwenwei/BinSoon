@@ -58,7 +58,7 @@ export function AdoptionPage({
       <div className="page-heading">
         <div>
           <span className="eyebrow">A LITTLE CARE, CLOSE TO HOME.</span>
-          <h1>我的電子雞</h1>
+          <h1>我的Bin友</h1>
           <p>認養家門口的小夥伴，讓順手成為日常。</p>
         </div>
         <span className="demo-tag">認養、審批、通知與月報均為示範</span>
@@ -93,7 +93,7 @@ export function AdoptionPage({
           </p>
         </section>
         <section className="card" aria-label="認養申請表">
-          <h2>認養這隻電子雞</h2>
+          <h2>認養這隻Bin友</h2>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -184,7 +184,7 @@ export function AdoptionPage({
       <section className="adoption-history" aria-label="我的認養紀錄">
         <h2>申請與認養紀錄</h2>
         {!state.adoptions.length && (
-          <p className="muted">還沒有認養紀錄。先挑選一隻既有電子雞吧。</p>
+          <p className="muted">還沒有認養紀錄。先挑選一隻既有Bin友吧。</p>
         )}
         {[...state.adoptions].reverse().map((a) => {
           const bin = locations.find((p) => p.id === a.locationId)!;
@@ -274,7 +274,7 @@ export function AdoptionPage({
                       ? "桶況通知已啟用（站內示意，未連接推播）。"
                       : "你已關閉全部桶況通知。"}
                   </div>
-                  <h4>電子雞月報 · 示意數據</h4>
+                  <h4>Bin友月報 · 示意數據</h4>
                   <div className="monthly-stats">
                     <span>
                       <strong>1,240</strong>被餵次數

@@ -119,9 +119,7 @@ test("clearing before evidence changes capacity but never implies completion", a
   await expect(
     citizen.getByRole("button", { name: "謝謝清潔隊", exact: true }),
   ).toHaveCount(0);
-  await expect(citizen.locator(".api-history")).toContainText(
-    "0% · collection · simulated",
-  );
+  await expect(citizen.locator(".api-history")).toHaveCount(0);
   await citizen.getByRole("link", { name: "← 返回清單", exact: true }).click();
   await expect(
     citizen.getByRole("button", { name: /滿桶流程測試桶/ }).first(),

@@ -159,42 +159,25 @@ test("work lists filter by waste and administrator clearing follows the work str
   expect(clearing.waste).toBe(null);
 });
 
-test("history keeps selected waste separate from null legacy history and never duplicates a point", async ({
+test("compact bin details keep both waste slots and omit obsolete history controls", async ({
   page,
 }) => {
   const f = wasteFixture();
   await f.setup(page);
   await page.goto(`/#bin/${binId}?waste_type=recycling`);
-  await expect(page.locator(".api-history")).toContainText(
-    "20% · measurement · simulated",
+  await expect(page.getByRole("region", { name: "各類桶槽" })).toContainText(
+    "20%",
   );
-  await expect(page.locator(".api-history")).toContainText("資源回收");
-  await expect(page.locator(".api-history")).not.toContainText("95%");
-  await page
-    .getByLabel("歷史種類", { exact: true })
-    .selectOption("legacy_unknown");
-  await expect(page.locator(".api-history")).toContainText(
-    "73% · measurement · simulated",
+  await expect(page.getByRole("region", { name: "各類桶槽" })).toContainText(
+    "95%",
   );
-  await expect(page.locator(".api-history")).toContainText(
-    "舊未分類 · 舊讀值未分類",
-  );
-  await expect(page.locator(".api-history")).not.toContainText("一般垃圾");
+  await expect(page.locator(".api-history")).toHaveCount(0);
+  await expect(page.getByLabel("歷史種類", { exact: true })).toHaveCount(0);
   await switchWaste(page, "general");
-  await expect(page.getByLabel("歷史種類", { exact: true })).toHaveValue(
-    "general",
-  );
-  await expect(page.locator(".api-history")).toContainText(
-    "95% · measurement · simulated",
-  );
   await expect(page.getByRole("region", { name: "各類桶槽" })).toContainText(
     "舊狀態假設為一般垃圾",
   );
-  expect([
-    ...new Set(
-      f.requests.filter((r) => r.path.endsWith("/history")).map((r) => r.waste),
-    ),
-  ]).toEqual(["recycling", "legacy_unknown", "general"]);
+  expect(f.requests.filter((r) => r.path.endsWith("/history"))).toHaveLength(0);
 });
 
 test("switching waste preserves separate photo drafts and does not expose a stale compartment while loading", async ({
@@ -258,7 +241,7 @@ test("switching waste preserves separate photo drafts and does not expose a stal
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
   ).toHaveCount(0);
-  await expect(page.getByText("20%（模擬）", { exact: true })).toBeVisible();
+  await expect(page.locator(".api-history")).toHaveCount(0);
 });
 
 test("report list filtering and waste choice stay usable on desktop and 320px screens", async ({

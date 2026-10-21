@@ -67,7 +67,13 @@ export function user(role = "citizen") {
 export async function apiFixture(
   page: Page,
   override?: (route: Route, path: string) => Promise<boolean | void>,
+  options: { demo?: boolean } = {},
 ) {
+  await page.addInitScript(
+    (demo) =>
+      sessionStorage.setItem("binsoon-data-mode", demo ? "demo" : "backend"),
+    Boolean(options.demo),
+  );
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/v1", "");

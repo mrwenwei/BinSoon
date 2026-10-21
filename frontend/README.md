@@ -1,6 +1,28 @@
 # BinSoon 前端：API 地圖、回報、查證與現場處理
 
-React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後端，範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)、[#12](https://github.com/mrwenwei/BinSoon/issues/12)、[#13](https://github.com/mrwenwei/BinSoon/issues/13)、[#14](https://github.com/mrwenwei/BinSoon/issues/14)、[#15](https://github.com/mrwenwei/BinSoon/issues/15)、[#16](https://github.com/mrwenwei/BinSoon/issues/16)、[#17](https://github.com/mrwenwei/BinSoon/issues/17)、[#18](https://github.com/mrwenwei/BinSoon/issues/18)、[#19](https://github.com/mrwenwei/BinSoon/issues/19)、[#20](https://github.com/mrwenwei/BinSoon/issues/20)。
+React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。地圖位置與後台仍串接後端，市民預設使用下述本機展示。保留的後端整合模式範圍為 GitHub [#6](https://github.com/mrwenwei/BinSoon/issues/6)、[#7](https://github.com/mrwenwei/BinSoon/issues/7)、[#8](https://github.com/mrwenwei/BinSoon/issues/8)、[#9](https://github.com/mrwenwei/BinSoon/issues/9)、[#10](https://github.com/mrwenwei/BinSoon/issues/10)、[#11](https://github.com/mrwenwei/BinSoon/issues/11)、[#12](https://github.com/mrwenwei/BinSoon/issues/12)、[#13](https://github.com/mrwenwei/BinSoon/issues/13)、[#14](https://github.com/mrwenwei/BinSoon/issues/14)、[#15](https://github.com/mrwenwei/BinSoon/issues/15)、[#16](https://github.com/mrwenwei/BinSoon/issues/16)、[#17](https://github.com/mrwenwei/BinSoon/issues/17)、[#18](https://github.com/mrwenwei/BinSoon/issues/18)、[#19](https://github.com/mrwenwei/BinSoon/issues/19)、[#20](https://github.com/mrwenwei/BinSoon/issues/20)。
+
+## 預設市民展示模式（2026-10-21）
+
+市民側邊選單只保留找垃圾桶、要桶投票、會員中心；我的回報、集章等級、獎品兌換及站內通知由會員中心進入。桌面頂欄也不再重複我的回報入口。認養申請從地圖桶詳情的「待認養」進入，沿用該桶 ID 與既有權限檢查；未登入先登入，已有人認養／已撤除等狀態不冒充可申請。站內通知是回報查證與完工、提案、認養及異常的站內收件匣，非手機推播；清潔隊及管理員通知入口保留。
+
+會員中心首頁 `#member` 只呈現等級、點數摘要、升級進度、六級徽章與集點說明；底部不再放回報摘要、點數明細、兌換或通知卡。共用分頁列可切換集章與等級、我的回報（`#reports`）、點數歷史紀錄（`#point-history`）、我的兌換（`#redemptions`）、通知與進度（`#notifications`）。「點數台帳」改稱「點數歷史紀錄」，獨立頁按每頁 20 筆呈現日期、增減、餘額及關聯案件／券碼。各頁換頁回到頂端，保留會員中心導覽與舊深連結；等級卡的「兌換獎品」仍開啟 `#rewards` 選獎品。
+
+依使用者確認，市民端改為本機展示：
+
+- 位置仍讀後端 `/map/locations`、`/bins/:id/view`；滿度在前端以點位 ID＋垃圾種類固定產生 0、18、35、50、66、79、85、96、100% 或未知，不會每次輪詢亂跳。地圖、清單、詳情、可用篩選及導航共用同一份滿度投影；維修、撤除與尚未設置仍不可用。冷啟動導航會先完整讀取 API 點位，再找展示中可用的替代桶。
+- 點桶後的 bottom sheet／桌面面板移除「滿度與清運歷史」及「公布桶位置」詳情區塊，也不再輪詢歷史。兩槽、來源分類說明、提案待現勘與場所代表點的限制仍保留，沒有更改來源 CSV 或刪除 API 欄位。
+- 市民按「以展示市民登入」即可使用「展示市民小安」，不用帳號或密碼。會員中心預設累積 128／可用 93 點，含示意案件、點數明細與兌換券；這些不是後端會員紀錄。
+- 回報（含示意照片與 50 公尺展示距離）、提案、支持／反對／撤票、認養偏好與撤回／結束、通知已讀、獎品兌換均只寫瀏覽器。回報不派工、不自動查證或發可用點數；新提案仍是 `bin_type=proposed` 的待現勘展示點，不代表已設置。
+- 本機帳本與照片使用獨立 `binsoon-citizen-demo-v1` localStorage；重新整理保留，不讀寫舊展示帳本，也不覆寫後端資料。展示登入記號只在此分頁 sessionStorage，不是真實 token，絕不傳給 API；登出只結束展示身份，帳本仍保留。清除本網站儲存資料會重新載入預設展示資料。
+- 跨分頁寫入以 Web Locks 序列化並重新讀取帳本，避免重複花點；不支援 Web Locks 的瀏覽器僅保證同頁寫入序列。儲存失敗會明示錯誤，絕不改送後端。頂欄點數隨本機操作更新。
+- 所有介面「電子雞」用語改為「Bin友」，資料模型仍為 Bin／bins。
+
+清潔隊與管理員繼續使用真正後端登入及既有流程，不會收到本機展示市民建立的案件。完整範圍與驗證見 [展示模式驗證](../docs/FRONTEND_CITIZEN_DEMO_VALIDATION.md)。下列串接能力說明及既有操作章節保留作為**後端模式**的說明。
+
+### 後端整合驗證模式
+
+前端保留後端契約供整合測試：此分頁的 sessionStorage `binsoon-data-mode=backend` 可啟用後端資料模式；測試 `apiFixture` 預設明確選此模式，市民展示測試則選 demo。後端隊員／管理員成功登入也會選 backend；回到市民登入頁仍可按免密碼的展示市民按鈕切回 demo。後端身份的私有 API 維持原 session／角色與 ETag 限制；不使用假 token 代替身份驗證。
 
 ## 目前可操作範圍
 
@@ -18,7 +40,7 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 - 提案投票：`#vote` 列表、`#vote/create` 選點查周邊與建立、`#vote/mine`／`#vote/votes` 追蹤自己的提案與投票、`#proposals/<id>` 分享詳情。周邊查詢不受找桶篩選影響，50m 鄰近案須明確確認不同需求，150m 已設置桶是提醒；額度及大安區界由後端判定。支持／反對／改票／撤票、票數及關票只使用後端結果。
 - 提案審查／命名：`#admin/proposals` 分頁進入管理員審查，依最新 ETag 及合法階段操作；原提案人於 `#proposals/<id>` 在示範設置後送命名，管理員核准／附原因退回。
 - 認養：桶詳情依後端可申請狀態進入 `#adopt/apply/<bin.id>`；市民 `#adopt`／`#adopt/<id>` 查看歷史、偏好、撤回與結束；管理員 `#admin/adoptions`／`#admin/adoptions/<id>` 分頁審核。pending 沒有權益；公開認養與命名分開。
-- 認養快捷回報：有效認養於 `#adopt/<adoption.id>` 進入 `#quick-report/<adoption.id>`，仍需上傳現場照片與確認位置，送出同一 `/reports` API。認養、種類及普通回報各自保留草稿；後端決定資格、首報與結算，不由前端補倍或追扣。認養詳情另讀台北曆月月報，含部分月份與零值。
+- 認養快捷回報：有效認養於 `#adopt/<adoption.id>` 進入 `#quick-report/<adoption.id>`，仍需上傳照片與確認位置（可明示使用下述模擬輸入工具），送出同一 `/reports` API。認養、種類及普通回報各自保留草稿；後端決定資格、首報與結算，不由前端補倍或追扣。認養詳情另讀台北曆月月報，含部分月份與零值。
 - 站內通知：`#notifications`、`#staff/notifications`、`#admin/notifications` 依當前 session 讀自己的分頁／未讀資料；標已讀可重送原命令，再依 target.kind/id 進入案件。隊員／管理員入口仍需對應身份；無 LINE 或系統推播。
 - 撤桶：管理員從桶詳情或 `#admin/bins` 輸入桶 UUID，於 `#admin/bins/<bin.id>` 讀獨立 lifecycle ETag、填原因並確認撤除。地圖預設依後端顯示近七日撤除標記，也可查全部撤除紀錄；其他分頁重新讀取後停止權益／回報，未完成工單受阻且路線排除此桶，歷史與既有結算保留。沒有通用更新／刪除或復原功能。
 - #18–#20 的流程、測試與限制見 [快捷回報／通知／撤桶驗證](../docs/FRONTEND_FINAL_FLOWS_VALIDATION.md)。#12–#14 見 [會員／投票驗證](../docs/FRONTEND_ENGAGEMENT_VALIDATION.md)；#15–#17 的入口、版本衝突與資料限制見 [審查／命名／認養驗證](../docs/FRONTEND_STEWARDSHIP_VALIDATION.md)。
@@ -39,11 +61,32 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。正式首頁已串接後
 
 提案列表為空時，可從「建立提案」開始；逐步流程與單帳號可驗收的範圍見 [提案投票操作手冊](../docs/PROPOSAL_VOTING_WALKTHROUGH.md)。桶詳情更新修正見 [驗證紀錄](../docs/FRONTEND_REFRESH_VALIDATION.md)。
 
+## 串接後端的回報模擬測試
+
+在正常入口 `http://127.0.0.1:5173/#map` 選桶 → 回報問題，即可使用「模擬測試工具」，不用切換到歷史展示頁；認養快捷通報也共用此工具。
+
+1. 選擇一般垃圾或資源回收，再按「產生示意照片」；前端產生有 DEMO／非現場照片浮水印的 PNG，仍經照片驗證及 `/media` 上傳。
+2. 按「使用此桶座標（模擬 GPS）」自動填入目前所選桶由 API 回傳的經緯度，模擬距離 0 公尺，不讀取裝置 GPS。
+3. 勾選「確認使用模擬測試位置，非實測 GPS」，以市民帳號送出。照片、座標與草稿按桶、垃圾種類及快捷認養分開；未知結果沿用原命令重試。
+4. 可用「模擬距離過遠（約 78 公尺）」測後端 50 公尺拒絕；「模擬定位失敗」清空座標並阻擋送出，再按使用此桶座標即可恢復。真實 GPS／照片入口仍可使用。
+
+**在後端模式，這些工具只生成輸入，送出會在目前連接的後端建立資料**（未設定 URL 時為 Cloud Run）。模擬照片／位置會在回報說明自動附加模擬標記，計入 500 字上限；不會冒充現場 GPS 或自動查證、發點、結案。權限、認養與停權限制仍由後端判斷。自動化測試攔截 API，不會建立雲端回報。詳見 [驗證與限制](../docs/FRONTEND_REPORT_DEMO_VALIDATION.md)。
+
+## 清潔隊工單的一鍵模擬資料
+
+在 `http://127.0.0.1:5173/#staff/tasks` 以隊員登入，接單 → 確認到場 → 開啟工單：
+
+- 逐筆查證區的「填入模擬屬實資料／填入模擬不實資料」會預填結果與明示測試說明；另按「確認查證」才送出。查證屬實可能實際發點，不實可能累計停權；請使用測試案件。後端目前只在不實時保存 `rejection_reason`，屬實的測試說明不會另存成 demo 標記。
+- 完成照片、現況照片各有「產生模擬完成照／產生模擬現況照」，產生用途分開、有 DEMO／非現場照片浮水印的 PNG。預覽不會上傳；按原「上傳並掛上…」才經 `/media` 與工單 evidence API 寫入後端。
+- 損壞工單可「填入模擬待修繕原因」；無需處理區可「填入模擬無需處理原因」。只預填帶 `[模擬測試]` 標記的原因，保留原確認操作及證據條件。
+
+未到場、非本人接單、撤桶或原命令待重試時，模擬工具沿用原限制；不自動接單、到場、查證、發點、掛照或結案。滿桶仍需管理員獨立示範清空。查證不需要另外提供 GPS。範圍及驗證見 [工單模擬工具驗證](../docs/FRONTEND_STAFF_DEMO_VALIDATION.md)。
+
 ## API 設定與身份
 
 `frontend/.env.example` 提供公開 `VITE_API_BASE_URL`，未設定時使用已部署的 Cloud Run `/api/v1`。可改成本機 API；變更後重啟 dev 或重新 build。這是公開 URL，密碼／token 絕不放入 VITE_* 或 Git。
 
-帳號為 demo-citizen／demo-staff／demo-admin，密碼由維運私下提供，於登入表單輸入。沒有 TaipeiPass／手機 OTP。Session 只存在本頁記憶體，有效期由後端 expires_at 決定（目前 60 分鐘）；重整／關頁後須重新登入。各分頁身份互不覆蓋。登出清個人快取與草稿；不清後端資料。
+後端模式帳號為 demo-citizen／demo-staff／demo-admin，密碼由維運私下提供，於後端登入表單輸入。預設市民展示模式不需密碼，使用上述本機展示身份。沒有 TaipeiPass／手機 OTP。後端 Session 只存在本頁記憶體，有效期由後端 expires_at 決定（目前 60 分鐘）；重整／關頁後須重新登入。各分頁身份互不覆蓋。登出清個人快取與草稿；不清後端資料。
 
 尚未送出的照片／表單與未確認結果的命令僅保留於同頁記憶體，重新登入同一帳號可重試原命令；重試保留 key、body、ETag。重新整理會失去這些暫存，應先重新讀取案件確認結果，不把逾時當成失敗重建。
 

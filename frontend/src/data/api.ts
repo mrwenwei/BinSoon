@@ -1,3 +1,6 @@
+import { useDemoData, isDemoToken } from "./demoMode";
+import { decorateCitizenView, demoRequest } from "./demoCitizen";
+import { demoBinPayload, demoCityLoaded } from "./demoBins";
 import { type WasteMetadata, type WasteType } from "./waste";
 export type Role = "citizen" | "staff" | "admin";
 export type User = {
@@ -366,7 +369,7 @@ export const API_BASE = (
   import.meta.env.VITE_API_BASE_URL ||
   "https://binsoon-api-887203439341.asia-east1.run.app/api/v1"
 ).replace(/\/$/, "");
-type Options = {
+export type Options = {
   token?: string;
   method?: string;
   body?: unknown;
@@ -379,8 +382,44 @@ export async function request<T>(
   path: string,
   options: Options = {},
 ): Promise<Result<T>> {
+  options.signal?.throwIfAborted();
+  if (useDemoData(options.token)) {
+    if (path.startsWith("/map/nearest-usable?") && !demoCityLoaded()) {
+      const waste =
+        new URL(path, "http://local").searchParams.get("waste_type") ||
+        "general";
+      await allPages<ApiLocation>(
+        query("/map/locations", {
+          district: "all",
+          kind: "bin",
+          filter: "all",
+          waste_type: waste,
+          include_proposed: true,
+        }),
+        { signal: options.signal, token: options.token },
+      );
+    }
+    const local = await demoRequest(path, options);
+    options.signal?.throwIfAborted();
+    if (local)
+      return {
+        ...local,
+        data: decorateCitizenView(path, local.data, options.token) as T,
+      };
+  }
+  if (
+    isDemoToken(options.token) &&
+    ((options.method || "GET") !== "GET" ||
+      /^\/(me|auth|reports|media|staff|admin|adoptions)(\/|\?|$)/.test(path))
+  )
+    throw new ApiError(
+      403,
+      "LOCAL_DEMO_ONLY",
+      "此本機展示操作尚未開放，不會送往後端。",
+    );
   const headers = new Headers();
-  if (options.token) headers.set("Authorization", `Bearer ${options.token}`);
+  if (options.token && !isDemoToken(options.token))
+    headers.set("Authorization", `Bearer ${options.token}`);
   if (options.key) headers.set("Idempotency-Key", options.key);
   if (options.etag) headers.set("If-Match", options.etag);
   const form = options.body instanceof FormData;
@@ -431,7 +470,13 @@ export async function request<T>(
   if (response.status !== 204 && payload === undefined)
     throw new Error("服務回應格式錯誤");
   return {
-    data: payload as T,
+    data: (useDemoData(options.token)
+      ? decorateCitizenView(
+          path,
+          demoBinPayload(path, payload, options.token),
+          options.token,
+        )
+      : payload) as T,
     etag: response.headers.get("ETag"),
     replayed: response.headers.get("Idempotency-Replayed") === "true",
   };

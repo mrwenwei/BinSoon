@@ -1,3 +1,4 @@
+import { useDemoData } from "./data/demoMode";
 import { isWasteType, wasteHref, type WasteType } from "./data/waste";
 import { useEffect, useRef, useState } from "react";
 import { AppNav } from "./components/AppNav";
@@ -38,6 +39,7 @@ import { LifecyclePage } from "./components/api/LifecyclePage";
 import { Notifications } from "./components/api/Notifications";
 import { Outcomes } from "./components/api/OutcomePages";
 import { Rewards, Redemptions } from "./components/api/RewardPages";
+import { PointHistory } from "./components/api/PointHistory";
 import { RoutePage } from "./components/api/RoutePage";
 import { type CrewVehicle } from "./data/crewRouting";
 import { StaffPage } from "./components/api/StaffPages";
@@ -137,8 +139,20 @@ function AppContent() {
             label: "找垃圾桶",
             current: ["map", "bin", "nav"].includes(page),
           },
-          { href: "#reports", label: "我的回報", current: page === "reports" },
-          { href: "#member", label: "會員中心", current: page === "member" },
+          {
+            href: "#member",
+            label: "會員中心",
+            current: [
+              "member",
+              "point-history",
+              "stamps",
+              "reports",
+              "review",
+              "rewards",
+              "redemptions",
+              "notifications",
+            ].includes(page),
+          },
           {
             href: "#staff/tasks",
             label: "清潔隊工作台",
@@ -157,23 +171,19 @@ function AppContent() {
               },
               { href: "#vote", label: "要桶投票" },
               {
-                href: "#reports",
-                label: "我的回報",
-                current: page === "reports",
-              },
-              {
                 href: "#member",
                 label: "會員中心",
-                current: page === "member",
+                current: [
+                  "member",
+                  "point-history",
+                  "stamps",
+                  "reports",
+                  "review",
+                  "rewards",
+                  "redemptions",
+                  "notifications",
+                ].includes(page),
               },
-              {
-                href: "#stamps",
-                label: "集章與等級",
-                current: page === "stamps",
-              },
-              { href: "#rewards", label: "兌換獎勵" },
-              { href: "#adopt", label: "認養電子雞" },
-              { href: "#notifications", label: "站內通知" },
             ],
           },
           {
@@ -231,6 +241,11 @@ function AppContent() {
         account={session && <Account onLogout={signOut} />}
         drawerFooter={session && <Account onLogout={signOut} />}
       />
+      {!isMapView && useDemoData(session?.access_token) && (
+        <p className="demo-mode-notice">
+          市民展示模式 · 桶況與個人資料為示意，市民操作只儲存在此瀏覽器。
+        </p>
+      )}
       {notice && (
         <p className="storage-warning" role="status">
           {notice} <button onClick={clearNotice}>關閉提示</button>
@@ -348,6 +363,10 @@ function AppContent() {
                 id={id}
               />
             )}
+          </RequireCitizen>
+        ) : page === "point-history" ? (
+          <RequireCitizen next={route}>
+            <PointHistory key={session?.user.id} />
           </RequireCitizen>
         ) : ["member", "stamps"].includes(page) ? (
           <RequireCitizen next={route}>

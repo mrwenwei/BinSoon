@@ -13,6 +13,7 @@ import { useApi } from "./useApi";
 import { LoadState } from "./LoadState";
 import { Pagination } from "./Pagination";
 import { CommandFeedback, useCommand } from "./Commands";
+import { MemberNavigation } from "./MemberNavigation";
 
 function destination(item: Notification, role?: Role) {
   switch (item.target.kind) {
@@ -88,6 +89,14 @@ function Inbox({ role }: { role?: Role }) {
   return (
     <main className="page api-narrow">
       <h1>站內通知</h1>
+      {(!role || role === "citizen") && (
+        <MemberNavigation current="notifications" />
+      )}
+      {(!role || role === "citizen") && (
+        <a className="back-link" href="#member">
+          返回會員中心
+        </a>
+      )}
       <p>此處為站內通知匣，前景時定期更新；查看案件仍依目前身份檢查權限。</p>
       <label className="check-field">
         <input

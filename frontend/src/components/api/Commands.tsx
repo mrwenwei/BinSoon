@@ -24,7 +24,12 @@ export type Intent = {
   method?: "POST" | "PATCH";
 };
 type Pending = { operation: Command; intent: Intent };
-type PhotoDraft = { actorId: string; file?: File; mediaId?: string };
+type PhotoDraft = {
+  actorId: string;
+  file?: File;
+  mediaId?: string;
+  demo?: boolean;
+};
 const Context = createContext<{
   pending: Record<string, Pending>;
   photos: Record<string, PhotoDraft>;

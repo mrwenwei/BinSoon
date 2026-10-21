@@ -14,6 +14,7 @@ import {
   type WorkOrder,
 } from "../../data/api";
 import { validatePhoto } from "../../data/media";
+import { createDemoPhoto } from "../../data/demoPhoto";
 import { CommandFeedback, useCommand, useWorkCommands } from "./Commands";
 import { useSession } from "./SessionContext";
 import { useApi, useCooldown } from "./useApi";
@@ -95,22 +96,30 @@ export function WorkPhoto({
   useEffect(() => {
     if (saved && draft) store.savePhoto(scope, null);
   }, [saved, draft, store, scope]);
-  async function select(file?: File) {
+  async function select(input?: File | Promise<File>, demo = false) {
     const actor = session,
       sequence = ++selection.current;
     setError("");
     if (!actor) return;
     store.savePhoto(scope, null);
-    if (!file) return;
+    if (!input) {
+      setValidating(false);
+      return;
+    }
     setValidating(true);
     try {
+      const file = await input;
       await validatePhoto(file);
       if (
         alive.current &&
         latest.current.session?.access_token === actor.access_token &&
         sequence === selection.current
       )
-        latest.current.store.savePhoto(scope, { actorId: actor.user.id, file });
+        latest.current.store.savePhoto(scope, {
+          actorId: actor.user.id,
+          file,
+          demo,
+        });
     } catch (e) {
       if (alive.current && sequence === selection.current)
         setError(e instanceof Error ? e.message : "照片無法使用");
@@ -175,6 +184,21 @@ export function WorkPhoto({
         萬像素。上傳後須掛到本工單，再明確
         {purpose === "site" ? "確認無需處理" : "提交完成"}。
       </p>
+      <section className="api-demo-tools" aria-label={`模擬${photo}`}>
+        <p className="tiny">
+          可先產生有 DEMO
+          浮水印的示意照片，非現場證據。此按鈕只填入照片；上傳並掛上照片才會寫入後端，不會自動完工。
+        </p>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={disabled || busy || validating}
+          onClick={() => void select(createDemoPhoto(purpose), true)}
+        >
+          產生模擬{photo}
+        </button>
+        {draft?.demo && <p className="tiny">已填入模擬{title}，非現場拍攝。</p>}
+      </section>
       <label>
         {title}
         <input
@@ -188,7 +212,11 @@ export function WorkPhoto({
         />
       </label>
       {preview && (
-        <img className="api-photo" src={preview} alt={`待送出的${title}`} />
+        <img
+          className="api-photo"
+          src={preview}
+          alt={`待送出的${draft?.demo ? "模擬" : ""}${title}`}
+        />
       )}
       {error && <p role="alert">{error}</p>}
       {draft?.mediaId && <p>照片已上傳，尚待確認掛到本工單；不會重複上傳。</p>}

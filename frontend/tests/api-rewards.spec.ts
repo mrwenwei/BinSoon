@@ -45,7 +45,7 @@ test("citizen redeems by reward UUID and reads server balance, stock and DEMO vo
   });
   await login(page, "citizen", "rewards");
   await expect(
-    page.getByRole("heading", { name: "兌換獎勵", exact: true }),
+    page.getByRole("heading", { name: "兌換獎品", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "選擇 伺服器展示券" }).click();
   await page.getByRole("button", { name: "確認兌換", exact: true }).dblclick();

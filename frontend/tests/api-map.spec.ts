@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { apiFixture, binId, envelope, location } from "./api-fixtures";
 
-test("map reads every page, keeps unknown status and opens server history", async ({
+test("map reads every page, keeps unknown status and opens compact bin details", async ({
   page,
 }) => {
   await apiFixture(page, async (route, path) => {
@@ -36,21 +36,6 @@ test("map reads every page, keeps unknown status and opens server history", asyn
       });
       return true;
     }
-    if (path.endsWith("/history")) {
-      await route.fulfill({
-        json: [
-          {
-            id: "reading",
-            recorded_at: "2026-01-05T08:00:00Z",
-            fill_level_pct: 42,
-            event_type: "measurement",
-            source_type: "simulated",
-            generation: 0,
-          },
-        ],
-      });
-      return true;
-    }
   });
   await page.goto("/");
   await expect(page.locator(".location-row")).toHaveCount(101);
@@ -61,14 +46,11 @@ test("map reads every page, keeps unknown status and opens server history", asyn
   );
   // 後端 unknown 在前端三態顯示為「失聯」。
   await expect(page.locator(".bin-action-panel .status-pill")).toBeVisible();
-  await expect(page.getByText("42% · measurement · simulated")).toBeVisible();
+  await expect(page.locator(".api-history")).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
   ).toHaveCount(0);
-  await page.getByText("來源與位置精度", { exact: true }).click();
-  await expect(
-    page.getByText("existing_bins_all_taipei.csv", { exact: false }),
-  ).toBeVisible();
+  await expect(page.getByRole("region", { name: "位置詳情" })).toHaveCount(0);
 });
 
 test("search cancels stale results and API failure never restores local demo data", async ({
@@ -193,37 +175,10 @@ test("place precision and proposed lifecycle are preserved with API filters", as
   ).toHaveCount(0);
 });
 
-test("history reads full bare-array pagination and navigation respects server usability", async ({
+test("compact detail omits history while navigation respects server usability", async ({
   page,
 }) => {
   await apiFixture(page, async (route, path) => {
-    if (path.endsWith("/history")) {
-      const offset = Number(
-        new URL(route.request().url()).searchParams.get("offset"),
-      );
-      await route.fulfill({
-        json: offset
-          ? [
-              {
-                id: "last-reading",
-                recorded_at: "2026-01-06T08:00:00Z",
-                fill_level_pct: 99,
-                event_type: "collection",
-                source_type: "simulated",
-                generation: 1,
-              },
-            ]
-          : Array.from({ length: 100 }, (_, i) => ({
-              id: `r${i}`,
-              recorded_at: "2026-01-05T08:00:00Z",
-              fill_level_pct: 42,
-              event_type: "measurement",
-              source_type: "simulated",
-              generation: 0,
-            })),
-      });
-      return true;
-    }
     if (path === "/map/nearest-usable") {
       await route.fulfill({
         json: {
@@ -246,10 +201,7 @@ test("history reads full bare-array pagination and navigation respects server us
     }
   });
   await page.goto(`/#bin/${binId}`);
-  await expect(page.locator(".api-history li")).toHaveCount(101);
-  await expect(
-    page.getByText("99% · collection · simulated", { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator(".api-history")).toHaveCount(0);
   await page
     .getByRole("link", { name: "尋找可用桶並導航", exact: true })
     .click();

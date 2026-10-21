@@ -442,7 +442,10 @@ test("repairing one broken work cannot unlock a zero-capacity bin with another b
   await f.setup(citizen);
   await login(citizen, "citizen", `bin/${binId}`);
   await expect(citizen.locator(".bin-action-panel .status-pill")).toBeVisible();
-  await expect(citizen.getByText("0%（模擬）", { exact: true })).toBeVisible();
+  await expect(citizen.locator(".bin-action-panel .status-pill")).toHaveText(
+    "維修中",
+  );
+  await expect(citizen.locator(".api-history")).toHaveCount(0);
   await expect(
     citizen.getByRole("link", { name: "導航過去", exact: true }),
   ).toHaveCount(0);

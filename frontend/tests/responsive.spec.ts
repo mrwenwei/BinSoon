@@ -41,7 +41,7 @@ test("P1-P9 fit desktop and phone viewports including 320px", async ({
   await page.getByRole("button", { name: "拍一張示意照片" }).click();
   await page.getByLabel("示意定位情境").selectOption("near");
   await page.getByRole("link", { name: "登入後繼續回報" }).click();
-  await capture("login", /先讓電子雞/);
+  await capture("login", /先讓Bin友/);
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await expect(
     page.getByRole("button", { name: "送出示範回報" }),
@@ -84,7 +84,7 @@ test("P1-P9 fit desktop and phone viewports including 320px", async ({
         ["review", reviewUrl, /回報審核結果/],
         ["member", "/tests/legacy/index.html#member", /會員中心/],
         ["rewards", rewardsUrl, /兌換獎品/],
-        ["login", "/tests/legacy/index.html#login", /先讓電子雞/],
+        ["login", "/tests/legacy/index.html#login", /先讓Bin友/],
         ["map", "/tests/legacy/index.html#map", /附近哪裡/],
       ] as const) {
         await page.goto(url);
