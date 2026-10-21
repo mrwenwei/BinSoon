@@ -1,3 +1,4 @@
+import { useDemoData } from "../../data/demoMode";
 import {
   wasteName,
   wasteHref,
@@ -514,7 +515,11 @@ export function MapPage({
               </div>
             </>
           )}
-          <p className="tiny mx-disclosure">{DISCLOSURE}</p>
+          <p className="tiny mx-disclosure">
+            {useDemoData(session?.access_token)
+              ? "桶況與市民資料為本機展示，非實測；市民操作不會寫入後端。"
+              : DISCLOSURE}
+          </p>
         </div>
       </section>
       <div className="mx-map">
@@ -539,7 +544,7 @@ export function MapPage({
   );
 }
 
-// 清單列沿用 .location-row：電子雞（所選種類那一槽的狀態）、桶名（新設時旁邊
+// 清單列沿用 .location-row：Bin友（所選種類那一槽的狀態）、桶名（新設時旁邊
 // 一顆「新設」膠囊）、距離，下一行兩槽滿度條並排（所選種類在左），右側兩槽可丟數。
 function NearbyRow({
   item,

@@ -1,3 +1,4 @@
+import { useDemoData } from "../../data/demoMode";
 import { taipeiMonth } from "../../data/calendar";
 import { useState } from "react";
 import {
@@ -53,7 +54,9 @@ function OutcomeView({ staff }: { staff: boolean }) {
     <main className="page api-narrow">
       <h1>{staff ? "我的月份成果與排名" : "清潔隊公開成果"}</h1>
       <p>
-        依台北曆月（Asia/Taipei）統計後端有效完成紀錄。讚與速度不改變同分名次。
+        {useDemoData(session?.access_token)
+          ? "以下是台北曆月的本機展示成果，並非真實工作統計。"
+          : "依台北曆月（Asia/Taipei）統計後端有效完成紀錄。讚與速度不改變同分名次。"}
       </p>
       <div className="card api-form">
         <label>

@@ -1,3 +1,4 @@
+import { isDemoToken } from "../../data/demoMode";
 import { AdoptionMonthly } from "./AdoptionMonthly";
 import { useState } from "react";
 import {
@@ -121,7 +122,11 @@ function AdoptionList({ admin }: { admin: boolean }) {
   return (
     <main className="page api-narrow">
       <h1>{admin ? "認養審核列表" : "我的認養"}</h1>
-      <p>認養待審期間沒有權益，歷史紀錄由後端保留。</p>
+      <p>
+        {isDemoToken(session?.access_token)
+          ? "認養與歷史紀錄僅保存在此瀏覽器，展示狀態不代表真實認養權益。"
+          : "認養待審期間沒有權益，歷史紀錄由後端保留。"}
+      </p>
       {!admin && (
         <a className="button primary" href="#map">
           前往地圖選桶申請
@@ -303,7 +308,7 @@ function Application({ binId }: { binId: string }) {
           </button>
         </form>
       ) : (
-        view.data && <p>目前無法申請此桶，請依後端認養與設置狀態選擇其他桶。</p>
+        view.data && <p>目前無法申請此桶，請依目前認養與設置狀態選擇其他桶。</p>
       )}
       {view.data?.my_adoption_id && !applied && (
         <a
@@ -318,7 +323,11 @@ function Application({ binId }: { binId: string }) {
         confirmation={confirmation}
         etag={null}
         cancel={() => setConfirmation(null)}
-        impact="送出後為 pending，尚無加倍資格；須管理員核准，且不能保證一定取得認養。"
+        impact={
+          isDemoToken(session?.access_token)
+            ? "只建立本機待審展示申請，不會送交真實管理員或取得真實認養權益；預設展示認養可用來體驗快捷通報。"
+            : "送出後為 pending，尚無加倍資格；須管理員核准，且不能保證一定取得認養。"
+        }
       />
     </main>
   );

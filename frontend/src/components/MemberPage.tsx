@@ -120,7 +120,7 @@ export function MemberPage({ state }: { state: DemoState }) {
               </span>
             </div>
             <a className="button secondary" href="#adopt">
-              認養電子雞 <Icon name="arrow" />
+              認養Bin友 <Icon name="arrow" />
             </a>
           </section>
           {rejectedCount(state) > 0 && (

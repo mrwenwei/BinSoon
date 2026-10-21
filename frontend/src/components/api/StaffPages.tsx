@@ -403,6 +403,7 @@ function WorkPage({ id }: { id: string }) {
                 <ReasonAction
                   label="待修繕原因"
                   button="留待修繕"
+                  demoReason="[模擬測試] 示範零件待更換，非現場檢查結果。"
                   disabled={blocked}
                   onConfirm={(reason) => {
                     void execute({
@@ -435,6 +436,7 @@ function WorkPage({ id }: { id: string }) {
                 <ReasonAction
                   label="無需處理原因"
                   button="確認無需處理"
+                  demoReason="[模擬測試] 示範現場無需處理，非現場檢查結果。"
                   disabled={blocked}
                   allowed={canDismiss}
                   onConfirm={(reason) => {
@@ -523,6 +525,34 @@ function Verification({
           onConfirm(decision, reason);
       }}
     >
+      <section className="api-demo-tools" aria-label="模擬查證資料">
+        <h3>模擬查證資料</h3>
+        <p className="tiny">
+          只填入測試資料，不會自動送出。確認查證會寫入後端，可能影響市民點數或停權；請僅用於測試案件。
+        </p>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={disabled}
+          onClick={() => {
+            setDecision("approved");
+            setReason("[模擬測試] 示範屬實回報，非現場查證結論。");
+          }}
+        >
+          填入模擬屬實資料
+        </button>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={disabled}
+          onClick={() => {
+            setDecision("rejected");
+            setReason("[模擬測試] 示範不實回報，非現場查證結論。");
+          }}
+        >
+          填入模擬不實資料
+        </button>
+      </section>
       <label>
         查證結果
         <select
@@ -536,7 +566,7 @@ function Verification({
         </select>
       </label>
       <label>
-        不實原因
+        {decision === "approved" ? "查證說明" : "不實原因"}
         <textarea
           value={reason}
           maxLength={500}
@@ -564,6 +594,7 @@ function validReason(body: unknown): boolean {
   );
 }
 function ReasonAction({
+  demoReason,
   label,
   button,
   disabled,
@@ -572,6 +603,7 @@ function ReasonAction({
 }: {
   label: string;
   button: string;
+  demoReason: string;
   disabled: boolean;
   allowed?: boolean;
   onConfirm: (reason: string) => void;
@@ -585,6 +617,17 @@ function ReasonAction({
         if (!disabled && allowed && reason.trim()) onConfirm(reason.trim());
       }}
     >
+      <section className="api-demo-tools">
+        <p className="tiny">只填入帶模擬標記的測試原因；確認操作才會送出。</p>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={disabled}
+          onClick={() => setReason(demoReason)}
+        >
+          填入模擬{label}
+        </button>
+      </section>
       <label>
         {label}
         <textarea

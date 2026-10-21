@@ -1,3 +1,4 @@
+import { isDemoToken } from "../../data/demoMode";
 import {
   wasteName,
   wasteHref,
@@ -14,8 +15,8 @@ import {
   type ReactNode,
 } from "react";
 import { validatePhoto } from "../../data/media";
+import { createDemoPhoto } from "../../data/demoPhoto";
 import {
-  allPages,
   ApiError,
   command,
   errorMessage,
@@ -30,8 +31,6 @@ import {
   type Adoption,
   type Command,
   type Membership,
-  type PointEntry,
-  type PageData,
   type Problem,
   type Report,
 } from "../../data/api";
@@ -40,6 +39,8 @@ import { WastePicker, WasteTag } from "../WasteType";
 import { Mascot } from "../Mascot";
 import { LoadState } from "./LoadState";
 import { useApi, useCooldown } from "./useApi";
+import { Icon } from "../Icon";
+import { MemberNavigation } from "./MemberNavigation";
 
 type Draft = {
   type: Problem;
@@ -48,6 +49,8 @@ type Draft = {
   longitude: string;
   confirmed: boolean;
   file?: File;
+  demoPhoto?: boolean;
+  demoPosition?: "near" | "far" | "unavailable";
   mediaId?: string;
   operation?: Command;
   ownerId?: string;
@@ -205,12 +208,14 @@ export function ReportForm({
   actor.current = session;
   const alive = useRef(true);
   const selection = useRef(0);
+  const positionSelection = useRef(0);
   const lock = useRef(false);
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
       selection.current++;
+      positionSelection.current++;
     };
   }, []);
   useEffect(() => {
@@ -240,21 +245,31 @@ export function ReportForm({
     Math.abs(lng) <= 180 &&
     draft.confirmed;
   const frozen = Boolean(draft.operation) || busy;
-  async function selectFile(file?: File) {
+  const demoMarker =
+    draft.demoPhoto || draft.demoPosition
+      ? `[模擬測試：${[draft.demoPhoto && "示意照片", draft.demoPosition && "模擬座標（非實測 GPS）"].filter(Boolean).join("／")}]\n`
+      : "";
+  const description = demoMarker + draft.description;
+  const descriptionTooLong = description.length > 500;
+  async function selectFile(input?: File | Promise<File>, demoPhoto = false) {
     const version = ++selection.current;
     const token = session?.access_token;
     setError("");
-    update(draftKey, { file: undefined, mediaId: undefined });
-    if (!file) return;
+    update(draftKey, { file: undefined, mediaId: undefined, demoPhoto: false });
+    if (!input) {
+      setValidating(false);
+      return;
+    }
     setValidating(true);
     try {
+      const file = await input;
       await validatePhoto(file);
       if (
         alive.current &&
         actor.current?.access_token === token &&
         version === selection.current
       )
-        update(draftKey, { file });
+        update(draftKey, { file, demoPhoto });
     } catch (e) {
       if (
         alive.current &&
@@ -284,6 +299,7 @@ export function ReportForm({
       (!quickAllowed ||
         !view.data?.can_report ||
         Boolean(view.error) ||
+        descriptionTooLong ||
         !validPosition ||
         !draft.file ||
         validating ||
@@ -319,7 +335,7 @@ export function ReportForm({
             bin_id: id,
             waste_type: wasteType,
             type: draft.type,
-            description: draft.description,
+            description,
             photo_ids: [mediaId],
             position: { latitude: lat, longitude: lng },
             quick: Boolean(quickAdoption),
@@ -404,13 +420,95 @@ export function ReportForm({
             說明
             <textarea
               value={draft.description}
-              maxLength={500}
+              maxLength={500 - demoMarker.length}
               required={draft.type === "other"}
               onChange={(e) =>
                 update(draftKey, { description: e.target.value })
               }
             />
           </label>
+          <section className="api-demo-tools" aria-label="回報模擬測試">
+            <h2>模擬測試工具</h2>
+            <p className="tiny">
+              {isDemoToken(session?.access_token)
+                ? "可使用示意照片及所選 Bin友座標。送出只儲存於此瀏覽器，不會派工或寫入後端；仍需確認展示位置。"
+                : "不方便拍照或取得 GPS？可用示意照片及所選桶座標測試。送出仍會寫入目前連接的後端，照片及說明會標示模擬測試；權限與 50 公尺檢查照常執行。"}
+            </p>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={validating}
+              onClick={() => void selectFile(createDemoPhoto(), true)}
+            >
+              產生示意照片
+            </button>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={!view.data || Boolean(view.error)}
+              onClick={() => {
+                if (!view.data) return;
+                positionSelection.current++;
+                setPositionError("");
+                update(draftKey, {
+                  latitude: String(view.data.location.latitude),
+                  longitude: String(view.data.location.longitude),
+                  confirmed: false,
+                  demoPosition: "near",
+                });
+              }}
+            >
+              使用此桶座標（模擬 GPS）
+            </button>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={!view.data || Boolean(view.error)}
+              onClick={() => {
+                if (!view.data) return;
+                positionSelection.current++;
+                setPositionError("");
+                update(draftKey, {
+                  latitude: String(view.data.location.latitude + 78 / 111320),
+                  longitude: String(view.data.location.longitude),
+                  confirmed: false,
+                  demoPosition: "far",
+                });
+              }}
+            >
+              模擬距離過遠（約 78 公尺）
+            </button>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => {
+                positionSelection.current++;
+                update(draftKey, {
+                  latitude: "",
+                  longitude: "",
+                  confirmed: false,
+                  demoPosition: "unavailable",
+                });
+                setPositionError(
+                  "模擬定位失敗；請使用此桶座標或重新取得目前位置。",
+                );
+              }}
+            >
+              模擬定位失敗
+            </button>
+            {draft.demoPosition && draft.demoPosition !== "unavailable" && (
+              <p className="tiny">
+                {isDemoToken(session?.access_token)
+                  ? "此為本機展示座標，非實測 GPS；展示模式檢查 50 公尺距離。"
+                  : "此為模擬測試座標，非實測 GPS；距離由後端驗證。"}
+              </p>
+            )}
+            {draft.demoPhoto && (
+              <p className="tiny">
+                已產生有 DEMO 浮水印的示意照片，非現場證據。
+              </p>
+            )}
+          </section>
           <label>
             現場照片
             <input
@@ -423,16 +521,24 @@ export function ReportForm({
             />
           </label>
           <p className="tiny">
-            一張 JPEG／PNG／WebP，最多 5 MiB、2000 萬像素。後端會再次驗證並移除
-            EXIF。
+            {isDemoToken(session?.access_token)
+              ? "一張 JPEG／PNG／WebP，最多 5 MiB、2000 萬像素；照片只保留在此瀏覽器。"
+              : "一張 JPEG／PNG／WebP，最多 5 MiB、2000 萬像素。後端會再次驗證並移除 EXIF。"}
           </p>
           {preview && (
-            <img className="api-photo" src={preview} alt="待送出的現場照片" />
+            <img
+              className="api-photo"
+              src={preview}
+              alt={
+                draft.demoPhoto ? "待送出的模擬測試照片" : "待送出的現場照片"
+              }
+            />
           )}
           <button
             type="button"
             className="button secondary"
             onClick={() => {
+              const version = ++positionSelection.current;
               setPositionError("");
               if (!navigator.geolocation) {
                 setPositionError(
@@ -446,16 +552,23 @@ export function ReportForm({
                   if (
                     alive.current &&
                     !lock.current &&
+                    version === positionSelection.current &&
                     actor.current?.access_token === token
                   )
                     update(draftKey, {
                       latitude: String(p.coords.latitude),
                       longitude: String(p.coords.longitude),
+                      demoPosition: undefined,
                       confirmed: false,
                     });
                 },
                 () => {
-                  if (alive.current && actor.current?.access_token === token)
+                  if (
+                    alive.current &&
+                    !lock.current &&
+                    version === positionSelection.current &&
+                    actor.current?.access_token === token
+                  )
                     setPositionError("定位不可用，請自行輸入並確認現場座標。");
                 },
                 { timeout: 10000, maximumAge: 0 },
@@ -473,9 +586,13 @@ export function ReportForm({
               min="-90"
               max="90"
               value={draft.latitude}
-              onChange={(e) =>
-                update(draftKey, { latitude: e.target.value, confirmed: false })
-              }
+              onChange={(e) => {
+                positionSelection.current++;
+                update(draftKey, {
+                  latitude: e.target.value,
+                  confirmed: false,
+                });
+              }}
             />
           </label>
           <label>
@@ -486,12 +603,13 @@ export function ReportForm({
               min="-180"
               max="180"
               value={draft.longitude}
-              onChange={(e) =>
+              onChange={(e) => {
+                positionSelection.current++;
                 update(draftKey, {
                   longitude: e.target.value,
                   confirmed: false,
-                })
-              }
+                });
+              }}
             />
           </label>
           <label>
@@ -502,12 +620,19 @@ export function ReportForm({
                 update(draftKey, { confirmed: e.target.checked })
               }
             />
-            確認這是我提供的現場位置
+            {draft.demoPosition
+              ? "確認使用模擬測試位置，非實測 GPS"
+              : "確認這是我提供的現場位置"}
           </label>
           <p className="tiny">
-            需距桶 50 公尺內，由後端驗證；手動座標不代表防偽 GPS。
+            {isDemoToken(session?.access_token)
+              ? "展示位置需距 Bin友 50 公尺內；這不是現場 GPS 證明。"
+              : "需距桶 50 公尺內，由後端驗證；手動座標不代表防偽 GPS。"}
           </p>
         </fieldset>
+        {descriptionTooLong && (
+          <p role="alert">含模擬測試標記的說明超過 500 字，請縮短說明。</p>
+        )}
         {error && <p role="alert">{error}</p>}
         {!session?.user.roles.includes("citizen") ? (
           <a
@@ -526,6 +651,7 @@ export function ReportForm({
               (!draft.operation &&
                 (!quickAllowed ||
                   !draft.file ||
+                  descriptionTooLong ||
                   !validPosition ||
                   !view.data?.can_report ||
                   Boolean(view.error) ||
@@ -605,6 +731,7 @@ export function PrivatePhoto({
   );
 }
 export function ReportSummary({ report }: { report: Report }) {
+  const { session } = useSession();
   return (
     <section className="card report-summary-card">
       <h2>{problemLabels[report.type]}</h2>
@@ -616,7 +743,11 @@ export function ReportSummary({ report }: { report: Report }) {
         {report.work_status ? workLabels[report.work_status] : "尚未派工"}
       </p>
       {report.assignment_status === "unassigned" && (
-        <p>此回報尚未指派，超出目前大安區隊員範圍。</p>
+        <p>
+          {isDemoToken(session?.access_token)
+            ? "這是本機展示案件，不會建立真實工單或派送清潔隊。"
+            : "此回報尚未指派，超出目前大安區隊員範圍。"}
+        </p>
       )}
       <p>
         提交時認養資格：{report.adopter ? "有效認養" : "無認養資格"} ·{" "}
@@ -673,7 +804,13 @@ export function ReportDetail({
         </span>
       )}
       <h1>{done ? "謝謝你幫城市變乾淨！" : "回報進度"}</h1>
-      {done && <p>清潔隊收到後會到場查證；屬實才會入帳點數。</p>}
+      {done && (
+        <p>
+          {isDemoToken(session?.access_token)
+            ? "已儲存本機展示回報；未派送清潔隊，也未增加可用點數。"
+            : "清潔隊收到後會到場查證；屬實才會入帳點數。"}
+        </p>
+      )}
       <LoadState {...result} />
       {result.data && <ReportSummary report={result.data} />}
       <a className="button secondary" href="#reports">
@@ -686,6 +823,9 @@ export function ReportDetail({
   );
 }
 export function ReportsList() {
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+  }, []);
   const { session } = useSession();
   const [offset, setOffset] = useState(0);
   const [wasteFilter, setWasteFilter] = useState<WasteType | "">("");
@@ -705,7 +845,13 @@ export function ReportsList() {
   );
   return (
     <main className="page api-narrow">
+      <a className="back-link" href="#member">
+        <Icon name="back" />
+        返回會員中心
+      </a>
       <h1>我的回報</h1>
+      <MemberNavigation current="reports" />
+      <p>查證結果與處理進度分開顯示，點選案件查看完整紀錄。</p>
       <WasteSelect
         value={wasteFilter}
         all
@@ -750,7 +896,18 @@ export function ReportsList() {
     </main>
   );
 }
+const memberBadgeTiers = [
+  { name: "見習生", points: 0 },
+  { name: "新手", points: 10 },
+  { name: "獨當一面", points: 50 },
+  { name: "高手", points: 150 },
+  { name: "專家", points: 500 },
+  { name: "教授", points: 1000 },
+];
 export function Member() {
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+  }, []);
   const { session } = useSession();
   const membership = useApi(
     "/me/membership",
@@ -761,78 +918,120 @@ export function Member() {
       }),
     true,
   );
-  const entries = useApi(
-    "/me/point-entries",
-    async (signal) => ({
-      data: await allPages<PointEntry>("/me/point-entries", {
-        signal,
-        token: session?.access_token,
-      }),
-      etag: null,
-      replayed: false,
-    }),
-    true,
-  );
-  const reports = useApi(
-    "/me/reports?limit=1&offset=0",
-    (signal) =>
-      request<PageData<Report>>("/me/reports?limit=1&offset=0", {
-        signal,
-        token: session?.access_token,
-      }),
-    true,
-  );
   return (
-    <main className="page api-narrow">
-      <h1>會員中心</h1>
-      <LoadState {...membership} />
-      {membership.data && (
-        <section className="card member-summary">
-          <h2>{membership.data.current_tier.name}</h2>
-          <p>累積點數 {membership.data.cumulative_points}</p>
-          <p>可用點數 {membership.data.available_points}</p>
-          <p>待確認點數 {membership.data.pending_points}</p>
-          <p>
-            屬實回報 {membership.data.approved_report_count} 次 · 不實{" "}
-            {membership.data.rejected_report_count} 次
-          </p>
-          {membership.data.next_tier && (
+    <main className="page member-hub">
+      <header className="page-heading">
+        <div>
+          <span className="eyebrow">把順手的善意，累積成城市的改變</span>
+          <h1>會員中心</h1>
+        </div>
+        <span className="demo-tag">
+          {isDemoToken(session?.access_token) ? "本機展示帳本" : "我的城市紀錄"}
+        </span>
+      </header>
+      <MemberNavigation current="member" />
+      <div className="member-hub-layout">
+        <aside className="member-hub-overview">
+          <LoadState {...membership} />
+          {membership.data && (
+            <section className="member-hero" aria-label="會員等級摘要">
+              <div className="member-hero-title">
+                <span className="member-seal" aria-hidden="true">
+                  <Icon name="star" />
+                </span>
+                <div>
+                  <span>目前等級</span>
+                  <h2>{membership.data.current_tier.name}</h2>
+                </div>
+              </div>
+              <p>累積點數 {membership.data.cumulative_points}</p>
+              {membership.data.next_tier ? (
+                <p>
+                  再 {membership.data.points_to_next_tier} 點升到「
+                  {membership.data.next_tier.name}」
+                </p>
+              ) : (
+                <p>已達最高等級，謝謝你持續照顧城市！</p>
+              )}
+              <progress
+                aria-label="會員升級進度"
+                value={
+                  membership.data.next_tier
+                    ? membership.data.cumulative_points
+                    : 1
+                }
+                max={
+                  membership.data.next_tier
+                    ? membership.data.cumulative_points +
+                      (membership.data.points_to_next_tier ?? 0)
+                    : 1
+                }
+              />
+              <div className="member-hero-balance">
+                <p>
+                  可用點數 <strong>{membership.data.available_points}</strong>
+                </p>
+                <a className="button primary" href="#rewards">
+                  兌換獎品 <Icon name="arrow" />
+                </a>
+              </div>
+              <p>待確認點數 {membership.data.pending_points}</p>
+              <p>
+                屬實回報 {membership.data.approved_report_count} 次 · 不實{" "}
+                {membership.data.rejected_report_count} 次
+              </p>
+              {membership.data.reporting_suspended && (
+                <p role="status">
+                  回報資格暫停，合法兌換、提案與投票不因此停權。
+                </p>
+              )}
+            </section>
+          )}
+          {membership.data && (
+            <section
+              className="card member-section"
+              id="member-levels"
+              tabIndex={-1}
+              aria-label="集章與等級"
+            >
+              <div className="section-heading">
+                <h2>集章與等級</h2>
+                <span className="tiny">依累積點數 · 門檻暫定</span>
+              </div>
+              <ul className="member-badges" aria-label="會員等級徽章">
+                {memberBadgeTiers.map((tier) => (
+                  <li
+                    key={tier.name}
+                    className={
+                      tier.name === membership.data!.current_tier.name
+                        ? "current"
+                        : membership.data!.cumulative_points >= tier.points
+                          ? "earned"
+                          : "locked"
+                    }
+                  >
+                    <span className="member-badge">{tier.name}</span>
+                    <small>
+                      {tier.points.toLocaleString()} 點
+                      {tier.name === membership.data!.current_tier.name
+                        ? " · 目前"
+                        : ""}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+              <p className="tiny">以查證屬實的回報累積點數，解鎖等級徽章。</p>
+            </section>
+          )}
+          <aside className="member-how">
+            <h2>怎麼拿點數</h2>
             <p>
-              再 {membership.data.points_to_next_tier} 點升到「
-              {membership.data.next_tier.name}」
+              回報經查證屬實，一般首報 +1 點、有效認養首報 +2
+              點；同事件後續回報不重複發點。
             </p>
-          )}
-          {membership.data.reporting_suspended && (
-            <p role="status">回報資格暫停，合法兌換、提案與投票不因此停權。</p>
-          )}
-        </section>
-      )}
-      <LoadState {...reports} />
-      {reports.data && <p>我的回報共 {reports.data.page.total} 筆</p>}
-      <h2>點數台帳</h2>
-      <LoadState {...entries} />
-      <ul className="api-items">
-        {entries.data?.map((e) => (
-          <li className="card" key={e.id}>
-            {time(e.created_at)} · {e.type} · {e.amount} 點 · 餘額{" "}
-            {e.balance_after}
-            {e.report_id && <a href={`#review/${e.report_id}`}>查看回報</a>}
-            {e.redemption_id && (
-              <a href={`#redemptions/${e.redemption_id}`}>查看展示券</a>
-            )}
-          </li>
-        ))}
-      </ul>
-      {entries.data?.length === 0 && <p>尚無點數紀錄</p>}
-      <a className="button secondary" href="#reports">
-        查看我的回報
-      </a>
-      <a className="button primary" href="#rewards">
-        兌換獎勵
-      </a>
-      <a className="button secondary" href="#redemptions">
-        我的兌換
-      </a>
+          </aside>
+        </aside>
+      </div>
     </main>
   );
 }

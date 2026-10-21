@@ -29,7 +29,13 @@ test("citizen and staff tabs keep independent sessions and logout removes privat
   await expectAccountName(crew, "測試staff");
   await expect(await logoutButton(crew)).toBeVisible();
   expect(await crew.evaluate(() => Object.keys(localStorage))).toEqual([]);
-  expect(await crew.evaluate(() => Object.keys(sessionStorage))).toEqual([]);
+  // The only stored value is the non-secret data-mode preference; sessions stay in memory.
+  expect(await crew.evaluate(() => Object.keys(sessionStorage))).toEqual([
+    "binsoon-data-mode",
+  ]);
+  expect(
+    await crew.evaluate(() => sessionStorage.getItem("binsoon-data-mode")),
+  ).toBe("backend");
 });
 
 test("login refuses a different role and throttles without automatic retries", async ({

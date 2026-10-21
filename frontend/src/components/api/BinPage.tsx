@@ -1,23 +1,15 @@
-import {
-  classificationName,
-  wasteName,
-  wasteHref,
-  type WasteControls,
-} from "../../data/waste";
+import { wasteHref, type WasteControls } from "../../data/waste";
 import { WasteInfo, compartmentCards, CompartmentSources } from "./Waste";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   apiBinState,
   apiCompartments,
   query,
   request,
-  time,
   type ApiLocation,
   type BinView,
-  type Reading,
 } from "../../data/api";
 import { StationCard } from "../StationCard";
-import { LocationDetails } from "../LocationDetails";
 import { Mascot } from "../Mascot";
 import { LoadState } from "./LoadState";
 import { CompletionThanks } from "./CompletionPages";
@@ -49,7 +41,6 @@ export function BinPanel({
   onLocation?: (location: ApiLocation) => void;
 }) {
   const { session } = useSession();
-  const [historyType, setHistoryType] = useState<string>(wasteType);
   const view = useBinView(id, wasteType);
   const loaded = view.data;
   useEffect(() => {
@@ -62,37 +53,6 @@ export function BinPanel({
           : loaded.location.compartments,
       });
   }, [loaded, onLocation]);
-  const history = useApi(
-    query(`/bins/${id}/history`, { waste_type: historyType }),
-    async (signal) => {
-      const items: Reading[] = [];
-      let offset = 0;
-      while (true) {
-        const { data } = await request<Reading[]>(
-          query(`/bins/${encodeURIComponent(id)}/history`, {
-            offset,
-            limit: 100,
-            waste_type: historyType,
-          }),
-          { signal },
-        );
-        items.push(...data);
-        if (data.length < 100) break;
-        offset += data.length;
-      }
-      return {
-        data: items.sort(
-          (a, b) =>
-            a.recorded_at.localeCompare(b.recorded_at) ||
-            a.id.localeCompare(b.id),
-        ),
-        etag: null,
-        replayed: false,
-      };
-    },
-    true,
-    { stopOnNotFound: true },
-  );
   if (!view.data)
     return (
       <div className="api-bin-detail mx-bin">
@@ -211,11 +171,21 @@ export function BinPanel({
         {view.data.adopter?.intro && (
           <p>認養店家介紹：{view.data.adopter.intro}</p>
         )}
-        {view.data.can_apply_adoption && !view.error && (
-          <a className="button secondary" href={`#adopt/apply/${id}`}>
-            申請認養此桶
-          </a>
-        )}
+        {!view.error &&
+          (view.data.can_apply_adoption ||
+            (!session &&
+              !view.data.adopter &&
+              !view.data.my_adoption_id &&
+              item.placement_status !== "proposed" &&
+              status.operational_status !== "removed")) && (
+            <a
+              className="button secondary"
+              href={`#adopt/apply/${id}`}
+              aria-label="申請認養此桶"
+            >
+              待認養 · 申請認養此桶
+            </a>
+          )}
         {view.data.my_adoption_id && (
           <a
             className="button secondary"
@@ -226,51 +196,6 @@ export function BinPanel({
         )}
       </section>
       <div className="bin-support-grid">
-        <section className="card">
-          <h2>滿度與清運歷史</h2>
-          <p>
-            {status.fill_level_pct === null
-              ? "尚無有效讀值"
-              : `${status.fill_level_pct}%（模擬）`}
-          </p>
-          <p>觀測：{time(status.observed_at)}</p>
-          <label className="api-waste-select">
-            歷史種類
-            <select
-              aria-label="歷史種類"
-              value={historyType}
-              onChange={(e) => setHistoryType(e.target.value)}
-            >
-              <option value="general">一般垃圾</option>
-              <option value="recycling">資源回收</option>
-              <option value="legacy_unknown">舊未分類</option>
-            </select>
-          </label>
-          <p className="tiny">以下為模擬時鐘，含各輪紀錄，並非實際作業時間。</p>
-          <LoadState {...history} />
-          {history.data?.length === 0 && <p>尚無歷史讀值</p>}
-          <ol className="api-history">
-            {history.data?.map((r) => (
-              <li key={r.id}>
-                <time>{time(r.recorded_at)}</time>
-                <span>
-                  {r.fill_level_pct}% · {r.event_type} · {r.source_type}
-                </span>
-                <small>
-                  {wasteName(r.waste_type)} ·{" "}
-                  {classificationName(r.classification_source)}
-                </small>
-                <meter
-                  min="0"
-                  max="100"
-                  value={r.fill_level_pct}
-                  aria-label={`${time(r.recorded_at)} 滿度`}
-                />
-                第 {r.generation ?? "未知"} 輪
-              </li>
-            ))}
-          </ol>
-        </section>
         <section className="card bin-community">
           <CompletionThanks
             cleanup={view.data.latest_cleanup}
@@ -280,14 +205,6 @@ export function BinPanel({
             refresh={view.reload}
           />
         </section>
-      </div>
-      <div className="bin-location-grid">
-        <LocationDetails
-          location={item}
-          onClose={() => {
-            window.location.hash = wasteHref("map", wasteType).slice(1);
-          }}
-        />
       </div>
     </div>
   );

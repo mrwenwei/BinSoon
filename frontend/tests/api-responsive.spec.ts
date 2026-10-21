@@ -68,11 +68,7 @@ test("hamburger drawer reaches every entry, traps focus and closes with Esc or t
   for (const name of [
     "找垃圾桶",
     "要桶投票",
-    "我的回報",
     "會員中心",
-    "集章與等級",
-    "兌換獎勵",
-    "認養電子雞",
     "清潔隊工作台",
     "清運道路指引",
     "管理員",
@@ -81,6 +77,16 @@ test("hamburger drawer reaches every entry, traps focus and closes with Esc or t
     "管理員登入",
   ])
     await expect(drawer.getByRole("link", { name, exact: true })).toBeVisible();
+  for (const name of [
+    "我的回報",
+    "集章與等級",
+    "兌換獎勵",
+    "認養Bin友",
+    "站內通知",
+  ])
+    await expect(drawer.getByRole("link", { name, exact: true })).toHaveCount(
+      0,
+    );
   // 焦點鎖在側邊欄：從最後一個項目按 Tab 回到第一個。
   await drawer.getByRole("link", { name: "管理員登入", exact: true }).focus();
   await page.keyboard.press("Tab");

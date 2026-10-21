@@ -1,3 +1,4 @@
+import { useDemoData } from "../../data/demoMode";
 import { useCallback, useState } from "react";
 import {
   query,
@@ -112,7 +113,11 @@ export function ProposalList({
             : "我的投票"}
       </h1>
       <ProposalLinks />
-      <p>提案仍須現勘；票數與關票狀態由伺服器決定，投票通過不代表已設置。</p>
+      <p>
+        {useDemoData(session?.access_token)
+          ? "提案與票數為本機展示；投票通過仍不代表獲准設桶或已完成現勘。"
+          : "提案仍須現勘；票數與關票狀態由伺服器決定，投票通過不代表已設置。"}
+      </p>
       {mode === "all" && (
         <div className="card api-form">
           <label>
@@ -261,7 +266,13 @@ export function ProposalDetail({ id }: { id: string }) {
           ))}
         </div>
       ) : (
-        item && <p>投票已關閉，進度以伺服器為準。</p>
+        item && (
+          <p>
+            {useDemoData(session?.access_token)
+              ? "本機展示投票已關閉，未送交真實後台審查。"
+              : "投票已關閉，進度以伺服器為準。"}
+          </p>
+        )
       )}
     </main>
   );
@@ -371,7 +382,9 @@ export function ProposalForm() {
       <h1>建立設桶提案</h1>
       <ProposalLinks />
       <p>
-        點擊地圖、拖曳選點或輸入座標。大安區界由後端驗證，不會自動修改你的座標。
+        {useDemoData(session?.access_token)
+          ? "點擊地圖或輸入展示座標；這是本機提案，不進行真實行政區審查、現勘或設置。"
+          : "點擊地圖、拖曳選點或輸入座標。大安區界由後端驗證，不會自動修改你的座標。"}
       </p>
       <LoadState {...quota} />
       {quota.data && (

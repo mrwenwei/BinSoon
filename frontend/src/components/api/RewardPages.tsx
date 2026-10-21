@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { isDemoToken } from "../../data/demoMode";
+import { useEffect, useState } from "react";
 import {
   query,
   request,
@@ -9,14 +10,18 @@ import {
   type RedeemResult,
   type Reward,
 } from "../../data/api";
-import { rewards as appearances } from "../../data/rewards";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
 import { LoadState } from "./LoadState";
 import { Pagination } from "./Pagination";
 import { CommandFeedback, useCommand } from "./Commands";
+import { Icon } from "../Icon";
+import { MemberNavigation } from "./MemberNavigation";
 
 export function Rewards() {
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+  }, []);
   const { session } = useSession();
   const [category, setCategory] = useState("all");
   const [offset, setOffset] = useState(0);
@@ -62,8 +67,12 @@ export function Rewards() {
       ? result.membership.available_points
       : member.data?.available_points;
   return (
-    <main className="page api-narrow">
-      <h1>兌換獎勵</h1>
+    <main className="page api-narrow rewards-page">
+      <a className="back-link" href="#member">
+        <Icon name="back" />
+        返回會員中心
+      </a>
+      <h1>兌換獎品</h1>
       <p>所有獎品與券碼僅為 DEMO 展示，無真實核銷能力。</p>
       <p>可用點數 {balance ?? "—"}</p>
       <LoadState {...member} />
@@ -90,7 +99,8 @@ export function Rewards() {
         <section className="card" role="status">
           <h2>兌換成功</h2>
           <p>
-            本次扣點 {result.redemption.cost} · 後端餘額{" "}
+            本次扣點 {result.redemption.cost} ·{" "}
+            {isDemoToken(session?.access_token) ? "展示餘額" : "後端餘額"}{" "}
             {result.membership.available_points} · 庫存 {result.reward.stock}
           </p>
           <a
@@ -102,20 +112,23 @@ export function Rewards() {
         </section>
       )}
       <CommandFeedback action={action} />
-      <ul className="api-items">
+      <ul className="api-items member-reward-grid">
         {list.data?.items.map((item) => {
-          const appearance = appearances.find((a) => a.id === item.code);
           const current =
             result && list.loading && result.reward.id === item.id
               ? result.reward
               : item;
           return (
             <li className="card" key={item.id}>
-              {appearance && (
-                <span className="reward-symbol" aria-hidden="true">
-                  {appearance.symbol}
+              <div
+                className={`member-reward-art ${item.category}`}
+                aria-hidden="true"
+              >
+                <Icon name={item.category === "grand" ? "star" : "gift"} />
+                <span>
+                  {item.category === "grand" ? "城市好禮" : "日常小確幸"}
                 </span>
-              )}
+              </div>
               <h2>{item.name}</h2>
               <p>
                 {item.is_demo ? "DEMO · " : ""}
@@ -140,8 +153,8 @@ export function Rewards() {
                 {!item.available || item.stock <= 0
                   ? "已售罄"
                   : balance != null && balance < item.cost
-                    ? "點數不足"
-                    : "選擇獎品"}
+                    ? `還差 ${item.cost - balance} 點`
+                    : "兌換"}
               </button>
             </li>
           );
@@ -158,7 +171,12 @@ export function Rewards() {
       {selected && (
         <section className="card api-command" aria-label="兌換確認">
           <h2>確認兌換 {selected.name}</h2>
-          <p>將使用 {selected.cost} 點；實際點數及庫存由後端確認。</p>
+          <p>
+            將使用 {selected.cost} 點；
+            {isDemoToken(session?.access_token)
+              ? "只扣除本機展示點數，不具真實核銷能力。"
+              : "實際點數及庫存由後端確認。"}
+          </p>
           <button
             className="button primary"
             disabled={action.blocked}
@@ -181,6 +199,12 @@ export function Rewards() {
           </button>
         </section>
       )}
+      <aside className="member-how">
+        <h3>兌換規則</h3>
+        <p>
+          兌換只扣可用點數；等級依累積點數計算，不因兌換降低。展示獎品與券碼無真實核銷能力。
+        </p>
+      </aside>
     </main>
   );
 }
@@ -206,6 +230,7 @@ export function Redemptions({ id }: { id?: string }) {
   return (
     <main className="page api-narrow">
       <h1>{id ? "我的展示券" : "我的兌換"}</h1>
+      <MemberNavigation current="redemptions" />
       <p>僅供 DEMO 展示，無真實核銷能力。</p>
       <a className="back-link" href={id ? "#redemptions" : "#rewards"}>
         {id ? "返回我的兌換" : "返回兌換獎勵"}

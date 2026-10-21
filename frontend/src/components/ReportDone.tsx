@@ -112,7 +112,7 @@ export function ReportDone({
       </div>
       {report.quick && (
         <a className="button secondary" href="#adopt">
-          返回我的電子雞
+          返回我的Bin友
         </a>
       )}
       <a className="back-link done-back" href="#map">
