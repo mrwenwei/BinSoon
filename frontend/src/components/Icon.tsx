@@ -1,3 +1,69 @@
+// 一般垃圾／資源回收圖示：取自 Lucide（https://lucide.dev，lucide-static v0.468.0），授權 ISC
+// （Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT);
+// all other copyright (c) for Lucide are held by Lucide Contributors 2022）。授權全文見 README「圖示致謝」。
+// general＝trash-2、recycling＝recycle，元素與座標原樣保留（trash-2 的兩條 <line> 也照原樣）。
+// 24×24、fill=none、stroke=currentColor、stroke-width 2、round cap/join（見 WASTE_ICON_ATTRS）；
+// 小尺寸處由 CSS／字串屬性把 stroke-width 提到 2.25。不要套 shape-rendering（平滑線條用預設）。
+// React 元件（WasteType.tsx 的 WasteIcon）與地圖標記的 HTML 字串（map/botBars.ts）共用這份資料。
+export type WasteIconElement = readonly [
+  "path" | "line",
+  Readonly<Record<string, string>>,
+];
+export const WASTE_ICON_ATTRS = {
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  "stroke-width": "2",
+  "stroke-linecap": "round",
+  "stroke-linejoin": "round",
+} as const;
+export const WASTE_ICON_ELEMENTS: Record<
+  "general" | "recycling",
+  readonly WasteIconElement[]
+> = {
+  general: [
+    ["path", { d: "M3 6h18" }],
+    ["path", { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" }],
+    ["path", { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" }],
+    ["line", { x1: "10", x2: "10", y1: "11", y2: "17" }],
+    ["line", { x1: "14", x2: "14", y1: "11", y2: "17" }],
+  ],
+  recycling: [
+    [
+      "path",
+      {
+        d: "M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5",
+      },
+    ],
+    [
+      "path",
+      {
+        d: "M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12",
+      },
+    ],
+    ["path", { d: "m14 16-3 3 3 3" }],
+    ["path", { d: "M8.293 13.596 7.196 9.5 3.1 10.598" }],
+    [
+      "path",
+      {
+        d: "m9.344 5.811 1.093-1.892A1.83 1.83 0 0 1 11.985 3a1.784 1.784 0 0 1 1.546.888l3.943 6.843",
+      },
+    ],
+    ["path", { d: "m13.378 9.633 4.096 1.098 1.097-4.096" }],
+  ],
+};
+// 給 HTML 字串用（地圖標記）：回傳 <path>／<line> 元素字串。
+export function wasteIconInnerHtml(type: "general" | "recycling") {
+  return WASTE_ICON_ELEMENTS[type]
+    .map(
+      ([tag, attrs]) =>
+        `<${tag} ${Object.entries(attrs)
+          .map(([k, v]) => `${k}="${v}"`)
+          .join(" ")}/>`,
+    )
+    .join("");
+}
+
 const paths = {
   car: "M5 17H3v-6l2-6h14l2 6v6h-2M3 11h18M7 17h10M5 17v3m14-3v3M6 14h2m8 0h2",
   scooter:

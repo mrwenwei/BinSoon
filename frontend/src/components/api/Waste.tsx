@@ -1,4 +1,4 @@
-import { stateLabels } from "../../data/binState";
+import { sortByWaste, stateLabels } from "../../data/binState";
 import { StationCard, type CardCompartment } from "../StationCard";
 import { apiBinState, apiCompartments, type BinStatus } from "../../data/api";
 import {
@@ -82,7 +82,7 @@ export function CompartmentSources({ items }: { items: BinStatus[] }) {
       </p>
       <details className="compartment-sources">
         <summary>分類與讀值來源</summary>
-        {items.map((item) => (
+        {sortByWaste(items).map((item) => (
           <p key={item.waste_type}>
             {wasteName(item.waste_type)} ·{" "}
             {classificationName(item.classification_source)} ·{" "}

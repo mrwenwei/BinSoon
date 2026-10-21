@@ -380,20 +380,22 @@ test("arrow keys switch the report waste repeatedly, keep focus on the radio and
   await expect(note).toHaveValue("一般垃圾草稿");
 });
 
-test("the navigation waste select keeps focus after the page reloads for the new waste (X5)", async ({
+test("the navigation waste picker keeps focus after the page reloads for the new waste (X5)", async ({
   page,
 }) => {
   const f = wasteFixture();
   await f.setup(page);
   await page.goto(`/#nav/${binId}?waste_type=general`);
-  const select = page.getByLabel("垃圾種類", { exact: true });
-  await expect(select).toBeVisible();
-  await select.focus();
-  await select.selectOption("recycling");
+  // 導航頁改為一般垃圾、資源回收兩格單選（先一般再回收），不再是下拉選單。
+  const general = page.getByRole("radio", { name: "一般垃圾" });
+  const recycling = page.getByRole("radio", { name: "資源回收" });
+  await expect(general).toBeChecked();
+  await general.focus();
+  await page.keyboard.press("ArrowRight");
   await expect(page).toHaveURL(/waste_type=recycling/);
   await expect(
     page.getByText("本次要丟：資源回收。", { exact: true }),
   ).toBeVisible();
-  await expect(select).toBeFocused();
-  await expect(select).toHaveValue("recycling");
+  await expect(recycling).toBeChecked();
+  await expect(recycling).toBeFocused();
 });

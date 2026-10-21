@@ -17,7 +17,7 @@ export type Session = {
   token_type: "bearer";
   user: User;
 };
-import { stationState, type BinState } from "./binState";
+import { sortByWaste, stationState, type BinState } from "./binState";
 export type { WasteType };
 export type Position = { latitude: number; longitude: number };
 export type BinStatus = WasteMetadata & {
@@ -592,13 +592,12 @@ export function apiCompartments(
   compartments?: BinStatus[],
 ): ApiCompartment[] {
   if (compartments?.length)
-    return compartments
-      .map((c) => ({ ...c, waste_type: c.waste_type || "general" }))
-      .sort(
-        (a, b) =>
-          (a.waste_type === "general" ? -1 : 1) -
-          (b.waste_type === "general" ? -1 : 1),
-      );
+    return sortByWaste(
+      compartments.map((c) => ({
+        ...c,
+        waste_type: c.waste_type || "general",
+      })),
+    );
   return status
     ? [{ ...status, waste_type: status.waste_type || "general" }]
     : [];

@@ -8,15 +8,26 @@ import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { kindLabel, type LocationRecord } from "../data/locations";
 import { locationMarkerIcon } from "./marker";
+import { BOT_BARS_MIN_ZOOM } from "./botBars";
 import {
+  BOT_MID_MAX_ZOOM,
   BOT_SMALL_MAX_ZOOM,
   bestState,
   clusterIcon,
   groupOverlapping,
   stateFromIconClass,
 } from "./botClusters";
-import { binsoonBasemapStyle, token } from "./basemapStyle";
+import {
+  binsoonBasemapStyle,
+  registerBasemapImages,
+  token,
+} from "./basemapStyle";
 import type { Point } from "../data/participation";
+import {
+  cumulativeMeters,
+  splitRoute,
+  type LatLng,
+} from "../data/routeGeometry";
 setWorkerUrl(workerUrl);
 
 interface Props {
@@ -29,6 +40,14 @@ interface Props {
   roadRoute?: [number, number][];
   routeOrigin?: [number, number];
   routeLabel?: string;
+  /** 市民步行導航路線：橘色粗線＋深色外框，walkedMeters 之前的路段變淡。畫在標記之下。 */
+  navRoute?: {
+    geometry: [number, number][];
+    walkedMeters: number;
+    startLabel: string;
+    /** 地圖上方被浮動指示條蓋住的像素，框住路線時多留這麼多。 */
+    topInset?: number;
+  };
   removedIds?: string[];
   point?: Point;
   onPointChange?: (point: Point) => void;
@@ -50,6 +69,7 @@ interface Props {
   /** 自訂標記圖示與無障礙名稱。 */
   markerIcon?: (location: LocationRecord, selected: boolean) => L.DivIcon;
   markerLabel?: (location: LocationRecord) => string;
+  markerDescription?: (location: LocationRecord) => string | undefined;
   /** 固定示意起點標記（不可點、不影響視野）。 */
   origin?: { latitude: number; longitude: number; label: string };
   /** 有給時：只在選取對象改變時置中，並把選取點往上移這麼多像素（手機抽屜遮住下半部）。 */
@@ -65,6 +85,7 @@ export function LocationMap({
   roadRoute,
   routeOrigin,
   routeLabel,
+  navRoute,
   point,
   onPointChange,
   proposalPoints,
@@ -78,6 +99,7 @@ export function LocationMap({
   autoFit,
   markerIcon,
   markerLabel,
+  markerDescription,
   origin,
   focusOffsetY,
   focusKey,
@@ -112,6 +134,14 @@ export function LocationMap({
     container.current?.classList.toggle(
       "bot-small",
       zoom <= BOT_SMALL_MAX_ZOOM,
+    );
+    container.current?.classList.toggle(
+      "bot-mid",
+      zoom > BOT_SMALL_MAX_ZOOM && zoom <= BOT_MID_MAX_ZOOM,
+    );
+    container.current?.classList.toggle(
+      "bot-bars-on",
+      zoom >= BOT_BARS_MIN_ZOOM,
     );
     clusters.current.clearLayers();
     const items = markerRecords.current.flatMap((record) => {
@@ -160,6 +190,8 @@ export function LocationMap({
         title: label,
         alt: label,
         riseOnHover: true,
+        // 數字泡泡凸出標記框外，要高過旁邊的垃圾桶，才不會被蓋到。
+        zIndexOffset: 800, // 低於選中的標記（900）
       })
         .on("click", zoomIn)
         .on("add", (event) => {
@@ -199,6 +231,7 @@ export function LocationMap({
         attributionControl: false,
       }).addTo(instance);
       const gl = basemap.getMaplibreMap();
+      registerBasemapImages(gl);
       // 樣式是內嵌的，所以「載入成功」改以 OpenFreeMap 圖磚來源的 TileJSON
       // 成功讀到為準；任何來源錯誤都顯示提示，之後不自動清除。
       let failed = false;
@@ -284,7 +317,13 @@ export function LocationMap({
       }
       const element = record.marker.getElement();
       element?.setAttribute("aria-label", label);
-      element?.setAttribute("title", label);
+      const description = markerDescription?.(location);
+      element?.setAttribute(
+        "title",
+        description ? `${label}（${description}）` : label,
+      );
+      if (description) element?.setAttribute("aria-description", description);
+      else element?.removeAttribute("aria-description");
       record.marker.setZIndexOffset(active ? 1000 : 0);
       next.push(record);
       previous.delete(key);
@@ -337,6 +376,7 @@ export function LocationMap({
     binMarkerLabel,
     markerIcon,
     markerLabel,
+    markerDescription,
     autoFit,
     fitKey,
   ]);
@@ -444,6 +484,141 @@ export function LocationMap({
       origin.remove();
     };
   }, [demoRoute, roadRoute, routeOrigin, locations]);
+  // 市民步行導航路線（圖層在標記之下：Leaflet 向量線在 overlayPane，標記在 markerPane）。
+  // 先畫兩條外框、再畫兩條主線：每段（走過／剩下）的外框與主線同步變淡。
+  const navLayers = useRef<{
+    geometry: LatLng[];
+    cum: number[];
+    walkedCasing: L.Polyline;
+    remainCasing: L.Polyline;
+    walkedLine: L.Polyline;
+    remainLine: L.Polyline;
+    here: L.Marker;
+    refit: () => void;
+  } | null>(null);
+  const navInset = useRef(0);
+  navInset.current = navRoute?.topInset ?? 0;
+  const navGeometry = navRoute?.geometry;
+  const navStartLabel = navRoute?.startLabel;
+  useEffect(() => {
+    if (!navGeometry || navGeometry.length < 2 || !map.current) return;
+    const instance = map.current;
+    const shared = {
+      lineCap: "round" as const,
+      lineJoin: "round" as const,
+      interactive: false,
+    };
+    const casing = (name: string) =>
+      L.polyline([], {
+        ...shared,
+        color: token("route-casing"),
+        weight: 11,
+        className: `nav-route-casing ${name}`,
+      }).addTo(instance);
+    const line = (name: string) =>
+      L.polyline([], {
+        ...shared,
+        color: token("route"),
+        weight: 7,
+        className: `nav-route-line ${name}`,
+      }).addTo(instance);
+    const walkedCasing = casing("walked");
+    const remainCasing = casing("remaining");
+    const walkedLine = line("walked");
+    const remainLine = line("remaining");
+    const start = L.marker(navGeometry[0], {
+      icon: L.divIcon({
+        className: "nav-start",
+        html: `<span class="nav-start-dot" aria-hidden="true"></span><span class="nav-start-label">${navStartLabel || "起點"}</span>`,
+        iconSize: [150, 56],
+        iconAnchor: [14, 14],
+      }),
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: -500,
+    }).addTo(instance);
+    const here = L.marker(navGeometry[0], {
+      icon: L.divIcon({
+        className: "nav-here",
+        html: '<span class="nav-here-dot" aria-hidden="true"></span>',
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      }),
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: 900,
+      opacity: 0,
+    }).addTo(instance);
+    navLayers.current = {
+      geometry: navGeometry,
+      cum: cumulativeMeters(navGeometry),
+      walkedCasing,
+      remainCasing,
+      walkedLine,
+      remainLine,
+      here,
+      refit: () => {
+        if (!moved) fit();
+      },
+    };
+    // 畫面（含底部資訊卡展開縮小地圖）改變時重新框住整條路線；使用者自己動過地圖就不再框。
+    const fit = () =>
+      instance.fitBounds(L.latLngBounds(navGeometry), {
+        paddingTopLeft: [40, 40 + navInset.current],
+        paddingBottomRight: [40, 40],
+        maxZoom: 17,
+        animate: false,
+      });
+    let moved = false;
+    const touched = () => {
+      moved = true;
+    };
+    const element = container.current;
+    element?.addEventListener("pointerdown", touched);
+    element?.addEventListener("wheel", touched, { passive: true });
+    fit();
+    const observer = new ResizeObserver(() => {
+      if (moved) return;
+      instance.invalidateSize();
+      fit();
+    });
+    if (element) observer.observe(element);
+    return () => {
+      observer.disconnect();
+      element?.removeEventListener("pointerdown", touched);
+      element?.removeEventListener("wheel", touched);
+      for (const layer of [
+        walkedCasing,
+        remainCasing,
+        walkedLine,
+        remainLine,
+        start,
+        here,
+      ])
+        layer.remove();
+      navLayers.current = null;
+    };
+  }, [navGeometry, navStartLabel]);
+  const navTopInset = navRoute?.topInset ?? 0;
+  useEffect(() => {
+    if (navLayers.current?.geometry === navGeometry) navLayers.current?.refit();
+  }, [navGeometry, navTopInset]);
+  const navWalked = navRoute?.walkedMeters ?? 0;
+  useEffect(() => {
+    const layers = navLayers.current;
+    if (!layers || layers.geometry !== navGeometry) return;
+    const { walked, remaining, here } = splitRoute(
+      layers.geometry,
+      layers.cum,
+      navWalked,
+    );
+    layers.walkedCasing.setLatLngs(walked);
+    layers.walkedLine.setLatLngs(walked);
+    layers.remainCasing.setLatLngs(remaining);
+    layers.remainLine.setLatLngs(remaining);
+    layers.here.setLatLng(here);
+    layers.here.setOpacity(navWalked > 0 ? 1 : 0);
+  }, [navGeometry, navWalked, navStartLabel]);
   useEffect(() => {
     if (!selectionBounds) return;
     const instance = map.current!;
@@ -556,7 +731,7 @@ export function LocationMap({
             ? "點擊地圖或拖曳＋選點 · 方塊為市民提案"
             : selected
               ? "已選取位置 · 可縮放地圖查看周邊"
-              : roadRoute
+              : roadRoute || navRoute
                 ? routeLabel || "沿道路規劃的路線"
                 : demoRoute
                   ? "虛線為示意路線 · 未依實際道路規劃"

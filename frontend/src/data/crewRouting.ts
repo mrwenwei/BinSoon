@@ -12,6 +12,11 @@ export const routingEndpoint =
 export interface RouteStep {
   instruction: string;
   meters: number;
+  // 以下供市民步行導航逐步指示使用（清潔員路線不讀）：Valhalla maneuver 類型、
+  // 街名，以及這一步在整條路線 geometry 的起點索引。
+  type?: number;
+  streets?: string;
+  beginIndex?: number;
 }
 export interface CrewRoute {
   geometry: [number, number][];
@@ -132,6 +137,7 @@ export function parseCrewRoute(
       !leg.maneuvers.length
     )
       throw new Error("路線缺少道路或轉彎指引。");
+    const offset = geometry.length;
     geometry.push(...decodeShape(leg.shape));
     const steps = leg.maneuvers.map((rawStep) => {
       const step = object(rawStep);
@@ -175,7 +181,14 @@ export function parseCrewRoute(
         step.type === 26 && typeof step.roundabout_exit_count === "number"
           ? "，由第 " + step.roundabout_exit_count + " 個出口離開"
           : "";
+      const begin = step.begin_shape_index;
       return {
+        type: typeof step.type === "number" ? step.type : undefined,
+        streets: streets || undefined,
+        beginIndex:
+          typeof begin === "number" && Number.isInteger(begin) && begin >= 0
+            ? offset + begin
+            : undefined,
         instruction: turn
           ? turn +
             exit +

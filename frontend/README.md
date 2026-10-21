@@ -7,7 +7,7 @@
 合併驗證（2026-10-21）：`typecheck`、`data:check`、`build` 通過。完整桌面／手機 E2E 424 項先通過 422 項；另兩項仍要求舊直角虛線的斷言，已同步為路線服務失敗不畫線，`--last-failed` 重跑 2 項全通過。P12 支持／失敗重試／重整、步行／機車／汽車道路路線、QR 移除、桌面直接回報及窄視窗阻擋、手機先分享模擬座標才可模擬拍照、無相簿入口與不呼叫真實相機／GPS 均已驗證。桌面與手機模擬畫面已檢視，API 及路線服務使用攔截資料；未驗實體手機與正式外部服務，未部署。
 
 
-2026-10-21 市民導航改為步行／機車／汽車道路路線示意，沿用 Valhalla 與 polyline6 解析；取消直角折線及 QR code。起點仍是大安森林公園固定展示點，不取真實 GPS；換方式、種類或替代桶時取消舊請求並移除舊路線，服務失敗可手動重試，不畫假路線。實作依 [Valhalla 官方契約](https://valhalla.github.io/valhalla/api/route/api-reference/)。
+2026-10-21 市民導航改為 Google Map 式「只有步行」：移除步行／機車／汽車切換，請求固定 Valhalla pedestrian costing，沿用 polyline6 解析；路線為橘色（`--route`）粗線加深色外框，走過的路段變淡；底部資訊卡顯示預估分鐘、距離、桶名與種類、「開始導航」與可展開的逐步轉彎指示（Valhalla 沒有中文敘述，請求仍用 en-US，由前端依 maneuver 類型與街名組成中文）；開始後頂部指示條隨模擬前進（固定速度，`prefers-reduced-motion` 時改為定時跳到下一個轉彎點）更新，結束顯示「已抵達」。起點仍是大安森林公園固定展示點，不取真實 GPS；換種類或替代桶時取消舊請求並移除舊路線，服務失敗可手動重試，不畫假路線。清潔員路線（機車／汽車）不變。實作依 [Valhalla 官方契約](https://valhalla.github.io/valhalla/api/route/api-reference/)。
 
 2026-10-21 普通回報與認養快捷通報限手機瀏覽器（手機 UA＋觸控能力；縮小桌面視窗仍阻擋）。本輪只做 happy path 展示：先按「分享目前位置（模擬）」明示以桶座標模擬授權，再驗證 50 公尺內，才可按「現場拍照（模擬）」產生 DEMO 圖。移除相簿／檔案上傳、手動座標及舊測試工具；不呼叫真實相機或 GPS。前端入口與送出都檢查手機能力；這是介面限制，不是後端裝置認證。清潔隊照片及後端契約維持。
 
@@ -276,3 +276,15 @@ Import `mrwenwei/BinSoon`，Framework 選 Vite，Root Directory 設 `frontend`�
 底圖及 Google Fonts 需要外網；瀏覽器需支援 WebGL。失敗時位置清單仍可查閱，字型有系統 fallback。MapLibre 引擎較大，build 可能提示 chunk 大於 500 kB，手機初次載入時間依網路而異。
 
 [共用專案背景](../docs/PROJECT_CONTEXT.md) · [V0 與 PM 規格來源](../docs/FRONTEND_V0.md) · [Issue #1](https://github.com/mrwenwei/BinSoon/issues/1)
+
+## 圖示致謝
+
+「一般垃圾」「資源回收」的圖示取自 [Lucide](https://lucide.dev)（lucide-static v0.468.0，`trash-2`、`recycle`，未修改），內嵌在 `src/components/Icon.tsx`。
+
+ISC License
+
+Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022.
+
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.

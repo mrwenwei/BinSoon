@@ -1157,6 +1157,17 @@ input[type="file"]::file-selector-button {
   height: 52px;
   overflow: visible;
 }
+/* 外圈白框：機器人外框是深色，放在深綠公園或深色道路上會看不清，
+   再繞一圈 --text（暖白）。連續四個方向的 drop-shadow 會把外圈補成實心（像素風、無模糊）。
+   只作用在機器人本體 svg，不含血條與「新」徽章。 */
+.pixel-marker .marker-body svg.bin-bot {
+  filter: drop-shadow(2px 0 0 var(--text)) drop-shadow(-2px 0 0 var(--text))
+    drop-shadow(0 2px 0 var(--text)) drop-shadow(0 -2px 0 var(--text));
+}
+.bot-small .pixel-marker .marker-body svg.bin-bot {
+  filter: drop-shadow(1px 0 0 var(--text)) drop-shadow(-1px 0 0 var(--text))
+    drop-shadow(0 1px 0 var(--text)) drop-shadow(0 -1px 0 var(--text));
+}
 .pixel-marker.bot-marker .marker-crosshair {
   bottom: 26px;
 }
@@ -1166,6 +1177,8 @@ input[type="file"]::file-selector-button {
 /* 聚合的代表桶（map/botClusters.ts）：右上角數字＝合在一起的桶數 */
 .marker-count {
   position: absolute;
+  /* 機器人 svg 的疊層是 200（來自 Leaflet 的 svg 預設），泡泡要比它高才不會被機器人蓋到。 */
+  z-index: 300;
   top: -6px;
   right: -10px;
   min-width: 20px;
@@ -1207,6 +1220,34 @@ input[type="file"]::file-selector-button {
 .bot-small .marker-removed-label {
   font-size: 9px;
 }
+/* 縮放 16–17（容器 .bot-mid）：角色 40px（26 格的 1.54 倍，非整數倍），沒有血條；
+   腳底錨點不動（body 底 2px、水平置中），只有角色本身可點。 */
+.bot-mid .pixel-marker .marker-body svg.bin-bot,
+.bot-mid .pixel-marker .marker-body svg.bin-bot-removed {
+  width: 40px;
+  height: 40px;
+}
+.bot-mid .pixel-marker.bot-marker {
+  pointer-events: none;
+}
+.bot-mid .pixel-marker.bot-marker .marker-body {
+  bottom: 2px;
+  pointer-events: auto;
+}
+.bot-mid .pixel-marker.bot-marker .marker-crosshair {
+  bottom: 20px;
+}
+.bot-mid .marker-count {
+  top: -8px;
+  right: -11px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 10px;
+  line-height: 14px;
+}
+.bot-mid .marker-removed-label {
+  font-size: 10px;
+}
 .marker-removed-label {
   position: absolute;
   inset: 0;
@@ -1214,6 +1255,53 @@ input[type="file"]::file-selector-button {
   place-items: center;
   color: var(--text-on-light-muted);
   font: 700 12px/1 var(--font-sans);
+}
+/* 高縮放血條（map/botBars.ts；LocationMap 在 zoom ≥ 18 於容器加 .bot-bars-on）：
+   機器人頭上兩條 6px 條，上＝一般垃圾、下＝資源回收；無圓角、無動畫，
+   填色為 2px 整格。左側 18×18 Lucide 線條圖示（trash-2／recycle，stroke-width 2.25）。失聯＝虛線空槽。 */
+.bot-bars {
+  position: absolute;
+  left: -4px;
+  bottom: calc(100% + 7px);
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  width: 63px;
+  pointer-events: none;
+}
+.bot-bars-on .bot-bars {
+  display: flex;
+}
+.bot-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+}
+.bot-bars .bot-bar-icon,
+.marker-body .bot-bars svg.bot-bar-icon {
+  flex: none;
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.bot-bar-track {
+  position: relative;
+  flex: none;
+  box-sizing: content-box;
+  width: 40px;
+  height: 6px;
+  border: 1px solid var(--text-on-light);
+  margin: 0;
+  background: var(--mascot-eye);
+}
+.bot-bar-row.offline .bot-bar-track {
+  border: 1px dashed var(--status-offline);
+  background: transparent;
+}
+.bot-bar-fill {
+  display: block;
+  height: 100%;
 }
 /* 平常只顯示靜態表情；hover／鍵盤焦點時循環播放，選中時播 --bot-loops 輪後停回靜態。
    每一格在自己的時段可見（--i × 每格時間），idle 在播放期間隱藏。 */
@@ -1508,8 +1596,8 @@ input[type="file"]::file-selector-button {
   font-weight: 700;
 }
 .waste-icon {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -1519,6 +1607,11 @@ input[type="file"]::file-selector-button {
   color: var(--text);
   font-size: 12px;
   font-weight: 400;
+}
+.waste-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 .compartment-status {
   font: var(--text-label);
@@ -1707,6 +1800,12 @@ input[type="file"]::file-selector-button {
 .waste-tag .waste-icon {
   width: 20px;
   height: 20px;
+}
+/* 標籤字小：圖示 14px，線條提高到 2.25 避免太細。 */
+.waste-tag .waste-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.25;
 }
 
 /* 圖例（舊展示頁沿用的 legend-dot） */
@@ -6364,18 +6463,19 @@ input[type="file"]::file-selector-button {
   align-items: center;
   gap: var(--space-2);
 }
-/* 垃圾桶（SVG 線條）和 ♻（文字字形）份量一致：同色、同大小的框、線條圖示放大一點。 */
+/* 兩種垃圾都是 Lucide 線條圖示：同色、同大小的框，圖示 20px。 */
 .mx-slot .waste-icon {
-  width: 16px;
+  width: 20px;
   height: 16px;
   border: 0;
   color: var(--text-body);
   font: var(--text-caption);
 }
 .mx-slot .waste-icon svg {
-  width: 15px;
-  height: 15px;
-  stroke-width: 3;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: -2px 0; /* 圖示 20px 疊進 16px 框，不撐高列 */
 }
 .mx-slot .fill-bar {
   flex: 1 1 auto;
@@ -6568,11 +6668,10 @@ input[type="file"]::file-selector-button {
   color: inherit;
   font: var(--text-numeral-sm);
 }
-/* 線條垃圾桶比實心的 ♻ 字形看起來小又淡：放大到 24px、線條加粗，兩者份量一致。 */
+/* Lucide 線條圖示 24px（原生 24×24 格）。 */
 .waste-picker.icon-only .waste-icon svg {
   width: 24px;
   height: 24px;
-  stroke-width: 2.8;
 }
 /* 地圖標記：地標旗子、建議點虛線方框、示意起點。 */
 .mx-landmark .marker-body svg {
@@ -7269,5 +7368,297 @@ input[type="file"]::file-selector-button {
   }
   .crew-task-card {
     padding: var(--space-3);
+  }
+}
+
+/* 面板／logo 的垃圾桶機器人是 24×23，不像 Bin友 32×36：沿用各處指定的寬度，高度跟著比例。 */
+.mascot svg.bin-bot {
+  height: auto;
+}
+:where(.mascot) svg.bin-bot {
+  width: 32px;
+}
+
+/* ===== 夜間作戰風淺色底圖（basemapStyle.ts）：圖磚載入前的底色 ===== */
+.leaflet-container {
+  background: var(--map);
+}
+
+/* ===== 市民步行導航（Google Map 式）：地圖＋底部資訊卡＋轉彎指示 =====
+   只用 token。路線橘色來自 --route（指向訊號橘），一律畫成 --route-casing 深色外框的粗線
+   （LocationMap 的 navRoute：外框 11px、主線 7px、圓端點與轉角），以和吃飽了標記區分；
+   走過的路段外框與主線同步混入底圖色變淡。路線圖層在標記之下。 */
+.nav-route-casing.walked {
+  stroke: color-mix(in srgb, var(--route-casing) 28%, var(--map));
+}
+.nav-route-line.walked {
+  stroke: color-mix(in srgb, var(--route) 38%, var(--map));
+}
+.nav-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  background: transparent;
+  border: 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.nav-start-dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  border: 6px solid var(--text-on-light);
+  border-radius: 50%;
+  background: var(--mint);
+}
+.nav-start-label {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--chrome);
+  color: var(--text);
+  font: var(--text-caption);
+  font-weight: 700;
+}
+.nav-here {
+  background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+.nav-here-dot {
+  display: block;
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  border: 5px solid var(--mascot-eye);
+  border-radius: 50%;
+  background: var(--teal);
+  outline: 2px solid var(--text-on-light);
+}
+.gnav {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--topbar-h));
+  min-height: 480px;
+  overflow: clip;
+  background: var(--panel);
+}
+.gnav-map {
+  position: relative;
+  isolation: isolate;
+  flex: 1 1 auto;
+  min-height: 220px;
+  background: var(--map);
+}
+.gnav-map .map-note {
+  display: none;
+}
+.gnav-card {
+  flex: none;
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  max-height: 52dvh;
+  overflow-y: auto;
+  padding: var(--space-4);
+  border-top: 1px solid var(--line);
+  background: var(--chrome);
+}
+.gnav-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.gnav-title {
+  margin: 0;
+  font: var(--text-label-lg);
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+.gnav-head-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.gnav-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.gnav-report {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--teal);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.gnav-report.arrived {
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--teal);
+  color: var(--text-on-light);
+  text-decoration: none;
+}
+.gnav-card .waste-picker legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.gnav-card .segmented label {
+  min-height: 44px;
+}
+.gnav-dest {
+  display: grid;
+  gap: var(--space-1);
+}
+.gnav-dest .navigation-destination {
+  margin: 0;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.gnav-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+.gnav-minutes {
+  font: var(--text-numeral-lg);
+  color: var(--teal);
+}
+.gnav-minutes small {
+  font: var(--text-heading);
+}
+.gnav-arrived {
+  font: var(--text-heading);
+  color: var(--teal);
+}
+.gnav-distance {
+  color: var(--text-body);
+  font-weight: 700;
+}
+.gnav-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.gnav-actions .button {
+  margin: 0;
+  justify-content: center;
+  text-align: center;
+}
+.gnav-steps h3 {
+  margin: 0 0 var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--divider);
+  font: var(--text-heading);
+}
+.gnav-steps ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gnav-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--text);
+}
+.gnav-steps li svg {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  color: var(--teal);
+}
+.gnav-steps li.done {
+  color: var(--text-muted);
+}
+.gnav-steps li.done svg {
+  color: var(--text-muted);
+}
+.gnav-steps li[aria-current="step"] {
+  background: var(--tint-teal);
+  font-weight: 700;
+  outline: 2px solid var(--teal);
+  outline-offset: -2px;
+}
+.gnav-note {
+  margin: 0;
+}
+.gnav-banner {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  right: var(--space-3);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-md);
+  background: var(--chrome);
+  color: var(--text);
+}
+.gnav-banner-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  background: var(--mint);
+  color: var(--text-on-light);
+}
+.gnav-banner.arrived .gnav-banner-icon {
+  background: var(--teal);
+}
+.gnav-banner-icon svg {
+  width: 34px;
+  height: 34px;
+}
+.gnav-banner > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gnav-banner-distance {
+  font: var(--text-numeral-md);
+}
+.gnav-banner-text {
+  font: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+@media (min-width: 761px) {
+  .gnav {
+    flex-direction: row;
+  }
+  .gnav-map {
+    min-width: 0;
+  }
+  .gnav-card {
+    order: -1;
+    width: clamp(360px, 32vw, 440px);
+    max-height: none;
+    padding: var(--space-5);
+    border-top: 0;
+    border-right: 1px solid var(--line);
+  }
+  .gnav-banner {
+    right: auto;
+    width: min(420px, calc(100% - 2 * var(--space-3)));
   }
 }
