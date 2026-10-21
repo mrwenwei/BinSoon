@@ -1163,6 +1163,50 @@ input[type="file"]::file-selector-button {
 .pixel-marker.removed .marker-body {
   outline: 0;
 }
+/* 聚合的代表桶（map/botClusters.ts）：右上角數字＝合在一起的桶數 */
+.marker-count {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 2px solid var(--mascot-eye);
+  border-radius: 10px;
+  background: var(--text-on-light);
+  color: var(--mascot-eye);
+  font: 800 11px/16px var(--font-sans);
+  text-align: center;
+  pointer-events: none;
+}
+/* 縮放 15 以下（LocationMap 在容器加 .bot-small）：角色縮成 1 倍 26px，
+   只有角色本身可以點，避免 52px 的透明框擋到旁邊的標記。 */
+.bot-small .pixel-marker .marker-body svg.bin-bot,
+.bot-small .pixel-marker .marker-body svg.bin-bot-removed {
+  width: 26px;
+  height: 26px;
+}
+.bot-small .pixel-marker.bot-marker {
+  pointer-events: none;
+}
+.bot-small .pixel-marker.bot-marker .marker-body {
+  bottom: 1px;
+  pointer-events: auto;
+}
+.bot-small .pixel-marker.bot-marker .marker-crosshair {
+  bottom: 14px;
+}
+.bot-small .marker-count {
+  top: -9px;
+  right: -12px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 10px;
+  line-height: 14px;
+}
+.bot-small .marker-removed-label {
+  font-size: 9px;
+}
 .marker-removed-label {
   position: absolute;
   inset: 0;
