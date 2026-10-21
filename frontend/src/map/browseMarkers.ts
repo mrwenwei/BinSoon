@@ -4,6 +4,7 @@ import type { WasteType } from "../data/waste";
 import { apiBinState, apiCompartments } from "../data/api";
 import type { BinState } from "../data/binState";
 import { markerIcon } from "./marker";
+import { botBars, botBarsLabel } from "./botBars";
 
 // 地圖瀏覽模式的標記：桶的顏色看「所選種類」那一槽（不是整個點位），
 // 場所代表點改成地標旗子，建議點是虛線方框＋。
@@ -74,9 +75,17 @@ export function browseMarkerIcon(
       : status?.is_new
         ? "new"
         : undefined,
+    botBars(location),
   );
 }
 
 export function browseMarkerLabel(location: LocationRecord) {
   return `${location.kind === "place" ? "地標" : isProposed(location) ? "建議點" : "垃圾桶"}：${location.label}`;
+}
+
+// 兩槽滿度文字（「一般垃圾 18%、資源回收 66%」，無讀值寫「無讀值」）：放在標記的
+// aria-description 與 title，不動 aria-label（名稱維持穩定）。
+export function browseMarkerDescription(location: LocationRecord) {
+  const bars = isProposed(location) ? undefined : botBars(location);
+  return bars ? botBarsLabel(bars) : undefined;
 }

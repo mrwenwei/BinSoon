@@ -29,6 +29,7 @@ import { stateVisual } from "../binVisual";
 import type { LocationRecord } from "../../data/locations";
 import { LocationMap } from "../../map/LocationMap";
 import {
+  browseMarkerDescription,
   browseMarkerIcon,
   browseMarkerLabel,
   isProposed,
@@ -538,6 +539,7 @@ export function MapPage({
           fitKey={search.trim() || undefined}
           markerIcon={iconFor}
           markerLabel={browseMarkerLabel}
+          markerDescription={browseMarkerDescription}
           origin={originMarker}
           focusOffsetY={focusOffsetY}
           focusKey={focusKey}
@@ -566,10 +568,6 @@ function NearbyRow({
   const removed = item.bin_status?.operational_status === "removed";
   const state = proposed ? "offline" : wasteState(item, wasteType);
   const parts = apiCompartments(item.bin_status, item.compartments);
-  const ordered = [...parts].sort(
-    (a, b) =>
-      Number(b.waste_type === wasteType) - Number(a.waste_type === wasteType),
-  );
   const usable = usableCount(parts.map((c) => ({ state: apiBinState(c) })));
   const walk = walkText(item);
   return (
@@ -601,7 +599,7 @@ function NearbyRow({
           </span>
         ) : (
           <span className="mx-slots">
-            {ordered.map((part) => (
+            {parts.map((part) => (
               <SlotBar key={part.waste_type} part={part} />
             ))}
           </span>

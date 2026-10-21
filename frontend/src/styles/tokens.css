@@ -33,6 +33,10 @@
   --teal-on-mint: #1d6650; /* 需要在薄荷底上放青綠文字時用這個（4.5:1）；#4ABA94 在薄荷上只有 1.6:1。 */
   --signal: #f2673a; /* 訊號橘，只代表「吃飽了／要注意」：滿的色帶、斜紋警示條、滿度數字、標題問號。不拿來當按鈕。 */
   --signal-on-light: #c9461c; /* 淺色底上的橘色文字（薄荷版標題問號）。 */
+  --route: var(
+    --signal
+  ); /* 市民步行導航路線（語意 token，指向訊號橘）：一律畫成 --route-casing 深色外框的粗線，以和吃飽了標記區分；只給路線用，不做按鈕。 */
+  --route-casing: var(--text-on-light); /* 導航路線的深色外框，比主線寬 3px。 */
   --status-hungry: var(--teal); /* 桶況「餓了」0–79%：電子雞身體、圖例。 */
   --status-full: var(
     --signal

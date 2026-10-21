@@ -19,6 +19,15 @@ export function stateFromCapacity(
 // 與後端 waste_type 對齊；每個公布桶點位都有兩槽（demo_assumption），場所點沒有桶槽。
 export type WasteType = "general" | "recycling";
 export const wasteTypes: WasteType[] = ["general", "recycling"];
+// 全站固定順序：任何同時列出兩種垃圾的地方都「先一般垃圾、再資源回收」
+// （左右並排左＝一般垃圾、上下排列上＝一般垃圾）。順序只認 wasteTypes，
+// API 回傳順序與物件鍵序不可信，渲染前一律用 sortByWaste 排。
+export function sortByWaste<T extends { waste_type?: WasteType | null }>(
+  items: T[],
+): T[] {
+  const rank = (t?: WasteType | null) => wasteTypes.indexOf(t ?? "general");
+  return [...items].sort((a, b) => rank(a.waste_type) - rank(b.waste_type));
+}
 export const wasteLabels: Record<WasteType, string> = {
   general: "一般垃圾",
   recycling: "資源回收",

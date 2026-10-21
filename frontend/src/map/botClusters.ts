@@ -5,8 +5,9 @@ import { binBotSvg } from "./binBot";
 
 // 垃圾桶機器人的聚合規則（2026-10-21 定案「會疊就聚合」）：
 // 不管縮放多少，畫面上會疊在一起的桶合成一隻代表的垃圾桶，右上角數字＝桶數；
-// 縮放 15 以下角色縮成 1 倍（26px），16 以上 2 倍（52px）；18 以上全部展開。
+// 縮放 15 以下角色 26px，16–17 為 40px，18 以上 52px；18 以上全部展開。
 export const BOT_SMALL_MAX_ZOOM = 15;
+export const BOT_MID_MAX_ZOOM = 17; // 16–17：40px；18 以上：52px＋血條
 export const BOT_SPREAD_ZOOM = 18;
 const RADIUS = { small: 40, large: 48 };
 
