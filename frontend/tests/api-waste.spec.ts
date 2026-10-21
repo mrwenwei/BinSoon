@@ -1,3 +1,4 @@
+import { asPhone, captureReport } from "./phone-report-fixture";
 import { test, expect } from "@playwright/test";
 import { binId, reportId, workId, login } from "./api-fixtures";
 import { wasteFixture, wasteCompletion } from "./api-waste-fixture";
@@ -20,6 +21,10 @@ async function switchWaste(page: Page, value: "general" | "recycling") {
 }
 const compartment = (page: Page, name: string) =>
   page.locator(".mx-panel .compartment").filter({ hasText: name });
+
+test.beforeEach(async ({ page }) => {
+  await asPhone(page);
+});
 
 test("one map point exposes independent general and recycling availability and preserves the choice in navigation", async ({
   page,
@@ -64,10 +69,7 @@ test("recycling reports retain their exact stream and command through a lost res
   const f = wasteFixture();
   await f.setup(page);
   await login(page, "citizen", `report/${binId}?waste_type=recycling`);
-  await page.getByLabel("現場照片", { exact: true }).setInputFiles(photoFile);
-  await page.getByLabel("緯度", { exact: true }).fill("25.033");
-  await page.getByLabel("經度", { exact: true }).fill("121.5358");
-  await page.getByLabel("確認這是我提供的現場位置").check();
+  await captureReport(page);
   f.state.abortReport = true;
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await page.getByRole("button", { name: "重試原回報", exact: true }).click();
@@ -189,9 +191,9 @@ test("switching waste preserves separate photo drafts and does not expose a stal
   await page
     .getByRole("textbox", { name: "說明", exact: true })
     .fill("回收投入口情況");
-  await page.getByLabel("現場照片", { exact: true }).setInputFiles(photoFile);
+  await captureReport(page);
   await expect(
-    page.getByRole("img", { name: "待送出的現場照片", exact: true }),
+    page.getByRole("img", { name: "待送出的模擬測試照片", exact: true }),
   ).toBeVisible();
   await page.getByRole("radio", { name: "一般垃圾", exact: true }).click();
   await expect(
@@ -201,7 +203,7 @@ test("switching waste preserves separate photo drafts and does not expose a stal
     page.getByRole("textbox", { name: "說明", exact: true }),
   ).toHaveValue("");
   await expect(
-    page.getByRole("img", { name: "待送出的現場照片", exact: true }),
+    page.getByRole("img", { name: "待送出的模擬測試照片", exact: true }),
   ).toHaveCount(0);
   await page
     .getByRole("textbox", { name: "說明", exact: true })
@@ -214,7 +216,7 @@ test("switching waste preserves separate photo drafts and does not expose a stal
     page.getByRole("textbox", { name: "說明", exact: true }),
   ).toHaveValue("回收投入口情況");
   await expect(
-    page.getByRole("img", { name: "待送出的現場照片", exact: true }),
+    page.getByRole("img", { name: "待送出的模擬測試照片", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "返回桶詳情", exact: true }).click();
   await expect(
@@ -324,10 +326,7 @@ test("expired recycling report restores the same waste draft and original comman
   f.state.expireReport = true;
   await f.setup(page);
   await login(page, "citizen", `report/${binId}?waste_type=recycling`);
-  await page.getByLabel("現場照片", { exact: true }).setInputFiles(photoFile);
-  await page.getByLabel("緯度", { exact: true }).fill("25.033");
-  await page.getByLabel("經度", { exact: true }).fill("121.5358");
-  await page.getByLabel("確認這是我提供的現場位置").check();
+  await captureReport(page);
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await page.getByRole("link", { name: "登入後繼續回報", exact: true }).click();
   await page.getByLabel("帳號", { exact: true }).fill("demo-citizen");

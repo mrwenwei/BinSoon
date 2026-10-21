@@ -1,6 +1,8 @@
+import { CrewDemo } from "./components/api/CrewDemo";
+import { ProposalVoteDone } from "./components/api/ProposalVoteDone";
 import { useDemoData } from "./data/demoMode";
 import { isWasteType, wasteHref, type WasteType } from "./data/waste";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AppNav } from "./components/AppNav";
 import { request, type Membership } from "./data/api";
 import { useApi } from "./components/api/useApi";
@@ -83,7 +85,12 @@ function AppContent() {
   const focusParams = new URLSearchParams(search);
   focusParams.delete("waste_type");
   const focusKey = `${path}?${focusParams}`;
-  useEffect(() => {
+  // Focus during the DOM commit so a delayed effect cannot steal focus after
+  // the user has already moved to a map marker on the new page.
+  useLayoutEffect(() => {
+    // MapPage handles explicit point selection itself. If the user has already
+    // moved to another marker while the route commits, preserve that focus.
+    if (document.activeElement?.closest(".leaflet-marker-icon")) return;
     const h = main.current?.querySelector("h1");
     h?.setAttribute("tabindex", "-1");
     h?.focus({ preventScroll: true });
@@ -131,7 +138,11 @@ function AppContent() {
             label: "地圖",
             current: ["map", "bin", "nav"].includes(page),
           },
-          { href: "#vote", label: "要桶投票", current: page === "vote" },
+          {
+            href: "#vote",
+            label: "要桶投票",
+            current: ["vote", "vote-done"].includes(page),
+          },
         ]}
         desktopLinks={[
           {
@@ -154,11 +165,10 @@ function AppContent() {
             ].includes(page),
           },
           {
-            href: "#staff/tasks",
-            label: "清潔隊工作台",
-            current: page === "staff",
+            href: "#crew",
+            label: "清潔員管理入口",
+            current: page === "crew",
           },
-          { href: "#admin", label: "管理員", current: page === "admin" },
         ]}
         sections={[
           {
@@ -187,26 +197,13 @@ function AppContent() {
             ],
           },
           {
-            title: "CREW · 清潔隊與管理",
+            title: "CREW · 清潔員",
             links: [
               {
-                href: "#staff/tasks",
-                label: "清潔隊工作台",
-                current: page === "staff" && id === "tasks",
+                href: "#crew",
+                label: "清潔員管理入口",
+                current: page === "crew",
               },
-              {
-                href: "#staff/route",
-                label: "清運道路指引",
-                current: page === "staff" && id === "route",
-              },
-              { href: "#staff/statistics", label: "隊員月份成果" },
-              { href: "#staff/notifications", label: "隊員站內通知" },
-              { href: "#admin/notifications", label: "管理員站內通知" },
-              { href: "#outcomes", label: "清潔隊公開成果" },
-              { href: "#admin/proposals", label: "提案與命名審查" },
-              { href: "#admin/adoptions", label: "認養審核" },
-              { href: "#admin/bins", label: "撤除桶管理" },
-              { href: "#admin", label: "管理員", current: page === "admin" },
             ],
           },
           ...(session
@@ -214,19 +211,14 @@ function AppContent() {
             : [
                 {
                   title: "ACCOUNT · 帳號",
-                  links: [
-                    { href: loginHref, label: "市民登入" },
-                    {
-                      href: `#staff/login?next=staff%2Ftasks`,
-                      label: "隊員登入",
-                    },
-                    { href: `#admin/login?next=admin`, label: "管理員登入" },
-                  ],
+                  links: [{ href: loginHref, label: "市民登入" }],
                 },
               ]),
         ]}
         right={
-          session?.user.roles.includes("citizen") ? (
+          page === "crew" ? (
+            <span className="role-chip">清潔員模擬模式</span>
+          ) : session?.user.roles.includes("citizen") ? (
             <PointsButton />
           ) : session ? (
             <span className="role-chip">
@@ -238,10 +230,12 @@ function AppContent() {
             </a>
           )
         }
-        account={session && <Account onLogout={signOut} />}
-        drawerFooter={session && <Account onLogout={signOut} />}
+        account={page !== "crew" && session && <Account onLogout={signOut} />}
+        drawerFooter={
+          page !== "crew" && session && <Account onLogout={signOut} />
+        }
       />
-      {!isMapView && useDemoData(session?.access_token) && (
+      {!isMapView && page !== "crew" && useDemoData(session?.access_token) && (
         <p className="demo-mode-notice">
           市民展示模式 · 桶況與個人資料為示意，市民操作只儲存在此瀏覽器。
         </p>
@@ -252,7 +246,9 @@ function AppContent() {
         </p>
       )}
       <div ref={main}>
-        {isLogin ? (
+        {page === "crew" ? (
+          <CrewDemo section={id} id={workId} />
+        ) : isLogin ? (
           <Login
             key={role}
             role={role}
@@ -335,6 +331,13 @@ function AppContent() {
           ) : (
             <ProposalList key={`all/${session?.user.id}`} />
           )
+        ) : page === "vote-done" && id ? (
+          <ProposalVoteDone
+            key={`${id}/${session?.user.id}`}
+            id={id}
+            fromProposal={params.get("from") === "proposal"}
+            wasteType={wasteType}
+          />
         ) : page === "proposals" && id ? (
           <ProposalDetail key={`${id}/${session?.user.id}`} id={id} />
         ) : page === "outcomes" || (page === "staff" && id === "statistics") ? (
@@ -387,7 +390,7 @@ function AppContent() {
           </main>
         )}
       </div>
-      {!isMapView && (
+      {!isMapView && page !== "vote-done" && page !== "crew" && (
         <footer className="api-footer">
           所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。
           <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}

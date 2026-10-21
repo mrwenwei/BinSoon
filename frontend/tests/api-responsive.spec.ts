@@ -69,12 +69,8 @@ test("hamburger drawer reaches every entry, traps focus and closes with Esc or t
     "找垃圾桶",
     "要桶投票",
     "會員中心",
-    "清潔隊工作台",
-    "清運道路指引",
-    "管理員",
+    "清潔員管理入口",
     "市民登入",
-    "隊員登入",
-    "管理員登入",
   ])
     await expect(drawer.getByRole("link", { name, exact: true })).toBeVisible();
   for (const name of [
@@ -83,12 +79,16 @@ test("hamburger drawer reaches every entry, traps focus and closes with Esc or t
     "兌換獎勵",
     "認養Bin友",
     "站內通知",
+    "清潔隊工作台",
+    "清運道路指引",
+    "隊員登入",
+    "管理員登入",
   ])
     await expect(drawer.getByRole("link", { name, exact: true })).toHaveCount(
       0,
     );
   // 焦點鎖在側邊欄：從最後一個項目按 Tab 回到第一個。
-  await drawer.getByRole("link", { name: "管理員登入", exact: true }).focus();
+  await drawer.getByRole("link", { name: "市民登入", exact: true }).focus();
   await page.keyboard.press("Tab");
   await expect(drawer.getByRole("button", { name: "關閉選單" })).toBeFocused();
   await page.keyboard.press("Escape");
@@ -100,9 +100,11 @@ test("hamburger drawer reaches every entry, traps focus and closes with Esc or t
     .click({ position: { x: 380, y: 400 }, force: true });
   await expect(drawer).toBeHidden();
   await menu.click();
-  await drawer.getByRole("link", { name: "清潔隊工作台", exact: true }).click();
+  await drawer
+    .getByRole("link", { name: "清潔員管理入口", exact: true })
+    .click();
   await expect(drawer).toBeHidden();
-  await expect(page).toHaveURL(/#staff\/tasks$/);
+  await expect(page).toHaveURL(/#crew$/);
   // 手機版沒有底部導覽列。
   await expect(page.locator(".mobile-nav")).toHaveCount(0);
 });

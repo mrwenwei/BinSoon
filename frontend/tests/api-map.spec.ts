@@ -206,7 +206,8 @@ test("compact detail omits history while navigation respects server usability", 
     .getByRole("link", { name: "尋找可用桶並導航", exact: true })
     .click();
   await expect(page.getByRole("heading", { name: "後端替代桶" })).toBeVisible();
-  await expect(page.locator(".demo-route")).toHaveCount(1);
+  await expect(page.locator(".demo-route, .road-route")).toHaveCount(0);
+  await expect(page.getByRole("alert")).toContainText("目前無法取得道路路線");
   await expect(page.getByRole("link", { name: "抵達後回報" })).toHaveAttribute(
     "href",
     "#report/10000000-0000-4000-8000-000000000003?waste_type=general",

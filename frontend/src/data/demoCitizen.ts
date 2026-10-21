@@ -73,6 +73,7 @@ type Receipt = {
 };
 type State = {
   version: 1;
+  adoption_naming_version?: 1;
   reports: Report[];
   entries: PointEntry[];
   proposals: Proposal[];
@@ -246,6 +247,79 @@ function seed(): State {
     ],
   };
 }
+// Derive a local ballot for each loaded suggested Bin. Keep the original Bin ID,
+// coordinates and provenance; persist the ballot only with an explicit demo action.
+function withSuggestedProposals(value: State): State {
+  for (const bin of demoBinLocations.values()) {
+    if (
+      bin.placement_status !== "proposed" ||
+      value.proposals.some((item) => item.bin_id === bin.id)
+    )
+      continue;
+    value.proposals.push({
+      id: `demo-suggested-${bin.id}`,
+      bin_id: bin.id,
+      version: 1,
+      name: bin.label,
+      reason: "建議設置點，仍須現勘；投票不代表已核准設置。",
+      district: bin.district,
+      latitude: bin.latitude,
+      longitude: bin.longitude,
+      created_at: CREATED,
+      mine: false,
+      support: 0,
+      oppose: 0,
+      total_votes: 0,
+      support_ratio: null,
+      my_vote: null,
+      status: "collecting",
+      outcome_reason: null,
+      voting_closed_at: null,
+      pending_name: null,
+      approved_name: null,
+      name_status: null,
+      is_demo: true,
+      rule_version: "local_demo_v1",
+    });
+  }
+  return value;
+}
+// Upgrade existing local demos without resetting reports, votes or ended adoptions.
+function withPrivateAdoptions(value: State): State {
+  if (value.adoption_naming_version === 1) return value;
+  const bins = locations
+    .filter((item) => item.kind === "bin" && item.district === "大安區")
+    .slice(0, 3);
+  const names = ["全家炸雞桶", "下班等公車桶", "早餐店轉角桶"];
+  for (const [index, bin] of bins.entries()) {
+    const id = `demo-adoption-${index + 1}`;
+    const existing = value.adoptions.find((item) => item.id === id);
+    if (existing) {
+      existing.private_bin_name ||= names[index];
+    } else if (
+      value.adoptions.filter((item) =>
+        ["pending", "active"].includes(item.status),
+      ).length < 5
+    ) {
+      value.adoptions.push({
+        id,
+        version: 1,
+        bin_id: bin.id,
+        role: "居民",
+        display_name: "展示市民小安",
+        private_bin_name: names[index],
+        intro: "",
+        status: "active",
+        preferences: { full: true, dumping: true, dirty: false },
+        created_at: CREATED,
+        updated_at: CREATED,
+        reason: "本機展示認領，非真實認領。",
+      });
+    }
+  }
+  value.adoption_naming_version = 1;
+  return value;
+}
 let memory: State | undefined;
 function state(): State {
   try {
@@ -265,11 +339,11 @@ function state(): State {
       saved.receipts &&
       typeof saved.receipts === "object"
     )
-      return saved;
+      return withPrivateAdoptions(withSuggestedProposals(saved));
   } catch {
     /* Demo storage never falls through to private backend data. */
   }
-  return (memory ||= seed());
+  return withPrivateAdoptions(withSuggestedProposals((memory ||= seed())));
 }
 function commit(value: State) {
   try {
@@ -880,9 +954,16 @@ async function mutate(
         item.status !== "installed" ||
         item.name_status === "pending"
       )
-        throw new ApiError(409, "INVALID_TRANSITION", "目前不能提出展示命名。");
-      item.pending_name = text(body.name, 200);
-      item.name_status = "pending";
+        throw new ApiError(
+          409,
+          "INVALID_TRANSITION",
+          "請在認領桶後設定私人桶名。",
+        );
+      throw new ApiError(
+        410,
+        "PRIVATE_NAMING_ONLY",
+        "請在認領桶後設定私人桶名，無需送審或公開。",
+      );
     } else {
       if (item.status !== "collecting" || item.voting_closed_at)
         throw new ApiError(409, "VOTING_CLOSED", "此展示提案已關票。");
@@ -942,6 +1023,17 @@ async function mutate(
     });
   }
   if (name === "/adoptions") {
+    if (
+      value.adoptions.filter((item) =>
+        ["pending", "active"].includes(item.status),
+      ).length >= 5
+    )
+      throw new ApiError(
+        409,
+        "ADOPTION_LIMIT",
+        "每人至多認領 5 個桶；請先結束現有認領再選新桶。",
+      );
+    const privateName = text(body.private_bin_name, 50);
     const bin = found(binLocation(body.bin_id, value), "Bin友");
     if (
       bin.placement_status === "proposed" ||
@@ -964,23 +1056,24 @@ async function mutate(
       version: 1,
       bin_id: bin.id,
       role: body.role,
-      display_name: text(body.display_name, 200),
+      display_name: "展示市民小安",
+      private_bin_name: privateName,
       intro: body.role === "店家" ? String(body.intro || "").slice(0, 500) : "",
       preferences: {
         full: Boolean(body.preferences?.full),
         dirty: Boolean(body.preferences?.dirty),
         dumping: Boolean(body.preferences?.dumping),
       },
-      status: "pending",
+      status: "active",
       created_at: now(),
       updated_at: now(),
-      reason: "本機展示申請，非真實認養。",
+      reason: "本機展示認領，非真實認領。",
     };
     value.adoptions.unshift(item);
     return result(item, item.version);
   }
   const adoption = name.match(
-    /^\/adoptions\/([^/]+)\/(preferences|withdraw|end)$/,
+    /^\/adoptions\/([^/]+)\/(preferences|private-name|withdraw|end)$/,
   );
   if (adoption) {
     const item = found(
@@ -994,7 +1087,9 @@ async function mutate(
         : item.status !== "active"
     )
       throw new ApiError(409, "INVALID_TRANSITION", "展示認養狀態已更新。");
-    if (adoption[2] === "preferences")
+    if (adoption[2] === "private-name")
+      item.private_bin_name = text(body.private_bin_name, 50);
+    else if (adoption[2] === "preferences")
       item.preferences = {
         full: Boolean(body.full),
         dirty: Boolean(body.dirty),
@@ -1031,26 +1126,38 @@ export function decorateCitizenView(
   payload: unknown,
   token?: string,
 ): unknown {
-  if (!isDemoToken(token) || !/^\/bins\/[^/]+\/view(?:\?|$)/.test(path))
-    return payload;
+  if (!isDemoToken(token)) return payload;
+  const value = state();
+  const active = value.adoptions.filter((item) => item.status === "active");
+  const personalLocation = (location: ApiLocation) => {
+    const mine = active.find((item) => item.bin_id === location.id);
+    return mine?.private_bin_name
+      ? { ...location, label: mine.private_bin_name }
+      : location;
+  };
+  if (/^\/map\/(locations|nearest-usable)(?:\?|$)/.test(path)) {
+    const page = payload as { items: ApiLocation[] };
+    return { ...page, items: page.items.map(personalLocation) };
+  }
+  if (!/^\/bins\/[^/]+\/view(?:\?|$)/.test(path)) return payload;
   const view = payload as BinView;
-  const adoption = state().adoptions.find(
+  const adoption = value.adoptions.find(
     (item) =>
       item.bin_id === view.location.id &&
       ["pending", "active"].includes(item.status),
   );
   return {
     ...view,
+    location: personalLocation(view.location),
     my_adoption_id: adoption?.id || null,
-    can_apply_adoption: view.can_report && !adoption,
-    adopter:
-      adoption?.status === "active"
-        ? {
-            display_name: adoption.display_name,
-            role: adoption.role,
-            intro: adoption.intro,
-          }
-        : null,
+    can_apply_adoption:
+      view.can_report &&
+      !adoption &&
+      value.adoptions.filter((item) =>
+        ["pending", "active"].includes(item.status),
+      ).length < 5,
+    // Other citizens may claim this same Bin; a private alias is never a public adopter name.
+    adopter: null,
   };
 }
 let writes: Promise<unknown> = Promise.resolve();

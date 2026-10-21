@@ -1,3 +1,4 @@
+import { asPhone, captureReport } from "./phone-report-fixture";
 import { test, expect } from "@playwright/test";
 import {
   apiFixture,
@@ -15,13 +16,22 @@ const png = Buffer.from(
   "base64",
 );
 
-test("citizen uploads a real file and retries the same report command after lost response", async ({
+test.beforeEach(async ({ page }) => {
+  await asPhone(page);
+});
+
+test("citizen submits a simulated phone capture and retries the same report command after lost response", async ({
   page,
 }) => {
   const commands: { key?: string; body: unknown }[] = [];
   await apiFixture(page, async (route, path) => {
     if (path === "/media") {
-      expect(route.request().postDataBuffer()?.includes(png)).toBeTruthy();
+      expect(
+        route
+          .request()
+          .postDataBuffer()
+          ?.includes(Buffer.from("demo-report.png")),
+      ).toBeTruthy();
       await route.fulfill({ status: 201, json: { id: report.photo_ids[0] } });
       return true;
     }
@@ -56,12 +66,7 @@ test("citizen uploads a real file and retries the same report command after lost
   // 後端照片回報依 waste_type 指定哪一槽；預設一般垃圾，這裡改選資源回收。
   await expect(page.getByRole("radio", { name: "一般垃圾" })).toBeChecked();
   await page.getByRole("radio", { name: "資源回收" }).check();
-  await page
-    .getByLabel("現場照片", { exact: true })
-    .setInputFiles({ name: "report.png", mimeType: "image/png", buffer: png });
-  await page.getByLabel("緯度", { exact: true }).fill("25.033");
-  await page.getByLabel("經度", { exact: true }).fill("121.5358");
-  await page.getByLabel("確認這是我提供的現場位置").check();
+  await captureReport(page);
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("連線未完成");
   await page.getByRole("button", { name: "重試原回報", exact: true }).click();
@@ -73,7 +78,7 @@ test("citizen uploads a real file and retries the same report command after lost
     bin_id: binId,
     waste_type: "recycling",
     type: "full",
-    description: "",
+    description: expect.stringContaining("模擬測試"),
     photo_ids: report.photo_ids,
     position: { latitude: 25.033, longitude: 121.5358 },
     quick: false,
@@ -134,12 +139,7 @@ test("expired login preserves the original report key and body through reauthent
     }
   });
   await login(page, "citizen", `report/${binId}`);
-  await page
-    .getByLabel("現場照片", { exact: true })
-    .setInputFiles({ name: "report.png", mimeType: "image/png", buffer: png });
-  await page.getByLabel("緯度", { exact: true }).fill("25.033");
-  await page.getByLabel("經度", { exact: true }).fill("121.5358");
-  await page.getByLabel("確認這是我提供的現場位置").check();
+  await captureReport(page);
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await page.getByRole("link", { name: "登入後繼續回報", exact: true }).click();
   await page.getByLabel("密碼", { exact: true }).fill("fixture-only");
@@ -177,24 +177,14 @@ test("photo and server proximity errors retain the form without claiming success
     }
   });
   await login(page, "citizen", `report/${binId}`);
-  await page.getByLabel("現場照片", { exact: true }).setInputFiles({
-    name: "wrong.txt",
-    mimeType: "text/plain",
-    buffer: Buffer.from("not a photo"),
-  });
-  await expect(page.getByRole("alert")).toContainText("請選 JPEG");
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "確認送出回報", exact: true }),
   ).toBeDisabled();
-  await page
-    .getByLabel("現場照片", { exact: true })
-    .setInputFiles({ name: "report.png", mimeType: "image/png", buffer: png });
+  await captureReport(page);
   await page
     .getByRole("combobox", { name: "問題類型", exact: true })
     .selectOption("other");
-  await page.getByLabel("緯度", { exact: true }).fill("0");
-  await page.getByLabel("經度", { exact: true }).fill("0");
-  await page.getByLabel("確認這是我提供的現場位置").check();
   await expect(
     page.getByRole("button", { name: "確認送出回報", exact: true }),
   ).toBeDisabled();
@@ -207,7 +197,7 @@ test("photo and server proximity errors retain the form without claiming success
     page.getByRole("textbox", { name: "說明", exact: true }),
   ).toHaveValue("保留我的說明");
   await expect(
-    page.getByRole("img", { name: "待送出的現場照片" }),
+    page.getByRole("img", { name: "待送出的模擬測試照片" }),
   ).toBeVisible();
   expect(reports).toBe(1);
 });

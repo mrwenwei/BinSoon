@@ -1,3 +1,5 @@
+import { useDemoData } from "../../data/demoMode";
+import { BinProposal } from "./BinProposal";
 import { wasteHref, type WasteControls } from "../../data/waste";
 import { WasteInfo, compartmentCards, CompartmentSources } from "./Waste";
 import { useEffect } from "react";
@@ -62,6 +64,8 @@ export function BinPanel({
     );
   const { location: item, status, can_report } = view.data;
   const parts = apiCompartments(status, view.data.compartments);
+  if (item.placement_status === "proposed")
+    return <BinProposal key={item.id} location={item} />;
   return (
     <div className="api-bin-detail mx-bin">
       <div className="page-heading bin-heading">
@@ -73,11 +77,9 @@ export function BinPanel({
             <h1>{item.label}</h1>
             <p>
               {item.district} ·{" "}
-              {item.placement_status === "proposed"
-                ? "建議點／待現勘"
-                : item.placement_status === "installed"
-                  ? "示範設置"
-                  : "既有公布桶"}
+              {item.placement_status === "installed"
+                ? "示範設置"
+                : "既有公布桶"}
             </p>
           </div>
         </div>
@@ -103,11 +105,9 @@ export function BinPanel({
             <Status status={status} />
             <WasteInfo value={status} />
             <p>
-              {item.placement_status === "proposed"
-                ? "建議點／待現勘，尚未設置"
-                : status.is_usable
-                  ? "只收隨手小垃圾，請依現場狀況使用。"
-                  : `目前不可用：${status.unavailable_reasons.map((r) => reasonLabels[r] || r).join("、")}`}
+              {status.is_usable
+                ? "只收隨手小垃圾，請依現場狀況使用。"
+                : `目前不可用：${status.unavailable_reasons.map((r) => reasonLabels[r] || r).join("、")}`}
             </p>
           </div>
           <div className="bin-actions">
@@ -163,10 +163,12 @@ export function BinPanel({
             )}
           </div>
         </div>
-        <p className="bin-adoption tiny">
-          認養：{view.data.adopter?.display_name || "尚無認養者"} ·
-          {view.data.adopter && "已核准的公開認養資訊"}
-        </p>
+        {!useDemoData(session?.access_token) && (
+          <p className="bin-adoption tiny">
+            認養：{view.data.adopter?.display_name || "尚無認養者"} ·
+            {view.data.adopter && "已核准的公開認養資訊"}
+          </p>
+        )}
         {view.data.adopter?.role && <p>認養身份：{view.data.adopter.role}</p>}
         {view.data.adopter?.intro && (
           <p>認養店家介紹：{view.data.adopter.intro}</p>
@@ -176,16 +178,20 @@ export function BinPanel({
             (!session &&
               !view.data.adopter &&
               !view.data.my_adoption_id &&
-              item.placement_status !== "proposed" &&
               status.operational_status !== "removed")) && (
             <a
               className="button secondary"
               href={`#adopt/apply/${id}`}
               aria-label="申請認養此桶"
             >
-              待認養 · 申請認養此桶
+              {useDemoData(session?.access_token)
+                ? "認領這位 Bin友"
+                : "待認養 · 申請認養此桶"}
             </a>
           )}
+        {useDemoData(session?.access_token) && (
+          <p className="tiny">每人至多認領 5 個桶；私人桶名只有自己看得到。</p>
+        )}
         {view.data.my_adoption_id && (
           <a
             className="button secondary"

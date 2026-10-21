@@ -138,7 +138,8 @@ test("admin login does not grant citizen or staff capabilities", async ({
   await apiFixture(page);
   await login(page, "admin", "admin");
   await expectAccountName(page, "測試admin");
-  await (await navLink(page, "清潔隊工作台")).click();
+  // Backend role boundaries remain testable via direct routes; the menu now opens the isolated crew demo.
+  await page.goto("/#staff/tasks");
   await expect(
     page.getByRole("link", { name: "隊員登入", exact: true }),
   ).toBeVisible();

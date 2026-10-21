@@ -269,14 +269,21 @@ export function MapPage({
       if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, [mobile]);
+  const showingBallot = !!binId && !!selected && isProposed(selected);
   const heights = useMemo(() => {
     const full = Math.max(dims.head, dims.layout - 12);
     return {
       collapsed: dims.head,
-      half: Math.min(full, Math.max(dims.head, Math.round(dims.layout * 0.5))),
+      half: Math.min(
+        full,
+        Math.max(
+          dims.head,
+          Math.round(dims.layout * (showingBallot ? 0.72 : 0.5)),
+        ),
+      ),
       full,
     };
-  }, [dims]);
+  }, [dims, showingBallot]);
   const drawerPx = dragPx ?? heights[drawer];
   // 全開時點把手回半開；收起只靠往下拖。
   const cycle = () =>

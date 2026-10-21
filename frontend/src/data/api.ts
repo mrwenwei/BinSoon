@@ -1,4 +1,5 @@
 import { useDemoData, isDemoToken } from "./demoMode";
+import { apiBaseForHost } from "./apiConfig";
 import { decorateCitizenView, demoRequest } from "./demoCitizen";
 import { demoBinPayload, demoCityLoaded } from "./demoBins";
 import { type WasteMetadata, type WasteType } from "./waste";
@@ -261,6 +262,7 @@ export type Lifecycle = {
   reason: string | null;
 };
 export type Adoption = {
+  private_bin_name?: string;
   id: string;
   version: number;
   bin_id: string;
@@ -365,10 +367,10 @@ export function errorMessage(error: unknown): string {
     return `${error.message}${error.fields.length ? `：${error.fields.map((f) => `${f.field} ${f.message}`).join("；")}` : ""}${error.requestId ? `（請求 ${error.requestId}）` : ""}`;
   return "連線未完成，請檢查網路後重試；原操作已保留。";
 }
-export const API_BASE = (
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://binsoon-api-887203439341.asia-east1.run.app/api/v1"
-).replace(/\/$/, "");
+export const API_BASE = apiBaseForHost(
+  window.location.hostname,
+  import.meta.env.VITE_API_BASE_URL,
+);
 export type Options = {
   token?: string;
   method?: string;

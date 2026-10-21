@@ -49,7 +49,11 @@ test("quick report, monthly summary, inbox and lifecycle fit desktop mobile and 
     await page.setViewportSize({ width, height: original.height });
     for (const [route, heading, file] of [
       [`adopt/${adoptionId}`, "認養詳情", "monthly"],
-      [`quick-report/${adoptionId}`, "認養快捷通報", "quick"],
+      [
+        `quick-report/${adoptionId}`,
+        info.project.name === "desktop" ? "請使用手機現場回報" : "認養快捷通報",
+        "quick",
+      ],
       ["notifications", "站內通知", "inbox"],
     ]) {
       await page.evaluate((route) => {

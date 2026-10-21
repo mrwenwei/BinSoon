@@ -1,6 +1,7 @@
 import { useDemoData } from "../../data/demoMode";
 import { useCallback, useState } from "react";
 import {
+  ApiError,
   query,
   request,
   time,
@@ -180,14 +181,49 @@ export function ProposalList({
     </main>
   );
 }
-export function ProposalDetail({ id }: { id: string }) {
+export function ProposalDetail({
+  id,
+  embedded = false,
+  binId,
+}: {
+  id: string;
+  embedded?: boolean;
+  binId?: string;
+}) {
   const { session } = useSession();
   const citizen = !!session?.user.roles.includes("citizen");
   const path = `/proposals/${id}`;
   const detail = useApi(
     path,
-    (signal) =>
-      request<Proposal>(path, { signal, token: session?.access_token }),
+    async (signal) => {
+      try {
+        return await request<Proposal>(path, {
+          signal,
+          token: session?.access_token,
+        });
+      } catch (error) {
+        // Unvoted suggested ballots are derived locally. Restore their Bin for
+        // a bookmarked URL; persisted ballots remain readable without the API.
+        if (
+          !(error instanceof ApiError) ||
+          error.status !== 404 ||
+          !useDemoData(session?.access_token) ||
+          !id.startsWith("demo-suggested-")
+        )
+          throw error;
+        await request(
+          `/bins/${encodeURIComponent(id.slice("demo-suggested-".length))}/view`,
+          {
+            signal,
+            token: session?.access_token,
+          },
+        );
+        return request<Proposal>(path, {
+          signal,
+          token: session?.access_token,
+        });
+      }
+    },
     true,
   );
   const [updated, setUpdated] = useState<Proposal | null>(null);
@@ -200,8 +236,124 @@ export function ProposalDetail({ id }: { id: string }) {
     ready: open && !detail.loading && !detail.error,
     reconfirm: false,
     refresh: detail.reload,
-    onSuccess: (result) => setUpdated(result.data as Proposal),
+    onSuccess: (result) => {
+      const proposal = result.data as Proposal;
+      setUpdated(proposal);
+      if (proposal.my_vote === "support") {
+        const search = new URLSearchParams(window.location.hash.split("?")[1]);
+        search.set("from", embedded ? "map" : "proposal");
+        window.location.hash = `vote-done/${encodeURIComponent(id)}?${search}`;
+      }
+    },
   });
+  if (embedded)
+    return (
+      <div className="proposal-ballot">
+        <LoadState {...detail} />
+        {item && (
+          <>
+            <p className="proposal-context">
+              {item.district} · 建議設置點／待現勘
+            </p>
+            <p>{item.reason}</p>
+            <div className="proposal-tally" aria-live="polite">
+              <span>
+                支持 {item.support} · 反對 {item.oppose}
+              </span>
+              <span>{labels[item.status]}</span>
+            </div>
+            <p className="tiny">
+              {useDemoData(session?.access_token)
+                ? "本機展示：60 人參與後依支持率進入評估或里辦評議。"
+                : "投票及審查進度以伺服器為準。"}
+            </p>
+            <p className="tiny">
+              支持率 {Math.round((item.support_ratio || 0) * 100)}% · 共{" "}
+              {item.total_votes} 人參與
+            </p>
+            <div
+              className="proposal-support"
+              role="meter"
+              aria-label="支持率"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round((item.support_ratio || 0) * 100)}
+            >
+              <span style={{ width: `${(item.support_ratio || 0) * 100}%` }} />
+            </div>
+            <p className="proposal-naming-note">
+              ☆ 每位認領者都能自由為 Bin友命名，只有自己看得到；每人至多認領 5
+              個桶。
+            </p>
+            <p className="tiny" aria-live="polite">
+              我的票：
+              {item.my_vote === "support"
+                ? "支持"
+                : item.my_vote === "oppose"
+                  ? "反對"
+                  : "尚未投票"}
+            </p>
+            {open ? (
+              citizen ? (
+                <div className="proposal-ballot-actions">
+                  {voteOptions.slice(0, 2).map(({ vote, commandLabel }) => (
+                    <button
+                      key={vote}
+                      className={`button ${vote === "support" ? "primary" : "secondary"}`}
+                      aria-pressed={item.my_vote === vote}
+                      disabled={action.blocked || item.my_vote === vote}
+                      onClick={() =>
+                        void action.run({
+                          path: `${path}/vote`,
+                          body: { vote },
+                          label: commandLabel,
+                        })
+                      }
+                    >
+                      {vote === "support" ? "支持設桶" : "不要設這裡"}
+                    </button>
+                  ))}
+                  {item.my_vote && (
+                    <button
+                      className="text-button"
+                      disabled={action.blocked}
+                      onClick={() =>
+                        void action.run({
+                          path: `${path}/vote`,
+                          body: { vote: null },
+                          label: "撤回投票",
+                        })
+                      }
+                    >
+                      撤回投票
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <a
+                  className="button primary"
+                  href={`#login?next=${encodeURIComponent(`bin/${binId || item.bin_id}`)}`}
+                >
+                  登入參與投票
+                </a>
+              )
+            ) : (
+              <p role="status">投票已關閉 · {labels[item.status]}</p>
+            )}
+            {item.outcome_reason && <p>結果說明：{item.outcome_reason}</p>}
+            <a className="text-button" href={`#proposals/${id}`}>
+              查看提案進度
+            </a>
+            <p className="tiny">
+              {useDemoData(session?.access_token)
+                ? "票數與操作僅儲存在此瀏覽器，未送交環保局。"
+                : "建議點尚未設置，須經審查與現勘。"}
+            </p>
+          </>
+        )}
+        <CommandFeedback action={action} />
+      </div>
+    );
   return (
     <main className="page api-narrow">
       <h1>提案詳情</h1>
@@ -226,7 +378,7 @@ export function ProposalDetail({ id }: { id: string }) {
           </a>
         </section>
       )}
-      {item && (
+      {item && !useDemoData(session?.access_token) && (
         <ProposalNaming
           item={item}
           etag={detail.etag || `"v${item.version}"`}

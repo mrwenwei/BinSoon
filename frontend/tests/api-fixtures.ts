@@ -74,6 +74,10 @@ export async function apiFixture(
       sessionStorage.setItem("binsoon-data-mode", demo ? "demo" : "backend"),
     Boolean(options.demo),
   );
+  // No live public routing calls during API tests; route-specific tests override this.
+  await page.route("https://valhalla1.openstreetmap.de/route", (route) =>
+    route.abort(),
+  );
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/v1", "");

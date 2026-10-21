@@ -1,3 +1,4 @@
+import { PhoneReportGate, isPhoneBrowser } from "./PhoneReportGate";
 import { isDemoToken } from "../../data/demoMode";
 import {
   wasteName,
@@ -132,11 +133,13 @@ export function QuickReport({
   ...controls
 }: { id: string } & WasteControls) {
   return (
-    <RequireCitizen
-      next={wasteHref(`quick-report/${id}`, controls.wasteType).slice(1)}
-    >
-      <QuickReportContent id={id} {...controls} />
-    </RequireCitizen>
+    <PhoneReportGate>
+      <RequireCitizen
+        next={wasteHref(`quick-report/${id}`, controls.wasteType).slice(1)}
+      >
+        <QuickReportContent id={id} {...controls} />
+      </RequireCitizen>
+    </PhoneReportGate>
   );
 }
 function QuickReportContent({
@@ -176,7 +179,14 @@ function QuickReportContent({
     </>
   );
 }
-export function ReportForm({
+export function ReportForm(props: Parameters<typeof PhoneReportForm>[0]) {
+  return (
+    <PhoneReportGate>
+      <PhoneReportForm {...props} />
+    </PhoneReportGate>
+  );
+}
+function PhoneReportForm({
   id,
   wasteType,
   onWasteChange,
@@ -203,19 +213,16 @@ export function ReportForm({
   const [busy, setBusy] = useState(false);
   const [validating, setValidating] = useState(false);
   const [preview, setPreview] = useState("");
-  const [positionError, setPositionError] = useState("");
   const actor = useRef(session);
   actor.current = session;
   const alive = useRef(true);
   const selection = useRef(0);
-  const positionSelection = useRef(0);
   const lock = useRef(false);
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
       selection.current++;
-      positionSelection.current++;
     };
   }, []);
   useEffect(() => {
@@ -243,7 +250,15 @@ export function ReportForm({
     Math.abs(lat) <= 90 &&
     Number.isFinite(lng) &&
     Math.abs(lng) <= 180 &&
-    draft.confirmed;
+    draft.confirmed &&
+    draft.demoPosition === "near" &&
+    Boolean(view.data) &&
+    distanceToBin(
+      lat,
+      lng,
+      view.data!.location.latitude,
+      view.data!.location.longitude,
+    ) <= 50;
   const frozen = Boolean(draft.operation) || busy;
   const demoMarker =
     draft.demoPhoto || draft.demoPosition
@@ -288,6 +303,7 @@ export function ReportForm({
   }
   async function submit() {
     if (
+      !isPhoneBrowser() ||
       !session ||
       !session.user.roles.includes("citizen") ||
       lock.current ||
@@ -302,6 +318,7 @@ export function ReportForm({
         descriptionTooLong ||
         !validPosition ||
         !draft.file ||
+        !draft.demoPhoto ||
         validating ||
         (draft.type === "other" && !draft.description.trim()))
     )
@@ -427,208 +444,73 @@ export function ReportForm({
               }
             />
           </label>
-          <section className="api-demo-tools" aria-label="回報模擬測試">
-            <h2>模擬測試工具</h2>
+          <section className="phone-report-capture" aria-label="手機現場回報">
+            <h2>1. 分享現場位置</h2>
+            <p>需分享座標並核對距離，距離桶位 50 公尺內才可回報。</p>
             <p className="tiny">
-              {isDemoToken(session?.access_token)
-                ? "可使用示意照片及所選 Bin友座標。送出只儲存於此瀏覽器，不會派工或寫入後端；仍需確認展示位置。"
-                : "不方便拍照或取得 GPS？可用示意照片及所選桶座標測試。送出仍會寫入目前連接的後端，照片及說明會標示模擬測試；權限與 50 公尺檢查照常執行。"}
+              本次只展示成功流程：模擬手機授權與定位，不讀取真實 GPS。
             </p>
             <button
               type="button"
               className="button secondary"
-              disabled={validating}
-              onClick={() => void selectFile(createDemoPhoto(), true)}
-            >
-              產生示意照片
-            </button>
-            <button
-              type="button"
-              className="button secondary"
               disabled={!view.data || Boolean(view.error)}
               onClick={() => {
-                if (!view.data) return;
-                positionSelection.current++;
-                setPositionError("");
+                if (!view.data || !isPhoneBrowser()) return;
                 update(draftKey, {
                   latitude: String(view.data.location.latitude),
                   longitude: String(view.data.location.longitude),
-                  confirmed: false,
                   demoPosition: "near",
+                  confirmed: true,
                 });
               }}
             >
-              使用此桶座標（模擬 GPS）
+              分享目前位置（模擬）
             </button>
-            <button
-              type="button"
-              className="button secondary"
-              disabled={!view.data || Boolean(view.error)}
-              onClick={() => {
-                if (!view.data) return;
-                positionSelection.current++;
-                setPositionError("");
-                update(draftKey, {
-                  latitude: String(view.data.location.latitude + 78 / 111320),
-                  longitude: String(view.data.location.longitude),
-                  confirmed: false,
-                  demoPosition: "far",
-                });
-              }}
-            >
-              模擬距離過遠（約 78 公尺）
-            </button>
-            <button
-              type="button"
-              className="button secondary"
-              onClick={() => {
-                positionSelection.current++;
-                update(draftKey, {
-                  latitude: "",
-                  longitude: "",
-                  confirmed: false,
-                  demoPosition: "unavailable",
-                });
-                setPositionError(
-                  "模擬定位失敗；請使用此桶座標或重新取得目前位置。",
-                );
-              }}
-            >
-              模擬定位失敗
-            </button>
-            {draft.demoPosition && draft.demoPosition !== "unavailable" && (
-              <p className="tiny">
-                {isDemoToken(session?.access_token)
-                  ? "此為本機展示座標，非實測 GPS；展示模式檢查 50 公尺距離。"
-                  : "此為模擬測試座標，非實測 GPS；距離由後端驗證。"}
+            {draft.confirmed && draft.demoPosition === "near" && (
+              <p role="status">
+                已分享模擬座標：{draft.latitude}, {draft.longitude} · 距桶位{" "}
+                {view.data
+                  ? Math.round(
+                      distanceToBin(
+                        lat,
+                        lng,
+                        view.data.location.latitude,
+                        view.data.location.longitude,
+                      ),
+                    )
+                  : "—"}{" "}
+                公尺
               </p>
             )}
+            <h2>2. 現場拍照</h2>
+            <p>僅接受手機現場拍照，不開放相簿上傳。本次不啟動真實相機。</p>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={!validPosition || validating}
+              onClick={() => {
+                if (isPhoneBrowser() && validPosition)
+                  void selectFile(createDemoPhoto(), true);
+              }}
+            >
+              現場拍照（模擬）
+            </button>
             {draft.demoPhoto && (
-              <p className="tiny">
-                已產生有 DEMO 浮水印的示意照片，非現場證據。
-              </p>
+              <p className="tiny">模擬拍照完成 · DEMO 示意照片，非現場證據。</p>
             )}
+            {preview && (
+              <img
+                className="api-photo"
+                src={preview}
+                alt="待送出的模擬測試照片"
+              />
+            )}
+            <p className="tiny">
+              {isDemoToken(session?.access_token)
+                ? "送出只儲存在此瀏覽器，不會派工或寫入後端。"
+                : "此模式會送到目前連接的後端，內容附模擬標記；後端再次驗證距離與權限。"}
+            </p>
           </section>
-          <label>
-            現場照片
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              capture="environment"
-              onChange={(e) => {
-                void selectFile(e.target.files?.[0]);
-              }}
-            />
-          </label>
-          <p className="tiny">
-            {isDemoToken(session?.access_token)
-              ? "一張 JPEG／PNG／WebP，最多 5 MiB、2000 萬像素；照片只保留在此瀏覽器。"
-              : "一張 JPEG／PNG／WebP，最多 5 MiB、2000 萬像素。後端會再次驗證並移除 EXIF。"}
-          </p>
-          {preview && (
-            <img
-              className="api-photo"
-              src={preview}
-              alt={
-                draft.demoPhoto ? "待送出的模擬測試照片" : "待送出的現場照片"
-              }
-            />
-          )}
-          <button
-            type="button"
-            className="button secondary"
-            onClick={() => {
-              const version = ++positionSelection.current;
-              setPositionError("");
-              if (!navigator.geolocation) {
-                setPositionError(
-                  "瀏覽器不支援定位，請自行輸入並確認現場座標。",
-                );
-                return;
-              }
-              const token = session?.access_token;
-              navigator.geolocation.getCurrentPosition(
-                (p) => {
-                  if (
-                    alive.current &&
-                    !lock.current &&
-                    version === positionSelection.current &&
-                    actor.current?.access_token === token
-                  )
-                    update(draftKey, {
-                      latitude: String(p.coords.latitude),
-                      longitude: String(p.coords.longitude),
-                      demoPosition: undefined,
-                      confirmed: false,
-                    });
-                },
-                () => {
-                  if (
-                    alive.current &&
-                    !lock.current &&
-                    version === positionSelection.current &&
-                    actor.current?.access_token === token
-                  )
-                    setPositionError("定位不可用，請自行輸入並確認現場座標。");
-                },
-                { timeout: 10000, maximumAge: 0 },
-              );
-            }}
-          >
-            取得目前位置
-          </button>
-          {positionError && <p role="status">{positionError}</p>}
-          <label>
-            緯度
-            <input
-              type="number"
-              step="any"
-              min="-90"
-              max="90"
-              value={draft.latitude}
-              onChange={(e) => {
-                positionSelection.current++;
-                update(draftKey, {
-                  latitude: e.target.value,
-                  confirmed: false,
-                });
-              }}
-            />
-          </label>
-          <label>
-            經度
-            <input
-              type="number"
-              step="any"
-              min="-180"
-              max="180"
-              value={draft.longitude}
-              onChange={(e) => {
-                positionSelection.current++;
-                update(draftKey, {
-                  longitude: e.target.value,
-                  confirmed: false,
-                });
-              }}
-            />
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={draft.confirmed}
-              onChange={(e) =>
-                update(draftKey, { confirmed: e.target.checked })
-              }
-            />
-            {draft.demoPosition
-              ? "確認使用模擬測試位置，非實測 GPS"
-              : "確認這是我提供的現場位置"}
-          </label>
-          <p className="tiny">
-            {isDemoToken(session?.access_token)
-              ? "展示位置需距 Bin友 50 公尺內；這不是現場 GPS 證明。"
-              : "需距桶 50 公尺內，由後端驗證；手動座標不代表防偽 GPS。"}
-          </p>
         </fieldset>
         {descriptionTooLong && (
           <p role="alert">含模擬測試標記的說明超過 500 字，請縮短說明。</p>
@@ -651,6 +533,7 @@ export function ReportForm({
               (!draft.operation &&
                 (!quickAllowed ||
                   !draft.file ||
+                  !draft.demoPhoto ||
                   descriptionTooLong ||
                   !validPosition ||
                   !view.data?.can_report ||
@@ -1034,4 +917,19 @@ export function Member() {
       </div>
     </main>
   );
+}
+
+function distanceToBin(
+  lat: number,
+  lng: number,
+  binLat: number,
+  binLng: number,
+) {
+  const rad = Math.PI / 180;
+  const h =
+    Math.sin(((lat - binLat) * rad) / 2) ** 2 +
+    Math.cos(lat * rad) *
+      Math.cos(binLat * rad) *
+      Math.sin(((lng - binLng) * rad) / 2) ** 2;
+  return 6371000 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
 }

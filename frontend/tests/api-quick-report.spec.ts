@@ -1,3 +1,4 @@
+import { asPhone, captureReport } from "./phone-report-fixture";
 import { test, expect } from "@playwright/test";
 import {
   apiFixture,
@@ -44,6 +45,10 @@ for (const state of ["pending", "withdrawn", "ended"]) {
     expect(posts).toBe(0);
   });
 }
+
+test.beforeEach(async ({ page }) => {
+  await asPhone(page);
+});
 
 test("permission rejection rereads adoption and BinView; suspended reporting still allows management and zero month", async ({
   page,
@@ -92,12 +97,7 @@ test("permission rejection rereads adoption and BinView; suspended reporting sti
     }
   });
   await login(page, "citizen", `quick-report/${adoptionId}`);
-  await page
-    .getByLabel("現場照片", { exact: true })
-    .setInputFiles({ name: "quick.png", mimeType: "image/png", buffer: png });
-  await page.getByLabel("緯度", { exact: true }).fill("25.033");
-  await page.getByLabel("經度", { exact: true }).fill("121.5358");
-  await page.getByLabel("確認這是我提供的現場位置").check();
+  await captureReport(page);
   const before = { adoptionReads, binReads };
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await expect.poll(() => adoptionReads).toBeGreaterThan(before.adoptionReads);
@@ -297,12 +297,7 @@ test("quick retry after expiry retains command; same event uses existing report 
   });
   await login(page, "citizen", `quick-report/${adoptionId}`);
   async function fillAndSubmit() {
-    await page
-      .getByLabel("現場照片", { exact: true })
-      .setInputFiles({ name: "quick.png", mimeType: "image/png", buffer: png });
-    await page.getByLabel("緯度", { exact: true }).fill("25.033");
-    await page.getByLabel("經度", { exact: true }).fill("121.5358");
-    await page.getByLabel("確認這是我提供的現場位置").check();
+    await captureReport(page);
     await page
       .getByRole("button", { name: "確認送出回報", exact: true })
       .click();
@@ -320,7 +315,7 @@ test("quick retry after expiry retains command; same event uses existing report 
       location.hash = `quick-report/${id}`;
     }, adoptionId);
     await expect(
-      page.getByRole("img", { name: "待送出的現場照片" }),
+      page.getByRole("img", { name: "待送出的模擬測試照片" }),
     ).toHaveCount(0);
     await fillAndSubmit();
     await expect(page).toHaveURL(new RegExp(`#report-done/${id}$`));
@@ -372,7 +367,12 @@ test("active adopter reads server monthly totals and quick report shares photos 
       return true;
     }
     if (path === "/media") {
-      expect(route.request().postDataBuffer()?.includes(png)).toBeTruthy();
+      expect(
+        route
+          .request()
+          .postDataBuffer()
+          ?.includes(Buffer.from("demo-report.png")),
+      ).toBeTruthy();
       await route.fulfill({ status: 201, json: { id: report.photo_ids[0] } });
       return true;
     }
@@ -381,7 +381,7 @@ test("active adopter reads server monthly totals and quick report shares photos 
         bin_id: binId,
         waste_type: "general",
         type: "full",
-        description: "",
+        description: expect.stringContaining("模擬測試"),
         photo_ids: report.photo_ids,
         position: { latitude: 25.033, longitude: 121.5358 },
         quick: true,
@@ -421,12 +421,7 @@ test("active adopter reads server monthly totals and quick report shares photos 
   ).toBeVisible();
   await expect(page.getByText("已發點數 4", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "認養快捷通報", exact: true }).click();
-  await page
-    .getByLabel("現場照片", { exact: true })
-    .setInputFiles({ name: "quick.png", mimeType: "image/png", buffer: png });
-  await page.getByLabel("緯度", { exact: true }).fill("25.033");
-  await page.getByLabel("經度", { exact: true }).fill("121.5358");
-  await page.getByLabel("確認這是我提供的現場位置").check();
+  await captureReport(page);
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`#report-done/${reportId}$`));
   await expect(page.getByText("待確認點數 2", { exact: true })).toBeVisible();

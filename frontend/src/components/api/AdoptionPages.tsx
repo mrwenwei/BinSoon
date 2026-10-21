@@ -3,6 +3,7 @@ import { AdoptionMonthly } from "./AdoptionMonthly";
 import { useState } from "react";
 import {
   query,
+  allPages,
   request,
   time,
   type Adoption,
@@ -61,7 +62,8 @@ function PreferenceInputs({
 function AdoptionSummary({ item }: { item: Adoption }) {
   return (
     <>
-      <h2>{item.display_name}</h2>
+      <h2>{item.private_bin_name || item.display_name}</h2>
+      {item.private_bin_name && <p>私人桶名 · 只有你看得到</p>}
       <p>認養狀態：{states[item.status]}</p>
       <p>身份：{item.role}</p>
       {item.intro && <p>店家介紹：{item.intro}</p>}
@@ -75,7 +77,7 @@ function AdoptionSummary({ item }: { item: Adoption }) {
       </p>
       {item.reason && <p>原因：{item.reason}</p>}
       <a className="api-action-link" href={`#bin/${item.bin_id}`}>
-        查看關聯桶與公開認養
+        查看 Bin友
       </a>
     </>
   );
@@ -127,6 +129,9 @@ function AdoptionList({ admin }: { admin: boolean }) {
           ? "認養與歷史紀錄僅保存在此瀏覽器，展示狀態不代表真實認養權益。"
           : "認養待審期間沒有權益，歷史紀錄由後端保留。"}
       </p>
+      {!admin && (
+        <p>每位認領者都可各自命名，桶名只有自己看得到；每人至多認領 5 個桶。</p>
+      )}
       {!admin && (
         <a className="button primary" href="#map">
           前往地圖選桶申請
@@ -195,6 +200,23 @@ export function AdoptionApply({ binId }: { binId: string }) {
 }
 function Application({ binId }: { binId: string }) {
   const { session } = useSession();
+  const demo = isDemoToken(session?.access_token);
+  const owned = useApi(
+    demo ? "/me/adoptions?claim-limit" : null,
+    async (signal) => ({
+      data: await allPages<Adoption>("/me/adoptions", {
+        signal,
+        token: session?.access_token,
+      }),
+      etag: null,
+      replayed: false,
+    }),
+    true,
+  );
+  const count =
+    owned.data?.filter((item) => ["pending", "active"].includes(item.status))
+      .length || 0;
+  const atLimit = demo && count >= 5;
   const path = `/bins/${binId}/view`;
   const view = useApi(
     path,
@@ -220,6 +242,7 @@ function Application({ binId }: { binId: string }) {
       !view.loading &&
       !view.error &&
       !!name.trim() &&
+      (!demo || (!!owned.data && !owned.error && !atLimit)) &&
       !applied,
     reconfirm: false,
     refresh: view.reload,
@@ -227,12 +250,27 @@ function Application({ binId }: { binId: string }) {
   });
   return (
     <main className="page api-narrow">
-      <h1>申請認養</h1>
+      <h1>{demo ? "認領 Bin友" : "申請認養"}</h1>
+      {demo && (
+        <>
+          <p>
+            認領後就能為
+            Bin友取私人桶名，只有你看得到。同一個桶也能由其他人各自認領與命名。
+          </p>
+          <p>已認領 {count} / 5 個桶（含待審申請）</p>
+          <LoadState {...owned} />
+          {atLimit && (
+            <p role="status">每人至多認領 5 個桶，請先結束現有認領。</p>
+          )}
+        </>
+      )}
       <LoadState {...view} />
       {view.data && (
         <>
           <h2>{view.data.location.label}</h2>
-          <p>公開認養：{view.data.adopter?.display_name || "尚無認養者"}</p>
+          {!demo && (
+            <p>公開認養：{view.data.adopter?.display_name || "尚無認養者"}</p>
+          )}
           <a className="back-link" href={`#bin/${binId}`}>
             返回桶詳情
           </a>
@@ -240,12 +278,16 @@ function Application({ binId }: { binId: string }) {
       )}
       {applied ? (
         <section className="card" role="status">
-          <p>申請已送出，待審期間尚無認養權益。</p>
+          <p>
+            {demo
+              ? `已認領「${applied.private_bin_name}」，桶名只有你看得到。`
+              : "申請已送出，待審期間尚無認養權益。"}
+          </p>
           <a className="api-action-link" href={`#adopt/${applied.id}`}>
             查看我的認養
           </a>
         </section>
-      ) : view.data?.can_apply_adoption ? (
+      ) : view.data?.can_apply_adoption && !atLimit ? (
         <form
           className="card api-form"
           onSubmit={(e) => {
@@ -258,7 +300,8 @@ function Application({ binId }: { binId: string }) {
                 body: {
                   bin_id: binId,
                   role,
-                  display_name: name.trim(),
+                  display_name: demo ? session?.user.display_name : name.trim(),
+                  ...(demo ? { private_bin_name: name.trim() } : {}),
                   intro: role === "店家" ? intro.trim() : "",
                   preferences,
                 },
@@ -282,10 +325,11 @@ function Application({ binId }: { binId: string }) {
               </select>
             </label>
             <label>
-              公開名稱
+              {demo ? "Bin友的私人桶名" : "公開名稱"}
               <input
                 required
                 maxLength={50}
+                placeholder={demo ? "例如：下班等公車桶" : undefined}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -304,7 +348,7 @@ function Application({ binId }: { binId: string }) {
             <PreferenceInputs value={preferences} onChange={setPreferences} />
           </fieldset>
           <button className="button primary" disabled={action.blocked}>
-            預覽認養申請
+            {demo ? "預覽認領" : "預覽認養申請"}
           </button>
         </form>
       ) : (
@@ -325,7 +369,7 @@ function Application({ binId }: { binId: string }) {
         cancel={() => setConfirmation(null)}
         impact={
           isDemoToken(session?.access_token)
-            ? "只建立本機待審展示申請，不會送交真實管理員或取得真實認養權益；預設展示認養可用來體驗快捷通報。"
+            ? "認領與私人桶名僅保存在本機展示帳號，不會公開、送審或寫入後端。每人至多認領 5 個桶。"
             : "送出後為 pending，尚無加倍資格；須管理員核准，且不能保證一定取得認養。"
         }
       />
@@ -407,7 +451,7 @@ function AdoptionDetail({ id, admin }: { id: string; admin: boolean }) {
             {item.status === "pending" && <p>待審期間尚無認養權益。</p>}
           </section>
           <LoadState {...bin} />
-          {bin.data && (
+          {bin.data && !isDemoToken(session?.access_token) && (
             <p>
               目前公開認養：{bin.data.adopter?.display_name || "尚無認養者"}
             </p>
@@ -458,6 +502,23 @@ function AdoptionDetail({ id, admin }: { id: string; admin: boolean }) {
               </button>
             </section>
           )}
+          {!admin &&
+            isDemoToken(session?.access_token) &&
+            item.status === "active" && (
+              <PrivateNameEditor
+                key={`name/${id}/${item.version}`}
+                item={item}
+                disabled={action.blocked}
+                submit={(private_bin_name) =>
+                  queue(
+                    "private-name",
+                    { private_bin_name },
+                    "更新私人桶名（只有自己看得到）",
+                    "PATCH",
+                  )
+                }
+              />
+            )}
           {!admin && item.status === "active" && (
             <PreferenceEditor
               key={`${id}/${item.version}`}
@@ -556,6 +617,42 @@ function PreferenceEditor({
       </fieldset>
       <button className="button primary" disabled={disabled}>
         預覽更新偏好
+      </button>
+    </form>
+  );
+}
+
+function PrivateNameEditor({
+  item,
+  disabled,
+  submit,
+}: {
+  item: Adoption;
+  disabled: boolean;
+  submit: (name: string) => void;
+}) {
+  const [name, setName] = useState(item.private_bin_name || "");
+  return (
+    <form
+      className="card api-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(name.trim());
+      }}
+    >
+      <label>
+        Bin友的私人桶名
+        <input
+          required
+          maxLength={50}
+          value={name}
+          disabled={disabled}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </label>
+      <p>只有你看得到，可隨時更名；不影響其他認領者的桶名。</p>
+      <button className="button primary" disabled={disabled || !name.trim()}>
+        預覽更名
       </button>
     </form>
   );

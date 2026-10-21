@@ -1,6 +1,7 @@
 import type { LocationRecord } from "./locations";
 
 export type CrewVehicle = "scooter" | "car";
+export type TravelMode = CrewVehicle | "walk";
 export const vehicleLabels: Record<CrewVehicle, string> = {
   scooter: "機車",
   car: "汽車",
@@ -107,7 +108,7 @@ function nonnegative(value: unknown): number {
 }
 export function parseCrewRoute(
   payload: unknown,
-  vehicle: CrewVehicle,
+  vehicle: TravelMode,
   stopCount: number,
 ): CrewRoute {
   const trip = object(object(payload).trip);
@@ -135,7 +136,12 @@ export function parseCrewRoute(
     const steps = leg.maneuvers.map((rawStep) => {
       const step = object(rawStep);
       if (
-        step.travel_type !== (vehicle === "car" ? "car" : "motor_scooter") ||
+        step.travel_type !==
+          (vehicle === "walk"
+            ? "foot"
+            : vehicle === "car"
+              ? "car"
+              : "motor_scooter") ||
         typeof step.instruction !== "string" ||
         !step.instruction.trim()
       )
@@ -195,7 +201,7 @@ export function parseCrewRoute(
 }
 
 export async function requestCrewRoute(
-  vehicle: CrewVehicle,
+  vehicle: TravelMode,
   stops: Pick<LocationRecord, "kind" | "latitude" | "longitude">[],
   signal: AbortSignal,
   origin: readonly [number, number],
@@ -209,7 +215,12 @@ export async function requestCrewRoute(
     )
   )
     throw new Error("沒有可規劃的有效桶位。");
-  const costing = vehicle === "car" ? "auto" : "motor_scooter";
+  const costing =
+    vehicle === "walk"
+      ? "pedestrian"
+      : vehicle === "car"
+        ? "auto"
+        : "motor_scooter";
   const response = await fetch(routingEndpoint, {
     method: "POST",
     signal,

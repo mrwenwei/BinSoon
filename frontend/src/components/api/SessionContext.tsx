@@ -130,7 +130,7 @@ export function Login({ role, next }: { role: Role; next: string }) {
   return <BackendLogin role={role} next={next} />;
 }
 function returnPath(next: string, role: Role) {
-  return /^(map|bin\/|nav\/|report\/|review\/|report-done\/|reports$|member$|point-history$|stamps$|rewards(?:\/|$)|redemptions(?:\/|$)|vote(?:\/|$)|proposals(?:\/|$)|outcomes(?:\/|$)|adopt(?:\/|$)|quick-report\/|notifications(?:\?|$)|staff(?:\/|$)|admin(?:\/|$))/.test(
+  return /^(map|bin\/|nav\/|report\/|review\/|report-done\/|reports$|member$|point-history$|stamps$|rewards(?:\/|$)|redemptions(?:\/|$)|vote(?:\/|$)|vote-done\/|proposals(?:\/|$)|outcomes(?:\/|$)|adopt(?:\/|$)|quick-report\/|notifications(?:\?|$)|staff(?:\/|$)|admin(?:\/|$))/.test(
     next,
   ) && !next.includes("login")
     ? next

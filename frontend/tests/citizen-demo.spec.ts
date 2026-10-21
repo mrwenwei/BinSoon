@@ -1,5 +1,10 @@
+import { asPhone, captureReport } from "./phone-report-fixture";
 import { test, expect } from "@playwright/test";
 import { apiFixture, binId, location, status, envelope } from "./api-fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await asPhone(page);
+});
 
 test("public demo varies bin fullness consistently and keeps the bottom sheet compact", async ({
   page,
@@ -116,10 +121,11 @@ test("citizen reports, creates proposals, votes and redeems entirely locally acr
     .getByRole("button", { name: "以展示市民登入", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "使用此桶座標（模擬 GPS）", exact: true })
+    .getByRole("button", { name: "分享目前位置（模擬）", exact: true })
     .click();
-  await page.getByRole("button", { name: "產生示意照片", exact: true }).click();
-  await page.getByLabel("確認使用模擬測試位置，非實測 GPS").check();
+  await page
+    .getByRole("button", { name: "現場拍照（模擬）", exact: true })
+    .click();
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await expect(page).toHaveURL(/#report-done\//);
   const reportUrl = page.url();
@@ -319,11 +325,7 @@ test("unavailable local storage never falls back to writing a report to the back
   await page
     .getByRole("button", { name: "以展示市民登入", exact: true })
     .click();
-  await page.getByRole("button", { name: "產生示意照片", exact: true }).click();
-  await page
-    .getByRole("button", { name: "使用此桶座標（模擬 GPS）", exact: true })
-    .click();
-  await page.getByLabel("確認使用模擬測試位置，非實測 GPS").check();
+  await captureReport(page);
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("本機展示儲存空間不足");
   await expect(page).toHaveURL(new RegExp(`#report/${binId}$`));
