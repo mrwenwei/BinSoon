@@ -263,3 +263,15 @@ gcloud run services update-traffic binsoon-api --project=binsoon --region=asia-e
 **回復限制：本節覆蓋上方歷史紀錄的直接切回舊版建議。0006不相容於0005／舊單槽映像，不可直接切回00006-n96或更早版本。** 若故障，先切維護，優先向前修復；需要還原時必須協調資料庫備份及對應舊程式，評估備份後寫入，不直接downgrade或丟棄回收歷史。後續同為0006相容版本可沿用一般部署流程。
 
 前端現在可使用 `GET /api/v1/bins/{id}?waste_type=recycling` 取得回收滿度，`GET /api/v1/bins/{id}/history?waste_type=recycling` 取得回收歷史。省略種類的目前滿度預設general；歷史省略種類則返回所有種類及未分類舊紀錄。完整語意見 [雙種類串接](WASTE_STREAMS.md)。
+
+## 2026-10-21 Cloudflare Pages 前端 CORS
+
+正式前端為 https://binsoon.pages.dev/，Pages 連接 mrwenwei/BinSoon，production branch=main。Cloud Run 僅更新 CORS_ORIGINS，新增 https://binsoon.pages.dev 並保留兩個本機 5173 origin；沿用既有映像 digest、Secret references 及資源設定。新 revision=binsoon-api-00009-49b，流量100%。未執行 migration、匯入、seed 或業務寫入。
+
+驗證：帶正式前端 Origin 的 GET /api/v1/map/locations 回200並包含正確 Access-Control-Allow-Origin。實體手機及完整登入／回報流程仍待使用者驗收。部署環境範例已同步，避免下次重部署移除正式網域。
+
+## 2026-10-21 自訂網域 binsoon.app
+
+使用者完成 Pages 自訂網域設定後，Cloud Run CORS_ORIGINS 加入 https://binsoon.app，保留 Pages 網域與兩個本機來源。沿用既有映像與資源，新 revision=binsoon-api-00010-cbg，流量100%；未執行 migration／初始化或業務寫入。正式 Origin 的 OPTIONS 預檢回200並允許 Authorization、Content-Type、Idempotency-Key、If-Match。部署環境範例及前端 README 已同步。
+
+首次 curl https://binsoon.app/ 的 TLS 握手失敗，自訂網域憑證／啟用狀態待 Cloudflare 控制台及瀏覽器確認；完整手機流程仍待驗收。
