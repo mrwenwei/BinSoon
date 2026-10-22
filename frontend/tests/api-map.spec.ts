@@ -156,14 +156,24 @@ test("place precision and proposed lifecycle are preserved with API filters", as
   await expect(page.locator(".location-row")).toHaveCount(1);
   await expect(page.locator(".location-row")).toContainText("API 未知桶");
   // 建議點只在選「建議點」篩選時列入清單。
-  await page.getByRole("button", { name: "建議點", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "主要分頁" })
+    .getByRole("link", { name: "要桶投票", exact: true })
+    .click();
   await expect(page.locator(".location-row")).toHaveCount(1);
   await expect(page.locator(".location-row")).toContainText("尚未設置");
   // 場所代表點（地標）只在地圖上，點標記在面板顯示說明。
-  await page.getByRole("button", { name: "全部", exact: true }).click();
   await page
-    .getByRole("button", { name: "地標：場所代表點測試", exact: true })
+    .getByRole("navigation", { name: "主要分頁" })
+    .getByRole("link", { name: "地圖", exact: true })
     .click();
+  // 固定地標可能在目前可見區之外；以鍵盤選取驗證同一標記及其精度說明。
+  const landmark = page.getByRole("button", {
+    name: "地標：場所代表點測試",
+    exact: true,
+  });
+  await landmark.focus();
+  await landmark.press("Enter");
   await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
     "並非個別清潔箱位置",
   );
@@ -204,6 +214,9 @@ test("compact detail omits history while navigation respects server usability", 
   await expect(page.locator(".api-history")).toHaveCount(0);
   await page
     .getByRole("link", { name: "尋找可用桶並導航", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "改導到 後端替代桶", exact: true })
     .click();
   await expect(page.getByRole("heading", { name: "後端替代桶" })).toBeVisible();
   await expect(

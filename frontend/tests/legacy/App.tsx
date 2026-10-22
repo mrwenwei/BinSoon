@@ -309,7 +309,7 @@ export default function App() {
             current: page === "map" || page === "bin",
           },
           { href: "#vote", label: "這裡需要桶", current: page === "vote" },
-          { href: "#adopt", label: "認養Bin友", current: page === "adopt" },
+          { href: "#adopt", label: "認養BinU", current: page === "adopt" },
           { href: "#honor", label: "清潔隊榮譽榜", current: page === "honor" },
         ]}
         sections={[
@@ -318,7 +318,7 @@ export default function App() {
             links: [
               { href: "#map", label: "找垃圾桶" },
               { href: "#vote", label: "要桶投票" },
-              { href: "#adopt", label: "認養Bin友" },
+              { href: "#adopt", label: "認養BinU" },
               { href: "#member", label: "會員中心" },
               { href: "#stamps", label: "集章與等級" },
               { href: "#rewards", label: "兌換獎勵" },

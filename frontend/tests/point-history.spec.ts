@@ -49,7 +49,9 @@ test("member overview uses separate tabs for point history, redemptions and noti
   ).toBeInViewport();
   await page.getByRole("link", { name: "集章與等級", exact: true }).click();
   await expect(page).toHaveURL(/#member$/);
-  await expect(page.getByText("可用點數 93", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "我的點數" }).locator(".numeral-xl"),
+  ).toHaveText("93");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

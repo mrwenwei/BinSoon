@@ -15,7 +15,7 @@ test("member keeps levels and opens separate reward and report pages", async ({
   );
   if (info.project.name === "mobile")
     await page.setViewportSize({ width: 320, height: 844 });
-  await page.goto("/#login?next=member");
+  await page.goto("/#login?next=levels");
   await page
     .getByRole("button", { name: "以展示市民登入", exact: true })
     .click();
@@ -43,38 +43,43 @@ test("member keeps levels and opens separate reward and report pages", async ({
     .click();
   await expect(page).toHaveURL(/#reports$/);
   await expect(
-    page.getByRole("heading", { name: "我的回報", level: 1 }),
+    page.getByRole("heading", { name: "回報紀錄", level: 1 }),
   ).toBeInViewport();
-  await page.getByRole("link", { name: "返回會員中心", exact: true }).click();
+  await page.getByRole("link", { name: "返回我的", exact: true }).click();
   await page
     .locator(".member-hero")
-    .getByRole("link", { name: "兌換獎品", exact: true })
+    .getByRole("link", { name: "兌換獎勵", exact: true })
     .click();
   await expect(page).toHaveURL(/#rewards$/);
   await expect(
-    page.getByRole("heading", { name: "兌換獎品", level: 1 }),
+    page.getByRole("heading", { name: "兌換獎勵", level: 1 }),
   ).toBeInViewport();
   const rewards = page.locator("main");
-  await rewards.getByLabel("獎品分類").selectOption("grand");
-  await expect(rewards.getByRole("button", { name: /選擇/ })).toHaveCount(1);
-  await expect(rewards.getByRole("button", { name: /選擇/ })).toBeDisabled();
-  await rewards.getByLabel("獎品分類").selectOption("all");
-  await rewards.getByRole("button", { name: /選擇.*超商/ }).click();
+  await expect(
+    rewards.getByRole("region", { name: "規劃中獎勵" }),
+  ).toContainText("點數待定");
+  await rewards
+    .getByRole("button", { name: "選擇 超商咖啡（試營運展示）", exact: true })
+    .click();
   await rewards.getByRole("button", { name: "確認兌換", exact: true }).click();
   await expect(
     rewards.getByRole("heading", { name: "兌換成功" }),
   ).toBeVisible();
-  await expect(page.getByText("可用點數 58", { exact: true })).toBeVisible();
+  await expect(page.getByText("可用點數 90", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "返回會員中心", exact: true }).click();
   await expect(page).toHaveURL(/#member$/);
-  await expect(page.getByText("可用點數 58", { exact: true })).toBeVisible();
-  await expect(page.getByText("累積點數 128", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "我的點數" })
+      .getByText("90", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/累積 128 點/)).toBeVisible();
   await page
-    .getByRole("navigation", { name: "會員中心區塊" })
-    .getByRole("link", { name: "我的回報", exact: true })
+    .getByRole("navigation", { name: "我的功能" })
+    .getByRole("link", { name: /^回報紀錄/ })
     .click();
   const reportTop = (await page
-    .getByRole("heading", { name: "我的回報", exact: true })
+    .getByRole("heading", { name: "回報紀錄", exact: true })
     .boundingBox())!;
   const topbar = (await page.locator(".topbar").boundingBox())!;
   expect(reportTop.y).toBeGreaterThanOrEqual(topbar.y + topbar.height);
@@ -111,14 +116,16 @@ test("notifications live in member and unclaimed bins open their own adoption ap
   await page.getByRole("link", { name: "返回會員中心", exact: true }).click();
   await expect(page).toHaveURL(/#member$/);
   await page.goto("/#bin/" + binId);
-  const entry = page.getByRole("link", { name: "申請認養此桶", exact: true });
-  await expect(entry).toContainText("待認養");
+  const entry = page.getByRole("link", { name: /申請認養此桶/ });
+  await expect(entry).toContainText("認領這位 BinU");
   await entry.click();
   await expect(page).toHaveURL(new RegExp("#adopt/apply/" + binId));
   await expect(
-    page.getByRole("heading", { name: "申請認養", level: 1 }),
+    page.getByRole("heading", { name: "認領 BinU", level: 1 }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: location.label, exact: true }),
+    page
+      .getByRole("region", { name: "等你認領的 BinU", exact: true })
+      .getByText(location.label, { exact: true }),
   ).toBeVisible();
 });

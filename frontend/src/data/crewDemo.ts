@@ -1,3 +1,11 @@
+import {
+  demoCitizenSnapshot,
+  demoBinById,
+  updateDemoCrewCase,
+  DEMO_STAFF_ID,
+} from "./demoCitizen";
+import { problemLabels } from "./api";
+import type { LocationRecord } from "./locations";
 import { isPhoneBrowser } from "./phone";
 export const CREW_STORE = "binsoon-crew-demo-v1";
 export const CREW_SESSION = "binsoon-crew-demo-session";
@@ -20,6 +28,12 @@ export type CrewTask = {
   completionPhoto?: string;
   interiorPhoto?: string;
   completedAt?: string;
+  eventId?: string;
+  binId?: string;
+  staffId?: string;
+  reportCount?: number;
+  reportPhoto?: string;
+  wasteType?: "general" | "recycling";
 };
 const initial: CrewTask[] = [
   {
@@ -123,37 +137,167 @@ export function setCrewSignedIn(value: boolean) {
   window.dispatchEvent(new Event(CREW_UPDATED));
 }
 export function readCrewTasks(): CrewTask[] {
+  let saved: { version?: number; tasks?: CrewTask[] } = {};
   try {
-    const saved = JSON.parse(localStorage.getItem(CREW_STORE) || "null");
-    if (saved?.version === 1 && Array.isArray(saved.tasks)) {
-      return initial.map((task) => {
-        const row = saved.tasks.find((item: CrewTask) => item.id === task.id);
-        if (!row || !["pending", "processing", "done"].includes(row.status))
-          return { ...task };
-        const photo = (value: unknown) =>
-          typeof value === "string" && value.startsWith("data:image/svg+xml,")
-            ? value
-            : undefined;
-        return {
-          ...task,
-          status: row.status,
-          truth: ["yes", "no"].includes(row.truth) ? row.truth : undefined,
-          composition: ["street", "household", "mixed"].includes(
-            row.composition,
-          )
-            ? row.composition
-            : undefined,
-          completionPhoto: photo(row.completionPhoto),
-          interiorPhoto: photo(row.interiorPhoto),
-          completedAt:
-            typeof row.completedAt === "string" ? row.completedAt : undefined,
-        };
-      });
-    }
+    saved = JSON.parse(localStorage.getItem(CREW_STORE) || "{}");
   } catch {
-    /* Malformed demo data uses the fixture, never a backend fallback. */
+    /* Keep deterministic fixtures. */
   }
-  return structuredClone(initial);
+  const citizen = demoCitizenSnapshot();
+  const byEvent = new Map<string, typeof citizen.reports>();
+  for (const report of citizen.reports.filter(
+    (r) => demoBinById(r.bin_id)?.district === "大安區",
+  ))
+    byEvent.set(report.event_id, [
+      ...(byEvent.get(report.event_id) || []),
+      report,
+    ]);
+  const cases: CrewTask[] = [...byEvent.entries()].map(([eventId, reports]) => {
+    const report = reports[0];
+    const bin = demoBinById(report.bin_id);
+    const completion = citizen.crew_completions?.[eventId];
+    return {
+      id: `citizen-${eventId}`,
+      eventId,
+      binId: report.bin_id,
+      wasteType: report.waste_type || "general",
+      name: bin?.label || "本機展示桶",
+      issue: problemLabels[report.type],
+      detail: `${report.waste_type === "recycling" ? "資源回收" : "一般垃圾"} · 市民回報 ${reports.length} 筆 · 本機展示`,
+      distance: bin?.distance_m || 0,
+      minutes: 0,
+      urgent: report.type === "full" || report.type === "dumping",
+      offline: false,
+      reportCount: reports.length,
+      reportPhoto: citizen.media.find(
+        (media) => media.id === report.photo_ids[0],
+      )?.url,
+      source: "citizen",
+      status: completion
+        ? "done"
+        : report.work_status === "arrived"
+          ? "processing"
+          : "pending",
+      truth:
+        report.status === "approved"
+          ? "yes"
+          : report.status === "rejected"
+            ? "no"
+            : undefined,
+      completedAt: completion?.completedAt,
+      staffId: completion?.staffId || DEMO_STAFF_ID,
+      completionPhoto: completion?.photo || undefined,
+    };
+  });
+  return [...initial, ...cases].map((task) => {
+    const row =
+      saved.version === 1 && Array.isArray(saved.tasks)
+        ? saved.tasks.find((r) => r.id === task.id)
+        : undefined;
+    const photo = (value: unknown) =>
+      typeof value === "string" && value.startsWith("data:image/svg+xml,")
+        ? value
+        : undefined;
+    return {
+      ...task,
+      staffId: task.staffId || DEMO_STAFF_ID,
+      ...(row
+        ? {
+            status: task.eventId
+              ? task.status
+              : ["pending", "processing", "done"].includes(row.status)
+                ? row.status
+                : task.status,
+            truth: task.eventId
+              ? task.truth
+              : ["yes", "no"].includes(row.truth || "")
+                ? row.truth
+                : task.truth,
+            composition: ["street", "household", "mixed"].includes(
+              row.composition || "",
+            )
+              ? row.composition
+              : task.composition,
+            completionPhoto: photo(row.completionPhoto) || task.completionPhoto,
+            interiorPhoto: photo(row.interiorPhoto),
+            completedAt: task.eventId
+              ? task.completedAt
+              : typeof row.completedAt === "string"
+                ? row.completedAt
+                : task.completedAt,
+          }
+        : {}),
+    };
+  });
+}
+export function crewTaskLocation(task: CrewTask): LocationRecord {
+  const bin = task.binId && demoBinById(task.binId);
+  if (bin) return bin;
+  const index = initial.findIndex((item) => item.id === task.id);
+  return {
+    id: `demo-crew-bin-${task.id}`,
+    kind: "bin",
+    label: task.name,
+    latitude: 25.033 + (index % 4) * 0.0006,
+    longitude: 121.5358 + (index % 3) * 0.0007,
+    district: "大安區",
+    address: null,
+    note: "清潔隊固定展示站點，非實際桶位",
+    source_type: "local_demo",
+    source_row: null,
+    source_file: null,
+    location_precision: null,
+    reported_count: null,
+    bin_status: null,
+  };
+}
+export function crewRanking(district: string, selectedMonth: string) {
+  const tasks = readCrewTasks();
+  const citizen = demoCitizenSnapshot();
+  const rows = [
+    { staffId: "demo-crew-qing", name: "清潔員阿清", base: 47, likes: 126 },
+    { staffId: DEMO_STAFF_ID, name: "清潔員阿順", base: 32, likes: 128 },
+    { staffId: "demo-crew-an", name: "清潔員阿安", base: 38, likes: 143 },
+    { staffId: "demo-crew-lin", name: "清潔員阿林", base: 31, likes: 61 },
+    { staffId: "demo-crew-he", name: "清潔員阿和", base: 27, likes: 40 },
+  ];
+  const monthOf = (at: string) =>
+    new Date(at)
+      .toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" })
+      .slice(0, 7);
+  return rows
+    .map((row) => ({
+      ...row,
+      completed:
+        (district === "大安區" && selectedMonth === "2026-10" ? row.base : 0) +
+        (district === "大安區"
+          ? tasks.filter(
+              (t) =>
+                t.staffId === row.staffId &&
+                t.status === "done" &&
+                t.truth !== "no" &&
+                !t.offline &&
+                t.completedAt &&
+                monthOf(t.completedAt) === selectedMonth,
+            ).length
+          : 0),
+      likes:
+        (district === "大安區" && selectedMonth === "2026-10" ? row.likes : 0) +
+        (district === "大安區"
+          ? Object.values(citizen.crew_completions || {}).filter(
+              (c) =>
+                c.staffId === row.staffId &&
+                c.likedAt &&
+                monthOf(c.completedAt) === selectedMonth,
+            ).length
+          : 0),
+    }))
+    .sort((a, b) => b.completed - a.completed)
+    .map((row, index, all) => ({
+      ...row,
+      rank: all.findIndex((other) => other.completed === row.completed) + 1,
+      current: row.staffId === DEMO_STAFF_ID,
+    }));
 }
 export function crewPhoto(kind: "report" | "completion" | "interior") {
   const style = getComputedStyle(document.documentElement);
@@ -170,7 +314,7 @@ export function crewPhoto(kind: "report" | "completion" | "interior") {
     )
   );
 }
-export function updateCrewTask(
+export async function updateCrewTask(
   id: string,
   change: Partial<
     Pick<
@@ -205,6 +349,14 @@ export function updateCrewTask(
       tasks: tasks.map((item) => (item.id === id ? next : item)),
     }),
   );
+  if (task.eventId)
+    await updateDemoCrewCase(task.eventId, {
+      arrived: change.status === "processing",
+      truth: change.truth,
+      finish: change.status === "done",
+      photo: next.completionPhoto,
+      composition: next.composition,
+    });
   window.dispatchEvent(new Event(CREW_UPDATED));
 }
 export const crewModes: Record<

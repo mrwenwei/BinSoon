@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { apiFixture, binId, envelope, location } from "./api-fixtures";
 
-// 地圖瀏覽模式：手機抽屜三段、桌面左側面板、四顆篩選＋垃圾種類、原地選桶與深連結。
+// M1 地圖：手機抽屜三段、桌面左側面板、上方搜尋／三顆篩選／垃圾種類、原地選桶與深連結。
 const slot = (
   waste_type: "general" | "recycling",
   fill_level_pct: number,
@@ -99,7 +99,10 @@ async function setup(page: Page) {
                   bin_status: { ...generalOk.bin_status, is_new: true },
                 },
               ]
-            : all,
+            : all.filter(
+                (item) =>
+                  !params.get("q") || item.label.includes(params.get("q")!),
+              ),
         ),
       });
       return true;
@@ -143,13 +146,17 @@ test("phone drawer switches between collapsed, half and full", async ({
   await expect(layout).toHaveAttribute("data-drawer", "half");
   const box = (await layout.boundingBox())!;
   const half = (await panel.boundingBox())!.height;
-  expect(Math.abs(half - box.height / 2)).toBeLessThan(4);
+  expect(Math.abs(half - box.height * 0.55)).toBeLessThan(4);
   // 半開 → 全開
   await handle.click();
   await expect(layout).toHaveAttribute("data-drawer", "full");
   await expect
     .poll(async () => (await panel.boundingBox())!.height)
-    .toBeGreaterThan(box.height - 20);
+    .toBeGreaterThan(
+      box.height -
+        (await page.locator(".mx-home-toolbar").boundingBox())!.height -
+        30,
+    );
   // 全開時點把手回半開（收起只靠往下拖）
   await handle.click();
   await expect(layout).toHaveAttribute("data-drawer", "half");
@@ -184,6 +191,10 @@ test("phone drawer switches between collapsed, half and full", async ({
   await page.keyboard.press("ArrowDown");
   await expect(layout).toHaveAttribute("data-drawer", "collapsed");
   // 收起時選了桶（點地圖標記）→ 面板自動回半開顯示桶資訊
+  await page
+    .getByRole("button", { name: "2 個桶，放大查看", exact: true })
+    .focus();
+  await page.keyboard.press("Enter");
   await marker(page, "垃圾桶：一般空回收滿").click();
   await expect(layout).toHaveAttribute("data-drawer", "half");
   await expect(
@@ -249,7 +260,10 @@ test("the legend is a map-corner button with a keyboard-friendly popover", async
     expect(Math.round(box.width)).toBe(44);
     expect(Math.round(box.height)).toBe(44);
     expect(box.x + box.width).toBeGreaterThan(map.x + map.width - 60);
-    expect(box.y).toBeLessThan(map.y + 60);
+    const toolbar = (await page.locator(".mx-home-toolbar").boundingBox())!;
+    expect(box.y).toBeLessThan(
+      width <= 760 ? toolbar.y + toolbar.height + 40 : map.y + 60,
+    );
     // 開：直式排列 6 項，都在地圖範圍內；版面不會位移（N3）。
     await button.click();
     await expect(button).toHaveAttribute("aria-expanded", "true");
@@ -301,7 +315,7 @@ test("the legend is a map-corner button with a keyboard-friendly popover", async
   }
 });
 
-test("four filters and the waste type drive the list, sorting and marker colours", async ({
+test("map filters and the waste type drive the list, sorting and marker colours", async ({
   page,
 }) => {
   const reads = await setup(page);
@@ -312,7 +326,6 @@ test("four filters and the waste type drive the list, sorting and marker colours
     "全部",
     "還能丟",
     "新設",
-    "建議點",
   ]);
   // 全部：只列桶（地標、建議點不在清單），一般垃圾能丟的排最前。
   await expect(rows).toHaveCount(3);
@@ -328,13 +341,17 @@ test("four filters and the waste type drive the list, sorting and marker colours
   await expect(rows.nth(2)).toContainText("0/2");
   await expect(page.locator(".mx-list")).not.toContainText("公園地標");
   await expect(page.locator(".mx-list")).not.toContainText("建議設置點");
-  // 一般垃圾：標記顏色看一般槽
+  // 展開重疊的桶之後，標記顏色看一般槽。
+  await page
+    .getByRole("button", { name: "2 個桶，放大查看", exact: true })
+    .focus();
+  await page.keyboard.press("Enter");
   await expect(marker(page, "垃圾桶：一般空回收滿")).toHaveClass(
     /state-hungry/,
   );
   await expect(marker(page, "垃圾桶：一般滿回收空")).toHaveClass(/state-full/);
   await expect(marker(page, "地標：公園地標")).toHaveClass(/mx-landmark/);
-  await expect(marker(page, "建議點：建議設置點")).toHaveClass(/mx-proposed/);
+  await expect(marker(page, "建議點：建議設置點")).toHaveCount(0);
   await expect(page.locator(".mx-origin")).toContainText("起點（示意）");
   // 還能丟（一般垃圾）
   await page.getByRole("button", { name: "還能丟", exact: true }).click();
@@ -365,8 +382,11 @@ test("four filters and the waste type drive the list, sorting and marker colours
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("新設");
   expect(reads.at(-1)?.get("filter")).toBe("new");
-  // 建議點：只在這個篩選列入清單
-  await page.getByRole("button", { name: "建議點", exact: true }).click();
+  // 建議點：獨立到要桶投票分頁
+  await page
+    .getByRole("navigation", { name: "主要分頁" })
+    .getByRole("link", { name: "要桶投票", exact: true })
+    .click();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("建議設置點");
   await expect(rows.first()).toContainText("尚未設置");
@@ -548,6 +568,10 @@ test("markers work from the keyboard, focus follows selection and polling keeps 
   await setup(page);
   await page.goto("/#map");
   await expect(page.locator(".location-row")).toHaveCount(3);
+  await page
+    .getByRole("button", { name: "2 個桶，放大查看", exact: true })
+    .focus();
+  await page.keyboard.press("Enter");
   // 地標用鍵盤 Enter 打開
   await marker(page, "地標：公園地標").focus();
   await page.keyboard.press("Enter");
@@ -562,8 +586,12 @@ test("markers work from the keyboard, focus follows selection and polling keeps 
   await expect(
     page.getByRole("heading", { name: "一般空回收滿", level: 1 }),
   ).toBeFocused();
+  await page.locator(".leaflet-control-zoom-in").click();
+  await page.locator(".leaflet-control-zoom-in").click();
+  await page.locator(".leaflet-control-zoom-in").click();
   // 再點一次已選的桶不會改變什麼；把焦點放到別的標記，之後的更新不會把焦點拉回標題（N2）。
-  await marker(page, "垃圾桶：一般空回收滿").click();
+  await marker(page, "垃圾桶：一般空回收滿").focus();
+  await page.keyboard.press("Enter");
   const other = marker(page, "垃圾桶：兩槽都滿");
   await other.focus();
   await page.waitForTimeout(11500);
@@ -637,18 +665,15 @@ test("a fresh half drawer shows at least one whole row at 360 and 390 wide", asy
     const row = (await page.locator(".location-row").first().boundingBox())!;
     expect(row.y).toBeGreaterThanOrEqual(panel.y);
     expect(row.y + row.height).toBeLessThanOrEqual(panel.y + panel.height);
-    // 種類切換在標題列右邊、跟「標題＋小字」垂直置中；搜尋框自己一列、觸控高度 ≥ 44。
-    const title = (await page.locator(".mx-head-title").boundingBox())!;
+    // M1：搜尋及種類篩選在地圖上方，下方面板只放附近清單。
+    const toolbar = (await page.locator(".mx-home-toolbar").boundingBox())!;
     const picker = (await page
       .getByRole("group", { name: "垃圾種類" })
       .boundingBox())!;
-    expect(
-      Math.abs(picker.y + picker.height / 2 - (title.y + title.height / 2)),
-    ).toBeLessThan(4);
-    expect(picker.x + picker.width).toBeLessThanOrEqual(panel.x + panel.width);
     const search = (await page.getByRole("searchbox").boundingBox())!;
     expect(search.height).toBeGreaterThanOrEqual(44);
-    expect(search.y).toBeGreaterThan(picker.y + picker.height);
+    expect(search.y).toBeLessThan(picker.y);
+    expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(panel.y);
     // 清單列改用滿度條後，列高明顯低於 139px。
     expect(row.height).toBeLessThan(120);
     expect(
@@ -712,7 +737,7 @@ test("the icon-only waste toggle switches with arrow keys and keeps focus (C)", 
   await expect(caption).toHaveText("3 個桶 · 一般垃圾優先");
   // 純圖示：每格 44×44，滑鼠移上去有文字提示。
   for (const name of ["一般垃圾", "資源回收"]) {
-    const label = page.locator(`.mx-panel-head label[title="${name}"]`);
+    const label = page.locator(`.mx-home-toolbar label[title="${name}"]`);
     const box = (await label.boundingBox())!;
     expect(Math.round(box.width)).toBe(44);
     expect(Math.round(box.height)).toBe(44);

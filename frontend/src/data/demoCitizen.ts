@@ -24,6 +24,8 @@ import {
 import { demoBinLocations, demoLocation } from "./demoBins";
 import { locations } from "./locations";
 import { validatePhoto } from "./media";
+import { isPhoneBrowser } from "./phone";
+import { demoPhotoSvg } from "./demoPhoto";
 
 export const DEMO_SIGNED_IN = "binsoon-demo-signed-in";
 const KEY = DEMO_STORE_KEY;
@@ -71,9 +73,28 @@ type Receipt = {
   body: string;
   result: Result<unknown>;
 };
+export const DEMO_STAFF_ID = "demo-crew-shun";
+export const demoStaffNames: Record<string, string> = {
+  [DEMO_STAFF_ID]: "清潔員阿順",
+  "demo-crew-qing": "清潔員阿清",
+  "demo-crew-an": "清潔員阿安",
+  "demo-crew-lin": "清潔員阿林",
+  "demo-crew-he": "清潔員阿和",
+};
+export type DemoCrewCompletion = {
+  eventId: string;
+  staffId: string;
+  completedAt: string;
+  likedAt?: string;
+  photo: string;
+};
 type State = {
   version: 1;
   adoption_naming_version?: 1;
+  flow_version?: 1;
+  binu_ui_version?: 1;
+  vote_seeded_ids?: string[];
+  crew_completions?: Record<string, DemoCrewCompletion>;
   reports: Report[];
   entries: PointEntry[];
   proposals: Proposal[];
@@ -119,7 +140,7 @@ function seed(): State {
     id: `demo-proposal-${i + 1}`,
     bin_id: `demo-proposed-bin-${i + 1}`,
     version: 1,
-    name: ["公園入口 Bin友提案", "商圈路口 Bin友提案"][i],
+    name: ["公園入口 BinU提案", "商圈路口 BinU提案"][i],
     reason: "展示需求，仍須現勘，並非真實設桶。",
     district: "大安區",
     latitude: bin.latitude + 0.004 + i * 0.002,
@@ -192,7 +213,7 @@ function seed(): State {
       {
         id: "demo-reward-1",
         code: "demo-coupon",
-        name: "Bin友超商展示券",
+        name: "BinU超商展示券",
         category: "coupon",
         cost: 35,
         stock: 8,
@@ -202,7 +223,7 @@ function seed(): State {
       {
         id: "demo-reward-2",
         code: "demo-coffee",
-        name: "Bin友咖啡展示券",
+        name: "BinU咖啡展示券",
         category: "coupon",
         cost: 70,
         stock: 3,
@@ -212,7 +233,7 @@ function seed(): State {
       {
         id: "demo-reward-3",
         code: "demo-grand",
-        name: "Bin友旅行展示獎",
+        name: "BinU旅行展示獎",
         category: "grand",
         cost: 1000,
         stock: 1,
@@ -237,7 +258,7 @@ function seed(): State {
       {
         id: "demo-notice-1",
         type: "report_reviewed",
-        title: "Bin友感謝你的照顧",
+        title: "BinU感謝你的照顧",
         message: "這是本機展示通知，不代表真實查證。",
         created_at: CREATED,
         read_at: null,
@@ -320,6 +341,68 @@ function withPrivateAdoptions(value: State): State {
   value.adoption_naming_version = 1;
   return value;
 }
+// Add only explicit demo fixtures; never reset existing reports, points, votes or vouchers.
+function withFlowData(value: State): State {
+  if (value.flow_version === 1) return withBinUData(value);
+  value.crew_completions ||= {};
+  for (const report of value.reports) {
+    if (
+      /^demo-report-[123]$/.test(report.id) &&
+      report.status === "approved" &&
+      report.event_status === "closed"
+    ) {
+      report.work_status = "completed";
+      report.assignment_status = "assigned";
+      report.work_order_id = `citizen-${report.event_id}`;
+      value.crew_completions[report.event_id] ||= {
+        eventId: report.event_id,
+        staffId:
+          report.id === "demo-report-3" ? "demo-crew-qing" : DEMO_STAFF_ID,
+        completedAt: report.settled_at || CREATED,
+        photo: "",
+      };
+    }
+  }
+  const coffee = value.rewards.find((r) => r.code === "demo-coffee");
+  if (coffee) {
+    coffee.cost = 3;
+    coffee.name = "超商咖啡（試營運展示）";
+  }
+  value.flow_version = 1;
+  return withBinUData(value);
+}
+function withBinUData(value: State): State {
+  value.vote_seeded_ids ||= [];
+  for (const proposal of value.proposals) {
+    if (
+      !proposal.id.startsWith("demo-suggested-") ||
+      value.vote_seeded_ids.includes(proposal.id)
+    )
+      continue;
+    const hash = [...proposal.bin_id].reduce(
+      (sum, char) => sum + char.charCodeAt(0),
+      0,
+    );
+    proposal.support += 5 + (hash % 30);
+    proposal.oppose += 1 + (hash % 7);
+    proposal.total_votes = proposal.support + proposal.oppose;
+    proposal.support_ratio = proposal.support / proposal.total_votes;
+    value.vote_seeded_ids.push(proposal.id);
+  }
+  if (value.binu_ui_version === 1) return value;
+  // Only the fixed historical fixture changes handler; newly completed work stays with its real demo actor.
+  const report = value.reports.find((r) => r.id === "demo-report-2");
+  const completion = report && value.crew_completions?.[report.event_id];
+  if (completion) completion.staffId = "demo-crew-an";
+  for (const items of [value.proposals, value.rewards])
+    for (const item of items) item.name = item.name.replaceAll("Bin友", "BinU");
+  for (const notice of value.notifications) {
+    notice.title = notice.title.replaceAll("Bin友", "BinU");
+    notice.message = notice.message.replaceAll("Bin友", "BinU");
+  }
+  value.binu_ui_version = 1;
+  return value;
+}
 let memory: State | undefined;
 function state(): State {
   try {
@@ -339,11 +422,13 @@ function state(): State {
       saved.receipts &&
       typeof saved.receipts === "object"
     )
-      return withPrivateAdoptions(withSuggestedProposals(saved));
+      return withFlowData(withPrivateAdoptions(withSuggestedProposals(saved)));
   } catch {
     /* Demo storage never falls through to private backend data. */
   }
-  return withPrivateAdoptions(withSuggestedProposals((memory ||= seed())));
+  return withFlowData(
+    withPrivateAdoptions(withSuggestedProposals((memory ||= seed()))),
+  );
 }
 function commit(value: State) {
   try {
@@ -357,6 +442,14 @@ function commit(value: State) {
   }
   memory = value;
   window.dispatchEvent(new Event(DEMO_UPDATED));
+}
+function reportingSuspended(value: State) {
+  const rejected = value.reports
+    .filter((r) => r.status === "rejected" && r.reviewed_at)
+    .map((r) => Date.parse(r.reviewed_at!))
+    .filter(Number.isFinite)
+    .sort((a, b) => b - a);
+  return rejected.length >= 3 && rejected[2] + 7 * 86400000 > Date.now();
 }
 export function demoMembership(value = state()): Membership {
   const cumulative = value.entries.reduce(
@@ -389,7 +482,7 @@ export function demoMembership(value = state()): Membership {
     rejected_report_count: value.reports.filter(
       (item) => item.status === "rejected",
     ).length,
-    reporting_suspended: false,
+    reporting_suspended: reportingSuspended(value),
     current_tier: { name: tiers[index].name },
     next_tier: next ? { name: next.name } : null,
     points_to_next_tier: next ? next.at - cumulative : null,
@@ -548,14 +641,7 @@ function quota(value = state()) {
   };
 }
 function placeholder() {
-  const tokens = getComputedStyle(document.documentElement);
-  const color = (name: string) => tokens.getPropertyValue(name).trim();
-  return (
-    "data:image/svg+xml," +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480"><rect width="640" height="480" fill="${color("--chrome")}"/><text x="40" y="160" fill="${color("--teal")}" font-size="56">DEMO</text><text x="40" y="240" fill="${color("--text")}" font-size="28">本機展示照片 · 非現場證據</text></svg>`,
-    )
-  );
+  return demoPhotoSvg();
 }
 function publicGet(url: URL, value: State): Result<unknown> | null {
   const name = url.pathname;
@@ -806,7 +892,13 @@ async function mutate(
     return result({ id: item.id, purpose: item.purpose });
   }
   if (name === "/reports") {
-    const bin = found(binLocation(body.bin_id, value), "Bin友");
+    if (reportingSuspended(value))
+      throw new ApiError(
+        403,
+        "REPORTING_SUSPENDED",
+        "本機展示：近期不實回報達三次，暫停回報七天；其他會員功能仍可使用。",
+      );
+    const bin = found(binLocation(body.bin_id, value), "BinU");
     const position = coordinate(
       body.position?.latitude,
       body.position?.longitude,
@@ -815,12 +907,12 @@ async function mutate(
       bin.placement_status === "proposed" ||
       bin.bin_status?.operational_status !== "normal"
     )
-      throw new ApiError(409, "INVALID_TRANSITION", "此 Bin友目前無法回報。");
+      throw new ApiError(409, "INVALID_TRANSITION", "此 BinU目前無法回報。");
     if (distance(position, bin) > 50)
       throw new ApiError(
         422,
         "PROXIMITY_TOO_FAR",
-        "本機展示位置距 Bin友超過 50 公尺，請使用此桶座標。這不是實測 GPS。",
+        "本機展示位置距 BinU超過 50 公尺，請使用此桶座標。這不是實測 GPS。",
       );
     if (
       !Array.isArray(body.photo_ids) ||
@@ -992,6 +1084,8 @@ async function mutate(
       "獎品",
     );
     const member = demoMembership(value);
+    if (!reward.available)
+      throw new ApiError(409, "REWARD_UNAVAILABLE", "此展示獎勵尚未開放兌換。");
     if (reward.stock <= 0)
       throw new ApiError(409, "OUT_OF_STOCK", "展示獎品已售罄。");
     if (member.available_points < reward.cost)
@@ -1034,7 +1128,7 @@ async function mutate(
         "每人至多認領 5 個桶；請先結束現有認領再選新桶。",
       );
     const privateName = text(body.private_bin_name, 50);
-    const bin = found(binLocation(body.bin_id, value), "Bin友");
+    const bin = found(binLocation(body.bin_id, value), "BinU");
     if (
       bin.placement_status === "proposed" ||
       bin.bin_status?.operational_status !== "normal" ||
@@ -1047,7 +1141,7 @@ async function mutate(
       throw new ApiError(
         409,
         "INVALID_TRANSITION",
-        "此展示 Bin友目前無法申請認養。",
+        "此展示 BinU目前無法申請認養。",
       );
     if (!["居民", "店家", "學校", "社區團體"].includes(body.role))
       throw new ApiError(422, "VALIDATION_ERROR", "認養身份無效。");
@@ -1150,6 +1244,10 @@ export function decorateCitizenView(
     ...view,
     location: personalLocation(view.location),
     my_adoption_id: adoption?.id || null,
+    can_report: view.can_report && !reportingSuspended(value),
+    report_block_reason: reportingSuspended(value)
+      ? "suspended"
+      : view.report_block_reason,
     can_apply_adoption:
       view.can_report &&
       !adoption &&
@@ -1209,8 +1307,138 @@ export async function demoRequest(
     commit(value);
     return response;
   };
+  return localWrite(operation);
+}
+async function localWrite<T>(operation: () => T | Promise<T>): Promise<T> {
   if (navigator.locks) return navigator.locks.request(KEY, operation);
   const next = writes.then(operation, operation);
   writes = next.catch(() => {});
   return next;
+}
+
+export function demoCitizenSnapshot() {
+  return structuredClone(state());
+}
+export function demoBinById(id: string) {
+  return binLocation(id, state());
+}
+export function demoReportCompletion(report: Report) {
+  return state().crew_completions?.[report.event_id];
+}
+export async function likeDemoReport(reportId: string) {
+  if (!restoreDemoLogin()) throw new Error("請先以展示市民登入。");
+  return localWrite(() => {
+    const value = structuredClone(state());
+    const report = found(
+      value.reports.find((r) => r.id === reportId),
+      "回報",
+    );
+    const completion = value.crew_completions?.[report.event_id];
+    if (
+      report.status !== "approved" ||
+      report.work_status !== "completed" ||
+      !completion
+    )
+      throw new Error("清潔員完成且查證屬實後才能按讚。");
+    if (completion.likedAt) return;
+    completion.likedAt = now();
+    commit(value);
+  });
+}
+export async function updateDemoCrewCase(
+  eventId: string,
+  change: {
+    arrived?: boolean;
+    truth?: "yes" | "no";
+    finish?: boolean;
+    photo?: string;
+    composition?: string;
+  },
+) {
+  if (
+    sessionStorage.getItem("binsoon-crew-demo-session") !== "yes" ||
+    !isPhoneBrowser()
+  )
+    throw new Error("請以模擬清潔員登入，並使用手機現場處理。");
+  return localWrite(() => {
+    const value = structuredClone(state());
+    const reports = value.reports.filter((r) => r.event_id === eventId);
+    if (!reports.length) throw new Error("找不到本機展示案件。");
+    if (
+      reports.some((r) => binLocation(r.bin_id, value)?.district !== "大安區")
+    )
+      throw new Error("此案件不在大安區模擬清潔員的展示責任區。");
+    if (value.crew_completions?.[eventId]) return;
+    const at = now();
+    if (change.arrived)
+      for (const report of reports) {
+        report.work_status = "arrived";
+        report.assignment_status = "assigned";
+        report.work_order_id = `citizen-${eventId}`;
+        report.accepted_at ||= at;
+        if (report.status === "pending") report.status = "processing";
+      }
+    if (change.truth) {
+      if (reports.some((r) => r.work_status !== "arrived"))
+        throw new Error("請先確認到場。");
+      for (const report of reports) {
+        if (report.settled_at) continue;
+        report.status = change.truth === "yes" ? "approved" : "rejected";
+        report.reviewed_at = at;
+        report.settled_at = at;
+        const points =
+          change.truth === "yes" && report.first_reporter
+            ? report.adopter
+              ? 2
+              : 1
+            : 0;
+        report.pending_points = 0;
+        report.awarded_points = points;
+        report.rejection_reason =
+          change.truth === "no" ? "模擬現場查證：與回報不符" : null;
+        if (points)
+          value.entries.push({
+            id: `demo-settlement-${report.id}`,
+            type: "展示查證回報獎勵",
+            amount: points,
+            balance_after: demoMembership(value).available_points + points,
+            report_id: report.id,
+            redemption_id: null,
+            created_at: at,
+          });
+        value.notifications.unshift({
+          id: `demo-reviewed-${report.id}`,
+          type: "report_reviewed",
+          title: "清潔員已完成查證（模擬）",
+          message: points
+            ? `查證屬實，已入帳 ${points} 點。`
+            : "查證結果已更新，請查看回報紀錄。",
+          created_at: at,
+          read_at: null,
+          waste_type: report.waste_type || "general",
+          target: { kind: "report", id: report.id },
+        });
+      }
+    }
+    if (change.finish) {
+      if (
+        reports.some((r) => r.work_status !== "arrived" || !r.settled_at) ||
+        !["street", "household", "mixed"].includes(change.composition || "") ||
+        !change.photo?.startsWith("data:image/svg+xml,")
+      )
+        throw new Error("完成前需到場、查證、垃圾組成及模擬完成照。");
+      for (const report of reports) {
+        report.work_status = "completed";
+        report.event_status = "closed";
+      }
+      value.crew_completions ||= {};
+      value.crew_completions[eventId] = {
+        eventId,
+        staffId: DEMO_STAFF_ID,
+        completedAt: at,
+        photo: change.photo,
+      };
+    }
+    commit(value);
+  });
 }

@@ -51,6 +51,7 @@ type Draft = {
   confirmed: boolean;
   file?: File;
   demoPhoto?: boolean;
+  aiProblem?: Problem;
   demoPosition?: "near" | "far" | "unavailable";
   mediaId?: string;
   operation?: Command;
@@ -213,10 +214,16 @@ function PhoneReportForm({
   const [busy, setBusy] = useState(false);
   const [validating, setValidating] = useState(false);
   const [preview, setPreview] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
   const actor = useRef(session);
   actor.current = session;
   const alive = useRef(true);
   const selection = useRef(0);
+  useEffect(() => {
+    selection.current++;
+    setAnalyzing(false);
+    setValidating(false);
+  }, [session?.access_token]);
   const lock = useRef(false);
   useEffect(() => {
     alive.current = true;
@@ -259,7 +266,7 @@ function PhoneReportForm({
       view.data!.location.latitude,
       view.data!.location.longitude,
     ) <= 50;
-  const frozen = Boolean(draft.operation) || busy;
+  const frozen = Boolean(draft.operation) || busy || analyzing;
   const demoMarker =
     draft.demoPhoto || draft.demoPosition
       ? `[模擬測試：${[draft.demoPhoto && "示意照片", draft.demoPosition && "模擬座標（非實測 GPS）"].filter(Boolean).join("／")}]\n`
@@ -270,7 +277,13 @@ function PhoneReportForm({
     const version = ++selection.current;
     const token = session?.access_token;
     setError("");
-    update(draftKey, { file: undefined, mediaId: undefined, demoPhoto: false });
+    update(draftKey, {
+      file: undefined,
+      mediaId: undefined,
+      demoPhoto: false,
+      aiProblem: undefined,
+    });
+    setAnalyzing(false);
     if (!input) {
       setValidating(false);
       return;
@@ -283,8 +296,26 @@ function PhoneReportForm({
         alive.current &&
         actor.current?.access_token === token &&
         version === selection.current
-      )
+      ) {
         update(draftKey, { file, demoPhoto });
+        if (demoPhoto && isDemoToken(token)) {
+          setAnalyzing(true);
+          // 純本機情境：依所選槽的展示桶況決定預選，不傳送圖片至 AI 服務。
+          const aiProblem: Problem =
+            view.data?.status.fill_status === "full" ? "full" : "dirty";
+          await new Promise<void>((resolve) =>
+            window.setTimeout(resolve, 1600),
+          );
+          if (
+            alive.current &&
+            actor.current?.access_token === token &&
+            version === selection.current
+          ) {
+            update(draftKey, { type: aiProblem, aiProblem });
+            setAnalyzing(false);
+          }
+        }
+      }
     } catch (e) {
       if (
         alive.current &&
@@ -386,7 +417,7 @@ function PhoneReportForm({
       <a className="back-link" href={wasteHref(`bin/${id}`, wasteType)}>
         返回桶詳情
       </a>
-      <h1>{quickAdoption ? "認養快捷通報" : "回報問題"}</h1>
+      <h1>{quickAdoption ? "認養快捷通報" : "回報桶況／問題"}</h1>
       {quickAdoption && !quickAllowed && (
         <p role="alert">僅有效認養可快捷通報；請回認養管理確認狀態。</p>
       )}
@@ -416,34 +447,41 @@ function PhoneReportForm({
           disabled={frozen}
           onChange={onWasteChange}
         />
-        <fieldset disabled={frozen}>
+        <fieldset
+          className={
+            isDemoToken(session?.access_token) ? "m-report-fields" : undefined
+          }
+          disabled={frozen}
+        >
           <legend>現場問題</legend>
-          <label>
-            問題類型
-            <select
-              value={draft.type}
-              onChange={(e) =>
-                update(draftKey, { type: e.target.value as Problem })
-              }
-            >
-              {Object.entries(problemLabels).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            說明
-            <textarea
-              value={draft.description}
-              maxLength={500 - demoMarker.length}
-              required={draft.type === "other"}
-              onChange={(e) =>
-                update(draftKey, { description: e.target.value })
-              }
-            />
-          </label>
+          <div className="report-problem-fields">
+            <label>
+              問題類型
+              <select
+                value={draft.type}
+                onChange={(e) =>
+                  update(draftKey, { type: e.target.value as Problem })
+                }
+              >
+                {Object.entries(problemLabels).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              說明
+              <textarea
+                value={draft.description}
+                maxLength={500 - demoMarker.length}
+                required={draft.type === "other"}
+                onChange={(e) =>
+                  update(draftKey, { description: e.target.value })
+                }
+              />
+            </label>
+          </div>
           <section className="phone-report-capture" aria-label="手機現場回報">
             <h2>1. 分享現場位置</h2>
             <p>需分享座標並核對距離，距離桶位 50 公尺內才可回報。</p>
@@ -504,6 +542,18 @@ function PhoneReportForm({
                 src={preview}
                 alt="待送出的模擬測試照片"
               />
+            )}
+            {analyzing && (
+              <div className="ai-analysis" role="status" aria-live="polite">
+                <span className="ai-progress" aria-hidden="true" />
+                AI 判讀中（模擬）…正在辨識桶況與問題
+              </div>
+            )}
+            {draft.aiProblem && !analyzing && (
+              <p className="ai-analysis" role="status">
+                AI 判讀（模擬）：{problemLabels[draft.aiProblem]} ·
+                已幫你選好，不對可以自己改。此為本機情境，未使用真實 AI。
+              </p>
             )}
             <p className="tiny">
               {isDemoToken(session?.access_token)

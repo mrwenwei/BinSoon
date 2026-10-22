@@ -74,6 +74,8 @@ interface Props {
   origin?: { latitude: number; longitude: number; label: string };
   /** 有給時：只在選取對象改變時置中，並把選取點往上移這麼多像素（手機抽屜遮住下半部）。 */
   focusOffsetY?: number;
+  /** 瀏覽上方工具列佔用的高度，與底部抽屜一起決定可見區。 */
+  browseTopInset?: number;
   /** 瀏覽模式：數字變了就把目前選取重新置中（例如抽屜從全開回到半開）。 */
   focusKey?: number;
 }
@@ -102,6 +104,7 @@ export function LocationMap({
   markerDescription,
   origin,
   focusOffsetY,
+  browseTopInset = 0,
   focusKey,
   fitKey,
 }: Props) {
@@ -109,6 +112,8 @@ export function LocationMap({
   const browse = focusOffsetY !== undefined;
   const offsetRef = useRef(focusOffsetY ?? 0);
   offsetRef.current = focusOffsetY ?? 0;
+  const topInsetRef = useRef(browseTopInset);
+  topInsetRef.current = browseTopInset;
   const iconFor = (location: LocationRecord, active: boolean) =>
     markerIcon
       ? markerIcon(location, active)
@@ -347,7 +352,7 @@ export function LocationMap({
           instance.fitBounds(
             L.latLngBounds(locations.map((p) => [p.latitude, p.longitude])),
             {
-              paddingTopLeft: [50, 45],
+              paddingTopLeft: [50, 45 + topInsetRef.current],
               paddingBottomRight: [50, 45 + offsetRef.current * 2],
               maxZoom: 15,
               animate: false,
@@ -414,22 +419,28 @@ export function LocationMap({
   }, [browse, selected?.id, selected?.latitude, selected?.longitude, focusKey]);
   // 瀏覽模式第一次量到抽屜高度時，把初始中心移到抽屜上方的可見區（只做一次）。
   const initialOffsetDone = useRef(false);
+  const previousTopInset = useRef(browseTopInset);
   useEffect(() => {
-    if (
-      !browse ||
-      initialOffsetDone.current ||
-      !initialCenter ||
-      !focusOffsetY ||
-      !map.current
-    )
+    if (!browse || !initialCenter || !focusOffsetY || !map.current) return;
+    if (initialOffsetDone.current) {
+      if (!selected && previousTopInset.current !== browseTopInset)
+        map.current.panBy(
+          [0, (previousTopInset.current - browseTopInset) / 2],
+          { animate: false },
+        );
+      previousTopInset.current = browseTopInset;
       return;
+    }
     initialOffsetDone.current = true;
+    previousTopInset.current = browseTopInset;
     if (selected) return;
     map.current.setView(initialCenter, map.current.getZoom(), {
       animate: false,
     });
-    map.current.panBy([0, focusOffsetY], { animate: false });
-  }, [browse, focusOffsetY]);
+    map.current.panBy([0, focusOffsetY - browseTopInset / 2], {
+      animate: false,
+    });
+  }, [browse, focusOffsetY, browseTopInset, selected?.id]);
   useEffect(() => {
     if (!origin || !map.current) return;
     const marker = L.marker([origin.latitude, origin.longitude], {

@@ -95,6 +95,7 @@ export function Navigation({
     district: "all",
     ...ORIGIN,
     limit: 3,
+    exclude_bin_id: view.location.id,
     ...(wasteType === "recycling" ? { waste_type: "recycling" } : {}),
   });
   const alternatives = useApi(
@@ -102,11 +103,22 @@ export function Navigation({
     (signal) => request<{ items: ApiLocation[] }>(nextPath, { signal }),
     true,
   );
+  const [redirected, setRedirected] = useState(false);
+  useEffect(() => {
+    if (available) setRedirected(false);
+  }, [available]);
+  const alternative = alternatives.data?.items.find(
+    (p) =>
+      p.id !== view.location.id &&
+      p.bin_status?.is_usable &&
+      p.placement_status !== "proposed" &&
+      p.kind === "bin",
+  );
   const destination = available
     ? view.location
-    : alternatives.data?.items.find(
-        (p) => p.id !== view.location.id && p.bin_status?.is_usable,
-      );
+    : redirected && !alternatives.error
+      ? alternative
+      : undefined;
   const mapItems = useMemo(
     () =>
       destination
@@ -116,8 +128,8 @@ export function Navigation({
               bin_status: available ? view.status : destination.bin_status,
             },
           ]
-        : [],
-    [destination, available, view.status],
+        : [{ ...view.location, bin_status: view.status }],
+    [destination, available, view.status, view.location],
   );
   const [revision, setRevision] = useState(0);
   const [planned, setPlanned] = useState<{
@@ -306,7 +318,38 @@ export function Navigation({
           </p>
         )}
         {!available && (
-          <p role="status">原目的桶目前不可用，依後端結果尋找替代桶。</p>
+          <section className="navigation-reroute card" aria-label="滿桶改導">
+            <h2>
+              {view.status.fill_status === "full"
+                ? "這個桶吃飽了"
+                : "原目的桶目前不可用"}
+            </h2>
+            <p>
+              {view.location.label} ·
+              保持目前垃圾種類，改找距離示意起點最近的可用桶。
+            </p>
+            {alternative && !alternatives.error && (
+              <>
+                <p>
+                  建議改去 {alternative.label} ·{" "}
+                  {alternative.distance_m == null
+                    ? "距離未知"
+                    : `距起點 ${Math.round(alternative.distance_m)} 公尺`}
+                  （示意）
+                </p>
+                {redirected ? (
+                  <p>已改導至最近未滿的桶。</p>
+                ) : (
+                  <button
+                    className="button primary"
+                    onClick={() => setRedirected(true)}
+                  >
+                    改導到 {alternative.label}
+                  </button>
+                )}
+              </>
+            )}
+          </section>
         )}
         <LoadState {...alternatives} />
         {destination ? (
@@ -416,7 +459,10 @@ export function Navigation({
             </div>
           </>
         ) : (
-          <>{!alternatives.loading && <p>目前沒有其他可用桶</p>}</>
+          !alternatives.loading &&
+          !alternative &&
+          !available &&
+          !alternatives.error && <p>目前沒有其他可用桶</p>
         )}
       </section>
     </main>

@@ -49,10 +49,10 @@ export function landmarkIcon(selected: boolean) {
   });
 }
 
-export function proposedIcon(selected: boolean) {
+export function proposedIcon(selected: boolean, support?: number) {
   return L.divIcon({
     className: `mx-proposed ${selected ? "selected" : ""}`,
-    html: '<span aria-hidden="true">＋</span>',
+    html: `<span aria-hidden="true">＋</span>${support != null && Number.isFinite(support) && support >= 0 ? `<small class="proposal-marker-votes" aria-hidden="true">支持 ${Math.floor(support)}</small>` : ""}`,
     iconSize: [44, 44],
     iconAnchor: [22, 22],
   });
@@ -62,9 +62,10 @@ export function browseMarkerIcon(
   location: LocationRecord,
   selected: boolean,
   wasteType: WasteType,
+  support?: number,
 ) {
   if (location.kind === "place") return landmarkIcon(selected);
-  if (isProposed(location)) return proposedIcon(selected);
+  if (isProposed(location)) return proposedIcon(selected, support);
   const status = location.bin_status;
   return markerIcon(
     "bin",

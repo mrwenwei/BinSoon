@@ -43,7 +43,7 @@ async function setup(page: Page) {
 }
 async function claim(page: Page, id: string, name: string) {
   await page.goto(`/#adopt/apply/${id}`);
-  await page.getByLabel("Bin友的私人桶名", { exact: true }).fill(name);
+  await page.getByLabel("BinU的私人桶名", { exact: true }).fill(name);
   await page.getByRole("button", { name: "預覽認領", exact: true }).click();
   await page.getByRole("button", { name: "確認送出", exact: true }).click();
   await expect(
@@ -61,7 +61,7 @@ test("claims have private editable names, allow another adopter and survive relo
     ).toBeVisible();
   await claim(page, binId, "宵夜買鹽酥雞桶");
   await page.getByRole("link", { name: "查看我的認養", exact: true }).click();
-  await page.getByLabel("Bin友的私人桶名", { exact: true }).fill("趕末班車桶");
+  await page.getByLabel("BinU的私人桶名", { exact: true }).fill("趕末班車桶");
   await page.getByRole("button", { name: "預覽更名", exact: true }).click();
   await page.getByRole("button", { name: "確認送出", exact: true }).click();
   await expect(
@@ -71,7 +71,7 @@ test("claims have private editable names, allow another adopter and survive relo
   await expect(
     page.getByRole("heading", { name: "趕末班車桶", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "查看 Bin友", exact: true }).click();
+  await page.getByRole("link", { name: "查看 BinU", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "趕末班車桶", exact: true }),
   ).toBeVisible();
@@ -102,7 +102,7 @@ test("five-claim limit is enforced across tabs and ending a claim releases its s
   await setup(second);
   const otherId = "10000000-0000-4000-8000-000000000002";
   await second.goto(`/#adopt/apply/${otherId}`);
-  await second.getByLabel("Bin友的私人桶名", { exact: true }).fill("第六個桶");
+  await second.getByLabel("BinU的私人桶名", { exact: true }).fill("第六個桶");
   await second.getByRole("button", { name: "預覽認領", exact: true }).click();
   await claim(page, "10000000-0000-4000-8000-000000000003", "遛狗轉角桶");
   await expect(
@@ -139,7 +139,7 @@ test("five-claim limit is enforced across tabs and ending a claim releases its s
   await expect(
     page.getByText("已認領 5 / 5 個桶（含待審申請）", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByLabel("Bin友的私人桶名", { exact: true })).toHaveCount(
+  await expect(page.getByLabel("BinU的私人桶名", { exact: true })).toHaveCount(
     0,
   );
   await page.goto("/#adopt/demo-adoption-1");

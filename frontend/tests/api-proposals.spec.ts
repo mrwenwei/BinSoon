@@ -320,7 +320,7 @@ test("public, own proposals and votes paginate; detail deep link keeps a null ra
       return true;
     }
   });
-  await page.goto("/#vote");
+  await page.goto("/#vote/all");
   await expect(page.getByRole("heading", { name: "第一頁提案" })).toBeVisible();
   await page.getByRole("button", { name: "下一頁", exact: true }).click();
   await expect(page.getByRole("heading", { name: "第二頁提案" })).toBeVisible();
@@ -332,7 +332,7 @@ test("public, own proposals and votes paginate; detail deep link keeps a null ra
   await expect(page.getByRole("heading", { name: "第二頁提案" })).toBeVisible();
   await page.getByRole("link", { name: "我的投票", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "我的投票", exact: true }),
+    page.getByRole("heading", { name: "投票紀錄", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "下一頁", exact: true }).click();
   await page.getByRole("link", { name: "查看提案與投票", exact: true }).click();

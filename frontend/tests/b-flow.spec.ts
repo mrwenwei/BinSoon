@@ -61,7 +61,7 @@ test("a newly created proposal can demonstrate qualifying community votes throug
   await expect(detail).toContainText("送評估");
   await page.getByRole("button", { name: "評估通過，進入會勘" }).click();
   await page.getByRole("button", { name: "會勘通過，完成示範設置" }).click();
-  await expect(page.getByLabel("為Bin友取名")).toBeVisible();
+  await expect(page.getByLabel("為BinU取名")).toBeVisible();
 });
 
 test("a final report allows a new event and retains both awards across reload", async ({
@@ -132,7 +132,7 @@ test("P14 approval grants A/B adopter rewards and ending adoption preserves subm
   await page.goto("/tests/legacy/index.html#login?next=adopt");
   await page.getByRole("button", { name: "用台北通登入（示範）" }).click();
   await expect(
-    page.getByRole("heading", { name: "我的Bin友", exact: true }),
+    page.getByRole("heading", { name: "我的BinU", exact: true }),
   ).toBeVisible();
   await page.getByLabel("認養者公開名稱").fill("巷口日常小隊");
   await page.getByRole("button", { name: "送出認養申請", exact: true }).click();
@@ -204,7 +204,7 @@ test("P13 freezes a qualifying vote and advances review, survey and naming witho
   await page.getByRole("button", { name: "評估通過，進入會勘" }).click();
   await page.getByRole("button", { name: "會勘通過，完成示範設置" }).click();
   await expect(detail).toContainText("示範設置成果，不代表現場已新增清潔箱。");
-  await page.getByLabel("為Bin友取名").fill("巷口順順");
+  await page.getByLabel("為BinU取名").fill("巷口順順");
   await page.getByRole("button", { name: "送出命名審核" }).click();
   await expect(detail).toContainText("命名待審：巷口順順");
   await page.getByRole("button", { name: "核准命名" }).click();

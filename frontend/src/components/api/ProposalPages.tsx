@@ -1,3 +1,4 @@
+import { ProposalProgress } from "./ProposalProgress";
 import { useDemoData } from "../../data/demoMode";
 import { useCallback, useState } from "react";
 import {
@@ -35,12 +36,17 @@ const voteOptions = [
   { vote: "oppose", label: "反對", commandLabel: "反對提案" },
   { vote: null, label: "撤票", commandLabel: "撤回投票" },
 ] as const;
-export function ProposalLinks() {
+export function ProposalLinks({
+  votingHistory = false,
+}: {
+  votingHistory?: boolean;
+}) {
   return (
     <nav className="api-pagination" aria-label="提案導覽">
-      <a href="#vote">全部提案</a>
-      <a href="#vote/create">建立提案</a>
-      <a href="#vote/mine">我的提案</a>
+      <a href="#vote">建議點地圖</a>
+      <a href="#vote/all">全部提案</a>
+      {!votingHistory && <a href="#vote/create">建立提案</a>}
+      {!votingHistory && <a href="#vote/mine">我的提案</a>}
       <a href="#vote/votes">我的投票</a>
     </nav>
   );
@@ -111,9 +117,9 @@ export function ProposalList({
           ? "要桶投票"
           : mode === "mine"
             ? "我的提案"
-            : "我的投票"}
+            : "投票紀錄"}
       </h1>
-      <ProposalLinks />
+      <ProposalLinks votingHistory={mode === "votes"} />
       <p>
         {useDemoData(session?.access_token)
           ? "提案與票數為本機展示；投票通過仍不代表獲准設桶或已完成現勘。"
@@ -166,6 +172,7 @@ export function ProposalList({
         {list.data?.items.map((item) => (
           <li className="card" key={item.id}>
             <ProposalSummary item={item} />
+            {mode === "votes" && <ProposalProgress item={item} />}
             <a
               href={
                 admin ? `#admin/proposals/${item.id}` : `#proposals/${item.id}`
@@ -282,7 +289,7 @@ export function ProposalDetail({
               <span style={{ width: `${(item.support_ratio || 0) * 100}%` }} />
             </div>
             <p className="proposal-naming-note">
-              ☆ 每位認領者都能自由為 Bin友命名，只有自己看得到；每人至多認領 5
+              ☆ 每位認領者都能自由為 BinU命名，只有自己看得到；每人至多認領 5
               個桶。
             </p>
             <p className="tiny" aria-live="polite">

@@ -2,7 +2,7 @@ import type { LocationKind } from "../data/locations";
 import type { BinState } from "../data/binState";
 import { stateVisual } from "./binVisual";
 
-// 32×36 像素Bin友（設計系統 MapMarker）：外框 text-on-light、眼白 mascot-eye、
+// 32×36 像素BinU（設計系統 MapMarker）：外框 text-on-light、眼白 mascot-eye、
 // 腮紅 mascot-blush；身體顏色依桶況，場所代表點是 place 身體加星星。
 export function mascotSvg(kind: LocationKind, state: BinState = "hungry") {
   const place = kind === "place";

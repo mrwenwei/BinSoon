@@ -1,3 +1,4 @@
+import { MapNotice } from "./MapNotice";
 import { useDemoData } from "../../data/demoMode";
 import {
   wasteName,
@@ -23,6 +24,7 @@ import {
   query,
   type ApiCompartment,
   type ApiLocation,
+  type Proposal,
 } from "../../data/api";
 import { stateLabels, usableCount } from "../../data/binState";
 import { stateVisual } from "../binVisual";
@@ -53,12 +55,11 @@ import { BinPanel } from "./BinPage";
 // 時原地顯示資訊。資料流照原本：/map/locations 全部分頁讀完、?waste_type=
 // 決定看哪一槽。清單列、篩選膠囊、狀態膠囊、圖例都沿用既有元件。
 
-type Filter = "all" | "usable" | "new" | "proposed";
+type Filter = "all" | "usable" | "new";
 const filters: [Filter, string][] = [
   ["all", "全部"],
   ["usable", "還能丟"],
   ["new", "新設"],
-  ["proposed", "建議點"],
 ];
 type Drawer = "collapsed" | "half" | "full";
 const drawerOrder: Drawer[] = ["collapsed", "half", "full"];
@@ -111,9 +112,16 @@ export function MapPage({
   wasteType,
   binId,
   placeId,
-}: WasteControls & { binId?: string; placeId?: string }) {
+  voting = false,
+}: WasteControls & { binId?: string; placeId?: string; voting?: boolean }) {
   const { session } = useSession();
   const [filter, setFilter] = useState<Filter>("all");
+  const [voteNotice, setVoteNotice] = useState("");
+  useEffect(() => {
+    setFilter("all");
+    setQ("");
+    setSearch("");
+  }, [voting]);
   const [q, setQ] = useState("");
   // 預設只拿後端保留的近七日撤除標記；勾選後查詢全部撤除紀錄。
   const [includeRemoved, setIncludeRemoved] = useState(false);
@@ -138,15 +146,69 @@ export function MapPage({
     ...ORIGIN,
   });
   const list = useApi(
-    path,
-    async (signal) => ({
-      data: await allPages<ApiLocation>(path, {
+    `${path}/${voting ? "vote" : "map"}`,
+    async (signal) => {
+      const bins = await allPages<ApiLocation>(path, {
         signal,
         token: session?.access_token,
-      }),
-      etag: null,
-      replayed: false,
-    }),
+      });
+      if (voting) {
+        let proposals: Proposal[] = [];
+        try {
+          proposals = await allPages<Proposal>("/proposals?limit=100", {
+            signal,
+            token: session?.access_token,
+          });
+          signal.throwIfAborted();
+          setVoteNotice("");
+        } catch {
+          signal.throwIfAborted();
+          setVoteNotice("提案清單暫時無法取得，先顯示已載入的建議點。");
+        }
+        for (const item of proposals) {
+          if (
+            search.trim() &&
+            !`${item.name} ${item.reason}`
+              .toLocaleLowerCase()
+              .includes(search.trim().toLocaleLowerCase())
+          )
+            continue;
+          if (["installed", "declined"].includes(item.status)) continue;
+          const existing = bins.find((b) => b.id === item.bin_id);
+          if (existing) {
+            Object.assign(existing, { proposalSupport: item.support });
+            continue;
+          }
+          bins.push(
+            Object.assign(
+              {
+                id: item.bin_id,
+                kind: "bin",
+                label: item.approved_name || item.name,
+                district: item.district,
+                latitude: item.latitude,
+                longitude: item.longitude,
+                address: null,
+                note: "市民提案／待現勘，非已設置桶",
+                source_type: "citizen_proposal",
+                source_row: null,
+                source_file: null,
+                location_precision: null,
+                reported_count: null,
+                bin_type: "proposed",
+                placement_status: "proposed",
+                distance_m: null,
+                walking_estimate_seconds: null,
+                bin_status: null,
+                compartments: [],
+              } as ApiLocation,
+              { proposalSupport: item.support },
+            ),
+          );
+        }
+      }
+      return { data: bins, etag: null, replayed: false };
+    },
     true,
     // 開著桶面板時暫停清單輪詢（用不到清單）；回到清單立刻重抓一次再恢復。
     { paused: Boolean(binId) },
@@ -158,7 +220,7 @@ export function MapPage({
     const bins = items.filter(
       (item) =>
         item.kind === "bin" &&
-        (filter === "proposed"
+        (voting
           ? isProposed(item)
           : !isProposed(item) &&
             (filter !== "usable" || usableFor(item, wasteType))),
@@ -167,7 +229,7 @@ export function MapPage({
       .map((item, index) => ({ item, index, ok: usableFor(item, wasteType) }))
       .sort((a, b) => Number(b.ok) - Number(a.ok) || a.index - b.index)
       .map(({ item }) => item);
-  }, [items, filter, wasteType]);
+  }, [items, filter, wasteType, voting]);
   const place =
     !binId && placeId
       ? (items?.find((item) => item.id === placeId && item.kind === "place") ??
@@ -195,11 +257,17 @@ export function MapPage({
     : place;
   // 地圖：「全部」顯示桶＋地標＋建議點；其他篩選只顯示清單上的點。選中的點一定顯示。
   const mapItems = useMemo(() => {
-    const shown = ((filter === "all" ? items : rows) ?? []).map(withFresh);
+    const shown = (
+      (voting
+        ? rows
+        : filter === "all"
+          ? items?.filter((item) => !isProposed(item))
+          : rows) ?? []
+    ).map(withFresh);
     return selected && !shown.some((item) => item.id === selected.id)
       ? [...shown, selected]
       : shown;
-  }, [items, rows, filter, selected, withFresh]);
+  }, [items, rows, filter, selected, withFresh, voting]);
   // 選桶、選地標都寫進網址（push），瀏覽器返回鍵回到清單；選完把焦點移到面板標題。
   const pendingFocus = useRef<string | null>(null);
   const layoutRef = useRef<HTMLElement>(null);
@@ -220,33 +288,48 @@ export function MapPage({
       pendingFocus.current = item.id;
       window.location.hash = (
         item.kind === "bin"
-          ? wasteHref(`bin/${item.id}`, wasteType)
+          ? wasteHref(
+              `bin/${item.id}${voting || isProposed(item) ? "?tab=vote" : ""}`,
+              wasteType,
+            )
           : wasteHref(`map?place=${encodeURIComponent(item.id)}`, wasteType)
       ).slice(1);
     },
-    [wasteType, binId, placeId],
+    [wasteType, binId, placeId, voting],
   );
   const binLoaded = useCallback(
     (location: ApiLocation) => {
       setBinLocation(location);
+      if (isProposed(location) && !voting) {
+        window.location.replace(
+          wasteHref(`bin/${location.id}?tab=vote`, wasteType),
+        );
+      }
       focusTitle(location.id);
     },
-    [focusTitle],
+    [focusTitle, voting, wasteType],
   );
   useEffect(() => {
     if (place) focusTitle(place.id);
   }, [place?.id, focusTitle]);
   const iconFor = useCallback(
     (location: LocationRecord, active: boolean) =>
-      browseMarkerIcon(location, active, wasteType),
+      browseMarkerIcon(
+        location,
+        active,
+        wasteType,
+        (location as LocationRecord & { proposalSupport?: number })
+          .proposalSupport,
+      ),
     [wasteType],
   );
 
   // ── 抽屜（只在手機） ──
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
   const [drawer, setDrawer] = useState<Drawer>("half");
-  const [dims, setDims] = useState({ layout: 0, head: 0 });
+  const [dims, setDims] = useState({ layout: 0, head: 0, toolbar: 0 });
   const [dragPx, setDragPx] = useState<number | null>(null);
   const [focusKey, setFocusKey] = useState(0);
   const drag = useRef<{
@@ -260,26 +343,30 @@ export function MapPage({
     const measure = () =>
       setDims({
         layout: layoutRef.current?.clientHeight ?? 0,
+        toolbar: toolbarRef.current?.offsetHeight ?? 0,
         head:
           (handleRef.current?.offsetHeight ?? 0) +
           (headRef.current?.offsetHeight ?? 0),
       });
     measure();
     const observer = new ResizeObserver(measure);
-    for (const ref of [layoutRef, handleRef, headRef])
+    for (const ref of [layoutRef, handleRef, headRef, toolbarRef])
       if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
-  }, [mobile]);
+  }, [mobile, voting, binId, placeId]);
   const showingBallot = !!binId && !!selected && isProposed(selected);
   const heights = useMemo(() => {
-    const full = Math.max(dims.head, dims.layout - 12);
+    const full = Math.max(
+      dims.head,
+      dims.layout - (dims.toolbar ? dims.toolbar + 24 : 12),
+    );
     return {
       collapsed: dims.head,
       half: Math.min(
         full,
         Math.max(
           dims.head,
-          Math.round(dims.layout * (showingBallot ? 0.72 : 0.5)),
+          Math.round(dims.layout * (showingBallot ? 0.72 : 0.55)),
         ),
       ),
       full,
@@ -365,7 +452,10 @@ export function MapPage({
   // 選取一律在半開時置中，所以位移固定用半開高度的一半。
   const focusOffsetY = mobile ? Math.round(heights.half / 2) : 0;
   const style = mobile
-    ? ({ "--mx-drawer-h": `${drawerPx}px` } as CSSProperties)
+    ? ({
+        "--mx-drawer-h": `${drawerPx}px`,
+        "--mx-toolbar-h": `${dims.toolbar}px`,
+      } as CSSProperties)
     : undefined;
   const resetFilters = () => {
     setQ("");
@@ -373,15 +463,58 @@ export function MapPage({
     setFilter("all");
   };
   const view = binId ? "bin" : place ? "place" : "list";
-  const listHref = wasteHref("map", wasteType);
+  const listHref = wasteHref(voting ? "vote" : "map", wasteType);
 
   return (
     <main
-      className="mx-layout"
+      className={`mx-layout ${view === "list" && !voting ? "mx-home" : ""}`}
       ref={layoutRef}
       style={style}
       data-drawer={mobile ? drawer : undefined}
     >
+      {view === "list" && !voting && (
+        <div
+          ref={toolbarRef}
+          className="mx-home-toolbar"
+          aria-label="地圖搜尋與篩選"
+        >
+          <div className="mx-home-controls">
+            <label className="search-field">
+              <span className="visually-hidden">搜尋地點</span>
+              <input
+                type="search"
+                aria-label="搜尋地點"
+                placeholder="搜尋路名、地點⋯"
+                maxLength={200}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </label>
+            {!voting && (
+              <WastePicker
+                name="map-waste"
+                legend="垃圾種類"
+                iconOnly
+                value={wasteType}
+                onChange={replaceWaste}
+              />
+            )}
+            <div className="filter-chips" role="group" aria-label="篩選">
+              {(voting ? [] : filters).map(([value, label]) => (
+                <button
+                  type="button"
+                  key={value}
+                  aria-pressed={filter === value}
+                  onClick={() => setFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <MapNotice />
+        </div>
+      )}
       <section
         className={`mx-panel${dragPx !== null ? " dragging" : ""}`}
         aria-label="資訊面板"
@@ -409,20 +542,15 @@ export function MapPage({
             <>
               {/* 標題下方小字：數量＋排序依據（所選種類能丟的排前面）。 */}
               <div className="mx-head-title">
-                <h1 className="mx-title">附近的桶</h1>
+                <h1 className="mx-title">{voting ? "要桶投票" : "附近的桶"}</h1>
                 <span className="tiny">
                   {rows
-                    ? `${rows.length} 個桶 · ${wasteName(wasteType)}優先`
+                    ? voting
+                      ? `${rows.length} 個建議點 · 待現勘`
+                      : `${rows.length} 個桶 · ${wasteName(wasteType)}優先`
                     : "—"}
                 </span>
               </div>
-              <WastePicker
-                name="map-waste"
-                legend="垃圾種類"
-                iconOnly
-                value={wasteType}
-                onChange={replaceWaste}
-              />
             </>
           ) : (
             <a className="back-link" href={listHref}>
@@ -455,35 +583,40 @@ export function MapPage({
             </>
           ) : (
             <>
-              <div className="mx-filters">
-                {/* 搜尋框、篩選膠囊各自一列；種類切換在上方標題列。 */}
-                <label className="search-field">
-                  <span className="visually-hidden">搜尋地點</span>
-                  <input
-                    type="search"
-                    aria-label="搜尋地點"
-                    placeholder="搜尋路名、地點⋯"
-                    maxLength={200}
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                  />
-                </label>
-                <div className="filter-chips" role="group" aria-label="篩選">
-                  {filters.map(([value, label]) => (
-                    <button
-                      type="button"
-                      key={value}
-                      aria-pressed={filter === value}
-                      onClick={() => setFilter(value)}
-                    >
-                      {label}
-                    </button>
-                  ))}
+              {voting && (
+                <div className="mx-vote-intro">
+                  <p>
+                    這裡需要桶？支持你希望設置的位置。建議點仍須現勘，投票不代表已設桶。
+                  </p>
+                  <nav className="api-pagination" aria-label="提案導覽">
+                    <a href="#vote/create">建立提案</a>
+                    <a href="#vote/mine">我的提案</a>
+                    <a href="#vote/votes">我的投票</a>
+                  </nav>
                 </div>
-              </div>
+              )}
+              {voting && (
+                <div className="mx-filters">
+                  <label className="search-field">
+                    <span className="visually-hidden">搜尋地點</span>
+                    <input
+                      type="search"
+                      aria-label="搜尋地點"
+                      placeholder="搜尋建議設置點⋯"
+                      maxLength={200}
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
               <LoadState {...list} />
+              {voting && voteNotice && <p role="status">{voteNotice}</p>}
               {rows && rows.length > 0 && (
-                <ul className="mx-list" aria-label="附近的桶">
+                <ul
+                  className="mx-list"
+                  aria-label={voting ? "建議設置點" : "附近的桶"}
+                >
                   {rows.map((item) => (
                     <li key={item.id}>
                       <NearbyRow
@@ -497,7 +630,9 @@ export function MapPage({
               )}
               {rows?.length === 0 && (
                 <div className="mx-empty">
-                  <p>找不到符合的桶。</p>
+                  <p>
+                    {voting ? "目前沒有符合的建議點。" : "找不到符合的桶。"}
+                  </p>
                   <button
                     type="button"
                     className="text-button"
@@ -508,19 +643,21 @@ export function MapPage({
                 </div>
               )}
               {/* 進階查詢放在清單下方：不佔半開抽屜裡篩選與第一列之間的高度。 */}
-              <div className="mx-removed">
-                <label className="check-field">
-                  <input
-                    type="checkbox"
-                    checked={includeRemoved}
-                    onChange={(e) => setIncludeRemoved(e.target.checked)}
-                  />
-                  包含所有撤除紀錄
-                </label>
-                <p className="tiny">
-                  預設顯示後端保留的近七日撤除標記；勾選後查詢全部撤除紀錄。
-                </p>
-              </div>
+              {!voting && (
+                <div className="mx-removed">
+                  <label className="check-field">
+                    <input
+                      type="checkbox"
+                      checked={includeRemoved}
+                      onChange={(e) => setIncludeRemoved(e.target.checked)}
+                    />
+                    包含所有撤除紀錄
+                  </label>
+                  <p className="tiny">
+                    預設顯示後端保留的近七日撤除標記；勾選後查詢全部撤除紀錄。
+                  </p>
+                </div>
+              )}
             </>
           )}
           <p className="tiny mx-disclosure">
@@ -542,6 +679,9 @@ export function MapPage({
           markerDescription={browseMarkerDescription}
           origin={originMarker}
           focusOffsetY={focusOffsetY}
+          browseTopInset={
+            mobile && view === "list" && !voting ? dims.toolbar + 12 : 0
+          }
           focusKey={focusKey}
         />
         <LegendPopover
@@ -553,7 +693,7 @@ export function MapPage({
   );
 }
 
-// 清單列沿用 .location-row：Bin友（所選種類那一槽的狀態）、桶名（新設時旁邊
+// 清單列沿用 .location-row：BinU（所選種類那一槽的狀態）、桶名（新設時旁邊
 // 一顆「新設」膠囊）、距離，下一行兩槽滿度條並排（所選種類在左），右側兩槽可丟數。
 function NearbyRow({
   item,
