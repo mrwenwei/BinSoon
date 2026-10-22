@@ -286,7 +286,7 @@ test("a refresh failure preserves the last complete map and marks it stale", asy
   ).toHaveCount(0);
 });
 
-test("two waste compartments map to three states, recycling-only navigation and the hungry filter", async ({
+test("two waste compartments preserve the selected waste for navigation and filtering", async ({
   page,
 }) => {
   const slot = (
@@ -364,7 +364,7 @@ test("two waste compartments map to three states, recycling-only navigation and 
     rows.first().getByRole("img", { name: "資源回收，餓了，60%" }),
   ).toBeVisible();
   // 桶面板沒有種類選單：在地圖篩選列切回一般垃圾再選這個桶，
-  // 確認一般滿、回收能丟時仍提供「導航過去丟回收」。
+  // 確認一般滿、回收能丟時仍只提供所選種類的改導。
   await page.getByRole("radio", { name: "一般垃圾", exact: true }).click();
   await page.getByRole("button", { name: "全部", exact: true }).click();
   await rows.filter({ hasText: "一般滿回收餓" }).click();
@@ -375,16 +375,16 @@ test("two waste compartments map to three states, recycling-only navigation and 
   await expect(page.getByText("餓了 · 60%", { exact: true })).toHaveText(
     "餓了 · 60%",
   );
-  const go = page.getByRole("link", { name: "導航過去丟回收", exact: true });
-  await expect(go).toHaveAttribute(
-    "href",
-    `#nav/${binId}?waste_type=recycling`,
-  );
+  await expect(
+    page.getByRole("link", { name: "導航過去丟回收", exact: true }),
+  ).toHaveCount(0);
+  const go = page.getByRole("link", { name: "尋找可用桶並導航", exact: true });
+  await expect(go).toHaveAttribute("href", `#nav/${binId}?waste_type=general`);
   await go.click();
   await expect(
-    page.getByText("本次要丟：資源回收。", { exact: true }),
+    page.getByRole("heading", { name: "這個桶吃飽了", exact: true }),
   ).toBeVisible();
-  expect(views.at(-1)).toBe("?waste_type=recycling");
+  expect(views.at(-1)).toBe("?waste_type=general");
 });
 
 test("full recycling uses the selected compartment for replacement navigation", async ({

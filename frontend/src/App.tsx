@@ -376,6 +376,7 @@ function AppContent() {
       </div>
       {!isMapView &&
         ![
+          "login",
           "vote-done",
           "report",
           "report-done",

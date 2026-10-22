@@ -321,33 +321,19 @@ export function Navigation({
         {!available && (
           <section className="navigation-reroute card" aria-label="滿桶改導">
             <h2>
-              {view.status.fill_status === "full"
-                ? "這個桶吃飽了"
-                : "原目的桶目前不可用"}
+              {redirected
+                ? "已改導至最近未滿的桶"
+                : view.status.fill_status === "full"
+                  ? "這個桶吃飽了"
+                  : "原目的桶目前不可用"}
             </h2>
-            <p>
-              {view.location.label} ·
-              保持目前垃圾種類，改找距離起點最近的可用桶。
-            </p>
-            {alternative && !alternatives.error && (
-              <>
-                <p>
-                  建議改去 {alternative.label} ·{" "}
-                  {alternative.distance_m == null
-                    ? "距離未知"
-                    : `距起點 ${Math.round(alternative.distance_m)} 公尺`}
-                </p>
-                {redirected ? (
-                  <p>已改導至最近未滿的桶。</p>
-                ) : (
-                  <button
-                    className="button primary"
-                    onClick={() => setRedirected(true)}
-                  >
-                    改導到 {alternative.label}
-                  </button>
-                )}
-              </>
+            {alternative && !alternatives.error && !redirected && (
+              <button
+                className="button primary"
+                onClick={() => setRedirected(true)}
+              >
+                改導到 {alternative.label}
+              </button>
             )}
           </section>
         )}

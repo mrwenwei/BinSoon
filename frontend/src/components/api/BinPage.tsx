@@ -136,18 +136,6 @@ export function BinPanel({
                   尋找可用桶並導航
                 </a>
               ))}
-            {!view.error &&
-              !status.is_usable &&
-              parts.find((part) => part.waste_type === "recycling")
-                ?.is_usable &&
-              wasteType !== "recycling" && (
-                <a
-                  className="button primary"
-                  href={wasteHref(`nav/${id}`, "recycling")}
-                >
-                  導航過去丟回收
-                </a>
-              )}
             {can_report && !view.error ? (
               <a
                 className="button secondary"

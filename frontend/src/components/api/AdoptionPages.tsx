@@ -1,4 +1,5 @@
 import { isDemoToken } from "../../data/demoMode";
+import { Icon } from "../Icon";
 import { Mascot } from "../Mascot";
 import { AdoptionMonthly } from "./AdoptionMonthly";
 import { useState } from "react";
@@ -41,14 +42,22 @@ function PreferenceInputs({
   value,
   onChange,
   fullOnly = false,
+  compact = false,
 }: {
   value: Preferences;
   onChange: (value: Preferences) => void;
   fullOnly?: boolean;
+  compact?: boolean;
 }) {
   return (
-    <fieldset>
-      <legend>{fullOnly ? "BinU 通知我（可隨時關閉）" : "通知偏好"}</legend>
+    <fieldset className={compact ? "binu-notifications" : undefined}>
+      <legend>
+        {compact
+          ? "BinU 通知"
+          : fullOnly
+            ? "BinU 通知我（可隨時關閉）"
+            : "通知偏好"}
+      </legend>
       {preferenceFields
         .filter(({ key }) => !fullOnly || key === "full")
         .map(({ key, label }) => (
@@ -68,7 +77,9 @@ function PreferenceInputs({
             {fullOnly ? "吃飽了（80% 以上）" : label}
           </label>
         ))}
-      {fullOnly && <p className="tiny">只在吃飽了時通知，不會一直吵你。</p>}
+      {fullOnly && !compact && (
+        <p className="tiny">只在吃飽了時通知，不會一直吵你。</p>
+      )}
     </fieldset>
   );
 }
@@ -271,35 +282,44 @@ function Application({ binId }: { binId: string }) {
   });
   return (
     <main className={`page api-narrow${demo ? " binu-adoption-page" : ""}`}>
-      {demo && (
-        <a className="back-link" href={`#bin/${binId}`}>
-          返回桶詳情
-        </a>
-      )}
-      <h1>{demo ? "認領 BinU" : "申請認養"}</h1>
-      {demo && (
-        <section className="binu-adoption-hero" aria-label="等你認領的 BinU">
-          <div role="img" aria-label="等你認領的 BinU 吉祥物">
-            <Mascot />
-          </div>
-          <h2>和這隻 BinU 成為好朋友</h2>
-          {view.data && <p>{view.data.location.label}</p>}
-          <strong>×2 認領後回報點數加倍</strong>
-          <p>回報這隻 BinU，查證屬實的首報可獲得 +2 點。</p>
-        </section>
-      )}
-      {demo && (
+      {demo ? (
         <>
-          <p>
-            認領後就能為
-            BinU取私人桶名，只有你看得到。同一個桶也能由其他人各自認領與命名。
-          </p>
-          <p>已認領 {count} / 5 個桶（含待審申請）</p>
+          <header className="compact-page-head binu-adoption-heading">
+            <a
+              className="back-link"
+              href={`#bin/${binId}`}
+              aria-label="返回桶詳情"
+            >
+              <Icon name="back" />
+            </a>
+            <div>
+              <h1>認領 BinU</h1>
+              {view.data && <p>{view.data.location.label}</p>}
+            </div>
+          </header>
+          <section className="binu-adoption-hero" aria-label="等你認領的 BinU">
+            <div role="img" aria-label="等你認領的 BinU 吉祥物">
+              <Mascot />
+            </div>
+            <div>
+              <h2>認領這隻 BinU</h2>
+              {view.data && <p>{view.data.location.label}</p>}
+            </div>
+          </section>
+          <aside className="binu-adoption-bonus">
+            <strong>×2</strong>
+            <div>
+              <h2>認領後回報點數加倍</h2>
+              <p>查證屬實的首報可獲得 +2 點</p>
+            </div>
+          </aside>
           <LoadState {...owned} />
           {atLimit && (
-            <p role="status">每人至多認領 5 個桶，請先結束現有認領。</p>
+            <p role="status">已認領 {count} / 5 個桶，請先結束現有認領。</p>
           )}
         </>
+      ) : (
+        <h1>申請認養</h1>
       )}
       <LoadState {...view} />
       {view.data && (
@@ -328,7 +348,7 @@ function Application({ binId }: { binId: string }) {
         </section>
       ) : view.data?.can_apply_adoption && !atLimit ? (
         <form
-          className="card api-form"
+          className={`card api-form${demo ? " binu-adoption-form" : ""}`}
           onSubmit={(e) => {
             e.preventDefault();
             action.cancel();
@@ -350,7 +370,9 @@ function Application({ binId }: { binId: string }) {
           }}
         >
           <fieldset disabled={action.busy || !!action.pending}>
-            <legend>認養申請資料</legend>
+            <legend className={demo ? "visually-hidden" : undefined}>
+              認養申請資料
+            </legend>
             {!demo && (
               <label>
                 認養身份
@@ -366,8 +388,9 @@ function Application({ binId }: { binId: string }) {
               </label>
             )}
             <label>
-              {demo ? "BinU的私人桶名" : "公開名稱"}
+              {demo ? "幫 BinU 取名" : "公開名稱"}
               <input
+                aria-label={demo ? "BinU的私人桶名" : "公開名稱"}
                 required
                 maxLength={50}
                 placeholder={demo ? "例如：下班等公車桶" : undefined}
@@ -390,12 +413,8 @@ function Application({ binId }: { binId: string }) {
               value={preferences}
               onChange={setPreferences}
               fullOnly={demo}
+              compact={demo}
             />
-            {demo && (
-              <p className="tiny">
-                同一隻 BinU 大家都能認領；清運仍由清潔隊負責，你不用自己清。
-              </p>
-            )}
           </fieldset>
           <button className="button primary" disabled={action.blocked}>
             {demo ? "預覽認領" : "預覽認養申請"}

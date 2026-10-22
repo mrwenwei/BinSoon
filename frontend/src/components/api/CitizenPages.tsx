@@ -149,10 +149,12 @@ export function CitizenReports() {
             <li className="card citizen-report-row" key={report.id}>
               <div className="crew-between">
                 <h2>{label}</h2>
-                <span className="status-pill">
+                <span
+                  className={`status-pill${report.status === "approved" && report.awarded_points > 0 ? " report-points" : ""}`}
+                >
                   {report.status === "approved"
                     ? report.awarded_points
-                      ? `+${report.awarded_points}`
+                      ? `+${report.awarded_points}點`
                       : "已查證"
                     : report.status === "rejected"
                       ? "不符合・無法給點"
@@ -223,7 +225,7 @@ export function CitizenBins({ wasteType }: { wasteType: WasteType }) {
       </a>
       <h1>我的 BinU</h1>
       <p>認養 {active.length} 個／最多 5 個 · 屬實首報 ×2</p>
-      <p className="tiny">私人桶名只有自己看得到，認養不需要代替清潔隊清運。</p>
+      <p className="tiny">認養不需要代替清潔隊清運。</p>
       <div className="citizen-bin-list">
         {active.map((item) => (
           <CitizenBin key={item.id} item={item} wasteType={wasteType} />
@@ -283,7 +285,7 @@ function CitizenBin({
         <Mascot />
         <span>{item.private_bin_name || "我的 BinU"}</span>
       </h2>
-      <p>{demoBinById(item.bin_id)?.label || item.bin_id} · 名字只有你看得到</p>
+      <p>{demoBinById(item.bin_id)?.label || item.bin_id}</p>
       <LoadState {...bin} />
       {bin.data && (
         <StationCard
