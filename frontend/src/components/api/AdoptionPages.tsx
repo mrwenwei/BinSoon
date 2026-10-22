@@ -260,7 +260,7 @@ function Application({ binId }: { binId: string }) {
   const [name, setName] = useState("");
   const [intro, setIntro] = useState("");
   const [preferences, setPreferences] = useState<Preferences>({
-    full: true,
+    full: !demo,
     dumping: !demo,
     dirty: !demo,
   });
@@ -409,12 +409,9 @@ function Application({ binId }: { binId: string }) {
                 />
               </label>
             )}
-            <PreferenceInputs
-              value={preferences}
-              onChange={setPreferences}
-              fullOnly={demo}
-              compact={demo}
-            />
+            {!demo && (
+              <PreferenceInputs value={preferences} onChange={setPreferences} />
+            )}
           </fieldset>
           <button className="button primary" disabled={action.blocked}>
             {demo ? "預覽認領" : "預覽認養申請"}

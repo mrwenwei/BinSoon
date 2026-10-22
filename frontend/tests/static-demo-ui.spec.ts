@@ -24,6 +24,27 @@ test("snapshot map and my BinU work without API", async ({ page }) => {
   ).toHaveCount(0);
   await page.reload();
   await expect(page.locator(".citizen-bin-card")).toHaveCount(3);
+  const unclaimed = locations.filter(
+    (item) => item.kind === "bin" && item.district === "大安區",
+  )[4];
+  await page.goto(`/#adopt/apply/${unclaimed.id}`);
+  await expect(
+    page.getByRole("heading", { name: "認領 BinU", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "BinU 通知", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('.binu-adoption-form input[type="checkbox"]'),
+  ).toHaveCount(0);
+  await page.getByLabel("BinU的私人桶名", { exact: true }).fill("下班買晚餐桶");
+  await page.getByRole("button", { name: "預覽認領", exact: true }).click();
+  await page.getByRole("button", { name: "確認送出", exact: true }).click();
+  await expect(
+    page.getByText("已認領「下班買晚餐桶」，桶名只有你看得到。", {
+      exact: true,
+    }),
+  ).toBeVisible();
   expect(requests).toEqual([]);
 });
 
