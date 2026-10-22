@@ -26,8 +26,26 @@ export function useBinView(id: string, wasteType: string) {
   });
   return useApi(
     viewPath,
-    (signal) =>
-      request<BinView>(viewPath, { signal, token: session?.access_token }),
+    async (signal) => {
+      const result = await request<BinView>(viewPath, {
+        signal,
+        token: session?.access_token,
+      });
+      // 詳情與導航共用所選槽，避免頂層 status 與雙槽資料不同步時讀到另一種類。
+      const parts = result.data.compartments?.length
+        ? result.data.compartments
+        : result.data.location.compartments;
+      const selected = parts?.find((part) => part.waste_type === wasteType);
+      if (!selected) return result;
+      return {
+        ...result,
+        data: {
+          ...result.data,
+          status: selected,
+          location: { ...result.data.location, bin_status: selected },
+        },
+      };
+    },
     true,
     { stopOnNotFound: true },
   );

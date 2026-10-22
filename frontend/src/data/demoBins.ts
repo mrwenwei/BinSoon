@@ -2,7 +2,8 @@ import type { ApiLocation, BinStatus, BinView } from "./api";
 import { DEMO_STORE_KEY, DEMO_UPDATED, isDemoToken } from "./demoMode";
 import type { WasteType } from "./waste";
 
-const levels = [0, 18, 35, 50, 66, 79, 85, 96, 100, null];
+// 每槽都有穩定的展示數值；保留十格避免改變其他桶原有的百分比。
+const levels = [0, 18, 35, 50, 66, 79, 85, 96, 100, 42];
 const observed = new Date().toISOString();
 export const demoBinLocations = new Map<string, ApiLocation>();
 let cityLoaded = false;

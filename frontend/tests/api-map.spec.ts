@@ -45,7 +45,9 @@ test("map reads every page, keeps unknown status and opens compact bin details",
     "API 未知桶",
   );
   // 後端 unknown 在前端三態顯示為「失聯」。
-  await expect(page.locator(".bin-action-panel .status-pill")).toBeVisible();
+  await expect(page.locator(".bin-action-panel .status-pill")).toHaveText(
+    "失聯",
+  );
   await expect(page.locator(".api-history")).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "導航過去", exact: true }),
@@ -352,6 +354,7 @@ test("two waste compartments map to three states, recycling-only navigation and 
   ).toBeVisible();
   await expect(rows.nth(1)).toContainText("0/2");
   // 「還能丟」依所選種類判斷：一般垃圾兩點都滿，切到資源回收才剩一個。
+  await page.getByRole("button", { name: "篩選桶況", exact: true }).click();
   await page.getByRole("button", { name: "還能丟", exact: true }).click();
   await expect(rows).toHaveCount(0);
   await page.getByRole("radio", { name: "資源回收", exact: true }).click();
@@ -369,7 +372,9 @@ test("two waste compartments map to three states, recycling-only navigation and 
   await expect(
     page.locator(".mx-panel .compartment").filter({ hasText: "一般垃圾" }),
   ).toContainText("吃飽了 · 92%");
-  await expect(page.getByText("餓了 · 60%", { exact: true })).toBeVisible();
+  await expect(page.getByText("餓了 · 60%", { exact: true })).toHaveText(
+    "餓了 · 60%",
+  );
   const go = page.getByRole("link", { name: "導航過去丟回收", exact: true });
   await expect(go).toHaveAttribute(
     "href",
@@ -380,4 +385,61 @@ test("two waste compartments map to three states, recycling-only navigation and 
     page.getByText("本次要丟：資源回收。", { exact: true }),
   ).toBeVisible();
   expect(views.at(-1)).toBe("?waste_type=recycling");
+});
+
+test("full recycling uses the selected compartment for replacement navigation", async ({
+  page,
+}) => {
+  const general = {
+    ...location.bin_status,
+    waste_type: "general",
+    fill_level_pct: 20,
+    fill_status: "hungry",
+    is_usable: true,
+    unavailable_reasons: [],
+  };
+  const recycling = {
+    ...general,
+    waste_type: "recycling",
+    fill_level_pct: 96,
+    fill_status: "full",
+    is_usable: false,
+    unavailable_reasons: ["full"],
+  };
+  await apiFixture(page, async (route, path) => {
+    if (path === `/bins/${binId}/view`) {
+      await route.fulfill({
+        json: {
+          location,
+          status: general,
+          compartments: [general, recycling],
+          adopter: null,
+          latest_cleanup: null,
+          my_adoption_id: null,
+          can_apply_adoption: false,
+          can_report: false,
+          report_block_reason: "login_required",
+        },
+      });
+      return true;
+    }
+  });
+  await page.goto(`/#bin/${binId}?waste_type=recycling`);
+  const go = page.getByRole("link", { name: "尋找可用桶並導航", exact: true });
+  await expect(go).toBeVisible();
+  await expect(go).toHaveAttribute(
+    "href",
+    `#nav/${binId}?waste_type=recycling`,
+  );
+  await go.click();
+  await expect(
+    page.getByRole("heading", { name: "這個桶吃飽了", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("本次要丟：資源回收。", { exact: true }),
+  ).toBeVisible();
+  await page.goto(`/#bin/${binId}?waste_type=general`);
+  await expect(
+    page.getByRole("link", { name: "導航過去", exact: true }),
+  ).toBeVisible();
 });
