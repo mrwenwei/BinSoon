@@ -22,7 +22,9 @@ import {
   isDemoToken,
 } from "./demoMode";
 import { demoBinLocations, demoLocation } from "./demoBins";
-import { locations } from "./locations";
+import { locations, type LocationRecord } from "./locations";
+import suggestedSnapshot from "./suggestedLocations.json";
+const suggestedLocations = suggestedSnapshot as LocationRecord[];
 import { validatePhoto } from "./media";
 import { isPhoneBrowser } from "./phone";
 import { demoPhotoSvg } from "./demoPhoto";
@@ -626,6 +628,20 @@ function binLocation(id: string, value = state()): ApiLocation | undefined {
       },
       "general",
     );
+  const suggested = suggestedLocations.find((item) => item.id === id);
+  if (suggested)
+    return demoLocation(
+      {
+        ...suggested,
+        bin_type: "proposed",
+        placement_status: "proposed",
+        bin_status: baseStatus,
+        compartments: [],
+        distance_m: null,
+        walking_estimate_seconds: null,
+      },
+      "general",
+    );
   const proposal = value.proposals.find((item) => item.bin_id === id);
   return proposal
     ? demoLocation(
@@ -697,6 +713,65 @@ function placeholder() {
 }
 function publicGet(url: URL, value: State): Result<unknown> | null {
   const name = url.pathname;
+  const waste =
+    url.searchParams.get("waste_type") === "recycling"
+      ? "recycling"
+      : "general";
+  // CSV snapshot preserves published IDs, coordinates and source provenance.
+  for (const item of locations)
+    if (item.kind === "bin") binLocation(item.id, value);
+  for (const item of suggestedLocations) binLocation(item.id, value);
+  for (const proposal of value.proposals) binLocation(proposal.bin_id, value);
+  if (name === "/map/locations") {
+    const items: ApiLocation[] = [
+      ...locations
+        .filter((item) => item.kind === "place")
+        .map((item) => ({
+          ...item,
+          bin_type: null,
+          placement_status: null,
+          bin_status: null,
+          compartments: [],
+          distance_m: null,
+          walking_estimate_seconds: null,
+        })),
+      ...[...demoBinLocations.values()].map((item) =>
+        demoLocation(item, waste),
+      ),
+    ];
+    const params = url.searchParams;
+    if (params.has("latitude") && params.has("longitude")) {
+      const origin = coordinate(
+        Number(params.get("latitude")),
+        Number(params.get("longitude")),
+      );
+      for (const item of items) {
+        item.distance_m = distance(origin, item);
+        item.walking_estimate_seconds = Math.round(item.distance_m / 1.2);
+      }
+      items.sort((a, b) => a.distance_m! - b.distance_m!);
+    }
+    const q = (params.get("q") || "").trim().toLowerCase();
+    return result(
+      page(
+        items.filter(
+          (item) =>
+            (!params.get("district") ||
+              params.get("district") === "all" ||
+              item.district === params.get("district")) &&
+            (!params.get("kind") ||
+              params.get("kind") === "all" ||
+              item.kind === params.get("kind")) &&
+            (params.get("include_proposed") === "true" ||
+              item.bin_type !== "proposed") &&
+            (params.get("filter") !== "new" || item.bin_status?.is_new) &&
+            (!q ||
+              `${item.label} ${item.address || ""}`.toLowerCase().includes(q)),
+        ),
+        url,
+      ),
+    );
+  }
   if (name === "/rewards")
     return result(
       page(
@@ -730,9 +805,9 @@ function publicGet(url: URL, value: State): Result<unknown> | null {
     );
     return result(item, item.version);
   }
-  const view = name.match(/^\/bins\/(demo-proposed-bin-[^/]+)\/view$/);
+  const view = name.match(/^\/bins\/([^/]+)\/view$/);
   if (view) {
-    const item = found(binLocation(view[1], value), "提案點位");
+    const item = found(binLocation(view[1], value), "桶點位");
     const waste =
       url.searchParams.get("waste_type") === "recycling"
         ? "recycling"
@@ -745,9 +820,12 @@ function publicGet(url: URL, value: State): Result<unknown> | null {
       adopter: null,
       latest_cleanup: null,
       my_adoption_id: null,
-      can_apply_adoption: false,
-      can_report: false,
-      report_block_reason: "not_installed",
+      can_apply_adoption:
+        location.bin_status?.is_usable ||
+        location.placement_status === "existing",
+      can_report: location.placement_status === "existing",
+      report_block_reason:
+        location.placement_status === "proposed" ? "not_installed" : null,
     });
   }
   if (name === "/map/availability") return result(availability(url, value));

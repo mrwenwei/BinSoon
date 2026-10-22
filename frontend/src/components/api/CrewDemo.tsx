@@ -479,11 +479,22 @@ function CrewRanking() {
       <div className="card api-form">
         <label>
           月份
-          <input
-            type="month"
+          <select
+            aria-label="月份"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-          />
+          >
+            {Array.from({ length: 36 }, (_, index) => {
+              const date = new Date(`${taipeiMonth()}-01T00:00:00Z`);
+              date.setUTCMonth(date.getUTCMonth() - index);
+              const value = date.toISOString().slice(0, 7);
+              return (
+                <option key={value} value={value}>
+                  {value.replace("-", "年")}月
+                </option>
+              );
+            })}
+          </select>
         </label>
         <label>
           行政區

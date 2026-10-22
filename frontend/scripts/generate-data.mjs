@@ -118,3 +118,79 @@ else await writeFile(target, output);
 console.log(
   "驗證通過：811 筆位置紀錄 = 681 筆公布桶位置 + 130 筆場所代表點；大安區 47 + 18；12 行政區。",
 );
+
+// Keep the same UUIDv5 identity as backend simulation.seed for fixed proposals.
+const { createHash } = await import("node:crypto");
+function recommendationId(rank) {
+  const namespace = Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex");
+  const name = `binsoon:daan_phase1_10bins:DAAN-PROP-${String(rank).padStart(3, "0")}`;
+  const bytes = createHash("sha1")
+    .update(namespace)
+    .update(name)
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = (bytes[6] & 15) | 80;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+const recommendationsFile = "daan_phase1_10bins.json";
+const recommendations = JSON.parse(
+  await readFile(new URL(recommendationsFile, dataDir), "utf8"),
+);
+assert.equal(recommendations.length, 10);
+const boundaries = JSON.parse(
+  await readFile(new URL("taipei_districts.geojson", dataDir), "utf8"),
+);
+function insideRing(lon, lat, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [x, y] = ring[i],
+      [previousX, previousY] = ring[j];
+    if (
+      y > lat !== previousY > lat &&
+      lon < ((previousX - x) * (lat - y)) / (previousY - y) + x
+    )
+      inside = !inside;
+  }
+  return inside;
+}
+function districtAt(lon, lat) {
+  const matches = boundaries.features.filter(({ geometry }) => {
+    const polygons =
+      geometry.type === "Polygon"
+        ? [geometry.coordinates]
+        : geometry.coordinates;
+    return polygons.some(
+      ([outer, ...holes]) =>
+        insideRing(lon, lat, outer) &&
+        !holes.some((ring) => insideRing(lon, lat, ring)),
+    );
+  });
+  assert.equal(matches.length, 1, "推薦點行政區必須可唯一辨識");
+  return matches[0].properties.district;
+}
+const suggested = recommendations.map(([rank, label, latitude, longitude]) => ({
+  id: recommendationId(rank),
+  kind: "bin",
+  district: districtAt(longitude, latitude),
+  label,
+  address: null,
+  latitude,
+  longitude,
+  note: "既有分析推薦，尚未會勘或設置；分數非實測人流或垃圾量",
+  source_type: "model_recommendation",
+  source_row: rank,
+  source_file: recommendationsFile,
+  location_precision: null,
+  reported_count: null,
+}));
+const suggestedTarget = new URL(
+  "../src/data/suggestedLocations.json",
+  import.meta.url,
+);
+const suggestedOutput = JSON.stringify(suggested, null, 2) + "\n";
+if (process.argv.includes("--check"))
+  assert.equal(await readFile(suggestedTarget, "utf8"), suggestedOutput);
+else await writeFile(suggestedTarget, suggestedOutput);
+console.log("驗證通過：10 筆固定建議設置點（含第 4、7 點中正區），仍須現勘。");

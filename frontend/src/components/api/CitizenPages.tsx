@@ -254,11 +254,6 @@ function CitizenBin({
 }) {
   const { session } = useSession();
   const value = useDemoCitizenSnapshot();
-  const [notice, setNotice] = useState("");
-  const [full, setFull] = useState(item.preferences.full);
-  useEffect(() => setFull(item.preferences.full), [item.preferences.full]);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
   const path = `/bins/${encodeURIComponent(item.bin_id)}/view?waste_type=${wasteType}`;
   const bin = useApi(
     path,
@@ -311,44 +306,6 @@ function CitizenBin({
         <a href={`#adopt/${item.id}`}>管理／修改私人桶名</a>
         <a href={wasteHref(`bin/${item.bin_id}`, wasteType)}>查看桶詳情</a>
       </div>
-      <label className="check-field">
-        <input
-          type="checkbox"
-          checked={full}
-          disabled={busy}
-          onChange={async (e) => {
-            const nextFull = e.target.checked;
-            setFull(nextFull);
-            setBusy(true);
-            setNotice("");
-            setError("");
-            try {
-              await request(`/adoptions/${item.id}/preferences`, {
-                method: "PATCH",
-                token: session?.access_token,
-                etag: `"v${item.version}"`,
-                key: crypto.randomUUID(),
-                body: { full: nextFull, dumping: false, dirty: false },
-              });
-              setNotice("通知偏好已儲存");
-            } catch (e) {
-              setFull(
-                demoCitizenSnapshot().adoptions.find((a) => a.id === item.id)
-                  ?.preferences.full ?? item.preferences.full,
-              );
-              setError((e as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        />
-        吃飽了（80% 以上）通知我
-      </label>
-      {(busy || notice) && (
-        <p role="status">{busy ? "正在儲存通知偏好…" : notice}</p>
-      )}
-
-      {error && <p role="alert">{error}</p>}
     </article>
   );
 }

@@ -6,8 +6,6 @@ import type { WasteType } from "./waste";
 const levels = [0, 18, 35, 50, 66, 79, 85, 96, 100, 42];
 const observed = new Date().toISOString();
 export const demoBinLocations = new Map<string, ApiLocation>();
-let cityLoaded = false;
-export const demoCityLoaded = () => cityLoaded;
 type ClearReport = {
   bin_id: string;
   waste_type: string;
@@ -160,18 +158,6 @@ export function demoBinPayload(
   if (["/map/locations", "/map/nearest-usable"].includes(url.pathname)) {
     const data = payload as { items: ApiLocation[] };
     if (!Array.isArray(data?.items)) return payload;
-    if (
-      url.pathname === "/map/locations" &&
-      url.searchParams.get("district") === "all" &&
-      !url.searchParams.get("q") &&
-      (!url.searchParams.get("filter") ||
-        url.searchParams.get("filter") === "all")
-    ) {
-      const page = (payload as { page?: { offset: number; total: number } })
-        .page;
-      if (page && page.offset + data.items.length >= page.total)
-        cityLoaded = true;
-    }
     const items = data.items.map((item) => demoLocation(item, waste));
     return {
       ...data,

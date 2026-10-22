@@ -1,5 +1,7 @@
 ## 手機 sheet 與穩定性（2026-10-22）
 
+2026-10-22：本機展示點位改由固定快照供應，切頁不等待位置 API；「我的 BinU」移除吃飽了通知 checkbox，既有通知偏好與帳本保留。清潔隊榮譽榜改用最近 36 個月的年月選單，避免 iOS 原生 month input 超出卡片。
+
 手機 M1 的搜尋、分類、篩選、提醒回到底部 sheet。地圖資源、重載及 WebKit 檢查詳見 [手機地圖穩定性](../docs/MOBILE_MAP_STABILITY.md)；桌面保留上方控制列。
 
 ## BinU 修正（2026-10-21）
@@ -50,7 +52,7 @@ React＋TypeScript＋Vite，Leaflet／MapLibre 地圖。地圖位置與後台仍
 
 依使用者確認，市民端改為本機展示：
 
-- 位置仍讀後端 `/map/locations`、`/bins/:id/view`；滿度在前端以點位 ID＋垃圾種類固定產生 0、18、35、50、66、79、85、96、100% 或未知，不會每次輪詢亂跳。地圖、清單、詳情、可用篩選及導航共用同一份滿度投影；維修、撤除與尚未設置仍不可用。冷啟動導航會先完整讀取 API 點位，再找展示中可用的替代桶。
+- 預設本機展示直接使用 `locations.json`（681 個既有桶＋130 個場所代表點）及 `suggestedLocations.json`（10 個待現勘建議點），地圖、詳情、搜尋與最近同種類可用桶不呼叫位置 API。保留來源欄位及 UUID，新增本機提案一起呈現；滿度按點位 ID＋垃圾種類穩定產生，沿用本機清運歸零。正式後端模式仍使用 API，不會在 API 失敗時改讀快照。底圖及道路路線仍需外部服務。更新來源後執行 `data:generate`／`data:check`。
 - 點桶後的 bottom sheet／桌面面板移除「滿度與清運歷史」及「公布桶位置」詳情區塊，也不再輪詢歷史。兩槽、來源分類說明、提案待現勘與場所代表點的限制仍保留，沒有更改來源 CSV 或刪除 API 欄位。
 - 市民按「以展示市民登入」即可使用「展示市民小安」，不用帳號或密碼。會員中心預設累積 128／可用 93 點，含示意案件、點數明細與兌換券；這些不是後端會員紀錄。
 - 回報（含示意照片與 50 公尺展示距離）、提案、支持／反對／撤票、認養偏好與撤回／結束、通知已讀、獎品兌換均只寫瀏覽器。回報不派工、不自動查證或發可用點數；新提案仍是 `bin_type=proposed` 的待現勘展示點，不代表已設置。
@@ -275,7 +277,7 @@ npm run test:e2e
 
 ## 資料與調整位置
 
-- `src/data/locations.json`：811 筆快照，原始資料在 `../backend/data/`；更新 CSV 後於 repo 完整 checkout 執行 `npm run data:generate`，再執行 `data:check`。一般 Vercel build 不需存取 backend。
+- `src/data/locations.json`：811 筆快照；`suggestedLocations.json`：10 筆待現勘建議點，UUID 與後端 seed 相同、行政區依保存區界驗證。原始資料在 `../backend/data/`；更新 CSV 後於 repo 完整 checkout 執行 `npm run data:generate`，再執行 `data:check`。一般 Vercel build 不需存取 backend。
 - `scripts/generate-data.mjs`：以 BOM-aware CSV parser 辨識欄位，驗證筆數、座標、十二區及追溯欄位，保留原始精度。後兩個 CSV 檔名與內容對調，只有真正的 130 筆場所資料可進入快照。
 - `src/components/`：共用角色、位置詳情與 A／B flow 各頁；`src/data/binDemo.ts`、`demoStore.ts`、`reports.ts`、`rewards.ts`、`participation.ts`：獨立的示意資料、投票／認養規則與本機帳本；`src/map/`：Leaflet／MapLibre 與位置標記；`src/App.tsx`：篩選與頁面；`src/styles.css`：視覺及 RWD。
 
