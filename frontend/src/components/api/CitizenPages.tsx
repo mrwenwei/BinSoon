@@ -87,7 +87,7 @@ export function CitizenHome() {
         <a className="card" href="#adopt">
           <Icon name="heart" />
           <span>
-            <strong>我的 Bin友</strong>
+            <strong>我的 BinU</strong>
             <small>認養 {claims} 個 · 屬實首報點數 ×2</small>
           </span>
           <Icon name="arrow" />
@@ -122,7 +122,7 @@ export function CitizenHome() {
       <aside className="member-how">
         <h2>怎麼拿點數</h2>
         <p>
-          清潔員查證屬實，一般首報 +1 點；認養的 Bin友首報 +2
+          清潔員查證屬實，一般首報 +1 點；認養的 BinU首報 +2
           點。同一事件只有第一位回報者得點。
         </p>
         <p>試營運展示：3 點可兌換超商咖啡，並非真實優惠。</p>
@@ -244,7 +244,7 @@ export function CitizenBins({ wasteType }: { wasteType: WasteType }) {
       <a className="back-link" href="#member" aria-label="返回我的">
         ← 返回我的
       </a>
-      <h1>我的 Bin友</h1>
+      <h1>我的 BinU</h1>
       <p>認養 {active.length} 個／最多 5 個 · 屬實首報 ×2</p>
       <p className="tiny">私人桶名只有自己看得到，認養不需要代替清潔隊清運。</p>
       <div className="citizen-bin-list">
@@ -254,7 +254,7 @@ export function CitizenBins({ wasteType }: { wasteType: WasteType }) {
       </div>
       {!active.length && (
         <section className="card">
-          <p>還沒有自己的 Bin友。</p>
+          <p>還沒有自己的 BinU。</p>
           <a className="button primary" href="#map">
             去地圖認養
           </a>
@@ -302,7 +302,7 @@ function CitizenBin({
   ).size;
   return (
     <article className="card citizen-bin-card">
-      <h2>{item.private_bin_name || "我的 Bin友"}</h2>
+      <h2>{item.private_bin_name || "我的 BinU"}</h2>
       <p>{demoBinById(item.bin_id)?.label || item.bin_id} · 名字只有你看得到</p>
       <LoadState {...bin} />
       {bin.data && (

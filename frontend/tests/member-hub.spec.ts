@@ -117,13 +117,15 @@ test("notifications live in member and unclaimed bins open their own adoption ap
   await expect(page).toHaveURL(/#member$/);
   await page.goto("/#bin/" + binId);
   const entry = page.getByRole("link", { name: /申請認養此桶/ });
-  await expect(entry).toContainText("認領這位 Bin友");
+  await expect(entry).toContainText("認領這位 BinU");
   await entry.click();
   await expect(page).toHaveURL(new RegExp("#adopt/apply/" + binId));
   await expect(
-    page.getByRole("heading", { name: "認領 Bin友", level: 1 }),
+    page.getByRole("heading", { name: "認領 BinU", level: 1 }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: location.label, exact: true }),
+    page
+      .getByRole("region", { name: "等你認領的 BinU", exact: true })
+      .getByText(location.label, { exact: true }),
   ).toBeVisible();
 });

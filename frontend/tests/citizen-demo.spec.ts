@@ -13,7 +13,7 @@ test("public demo varies bin fullness consistently and keeps the bottom sheet co
   const bins = Array.from({ length: 10 }, (_, i) => ({
     ...location,
     id: binId.slice(0, -1) + i,
-    label: `展示 Bin友 ${i}`,
+    label: `展示 BinU ${i}`,
   }));
   await apiFixture(
     page,
@@ -144,7 +144,7 @@ test("citizen reports, creates proposals, votes and redeems entirely locally acr
   await page.goto("/#vote/create");
   await page
     .getByRole("textbox", { name: "提案名稱", exact: true })
-    .fill("展示 Bin友提案");
+    .fill("展示 BinU提案");
   await page
     .getByRole("textbox", { name: "需求原因", exact: true })
     .fill("本機示意需求，非真實設置。");
@@ -220,13 +220,13 @@ test("demo notifications and adoption preferences stay local and can be changed 
   await expect(
     page.getByText("認養狀態：認養中", { exact: true }),
   ).toBeVisible();
-  await page.getByLabel("滿桶通知", { exact: true }).uncheck();
-  await page.getByLabel("桶旁堆放通知", { exact: true }).uncheck();
-  await page.getByLabel("髒污通知", { exact: true }).check();
+  await page.getByLabel("吃飽了（80% 以上）", { exact: true }).uncheck();
+  await expect(page.getByLabel("桶旁堆放通知", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("髒污通知", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "預覽更新偏好", exact: true }).click();
   await page.getByRole("button", { name: "確認送出", exact: true }).click();
   await expect(
-    page.getByText("目前通知：滿桶 關閉、堆放 關閉、髒污 開啟", {
+    page.getByText("目前通知：吃飽了（80% 以上）關閉", {
       exact: true,
     }),
   ).toBeVisible();
@@ -242,7 +242,7 @@ test("demo notifications and adoption preferences stay local and can be changed 
   expect(writes).toEqual([]);
 });
 
-test("demo surfaces fit desktop and 320px phones and use the Bin友 wording", async ({
+test("demo surfaces fit desktop and 320px phones and use the BinU wording", async ({
   page,
 }, info) => {
   await apiFixture(page, undefined, { demo: true });

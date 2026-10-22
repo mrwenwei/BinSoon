@@ -256,8 +256,8 @@ export function crewRanking(district: string, selectedMonth: string) {
   const citizen = demoCitizenSnapshot();
   const rows = [
     { staffId: "demo-crew-qing", name: "清潔員阿清", base: 47, likes: 126 },
-    { staffId: DEMO_STAFF_ID, name: "清潔員阿順", base: 31, likes: 128 },
-    { staffId: "demo-crew-an", name: "清潔員阿安", base: 39, likes: 143 },
+    { staffId: DEMO_STAFF_ID, name: "清潔員阿順", base: 32, likes: 128 },
+    { staffId: "demo-crew-an", name: "清潔員阿安", base: 38, likes: 143 },
     { staffId: "demo-crew-lin", name: "清潔員阿林", base: 31, likes: 61 },
     { staffId: "demo-crew-he", name: "清潔員阿和", base: 27, likes: 40 },
   ];

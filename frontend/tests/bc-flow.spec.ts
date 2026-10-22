@@ -56,15 +56,15 @@ test("B U1-U4 retain points, private bins and shared M4; coffee costs three poin
   await expect(
     page.getByRole("heading", { name: "我的", exact: true }),
   ).toBeVisible();
-  for (const name of ["我的 Bin友", "回報紀錄", "投票紀錄"])
+  for (const name of ["我的 BinU", "回報紀錄", "投票紀錄"])
     await expect(
       page
         .getByRole("navigation", { name: "我的功能" })
         .getByRole("link", { name: new RegExp(name) }),
     ).toBeVisible();
-  await page.getByRole("link", { name: /^我的 Bin友/ }).click();
+  await page.getByRole("link", { name: /^我的 BinU/ }).click();
   await expect(
-    page.getByRole("heading", { name: "我的 Bin友", exact: true }),
+    page.getByRole("heading", { name: "我的 BinU", exact: true }),
   ).toBeVisible();
   const card = page.locator(".citizen-bin-card").first();
   await expect(card).toContainText("全家炸雞桶");
@@ -136,7 +136,7 @@ test("B V1 public proposals share Bin IDs and votes appear with V2 progress", as
   ).toBeVisible();
   const row = page
     .locator(".location-row")
-    .filter({ hasText: "公園入口 Bin友提案" });
+    .filter({ hasText: "公園入口 BinU提案" });
   await expect(row).toBeVisible();
   await row.click();
   await page.getByRole("button", { name: "支持設桶", exact: true }).click();
@@ -148,7 +148,7 @@ test("B V1 public proposals share Bin IDs and votes appear with V2 progress", as
     page.getByRole("heading", { name: "投票紀錄", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("region", { name: "設桶進度：公園入口 Bin友提案" }),
+    page.getByRole("region", { name: "設桶進度：公園入口 BinU提案" }),
   ).toContainText("第 2 / 4 步");
   await page.reload();
   await expect(

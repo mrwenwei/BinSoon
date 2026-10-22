@@ -109,7 +109,7 @@ export function Login({ role, next }: { role: Role; next: string }) {
         </span>
         <h1>市民登入</h1>
         <section className="card api-form">
-          <h2>和 Bin友一起讓台北更乾淨</h2>
+          <h2>和 BinU一起讓台北更乾淨</h2>
           <p>
             使用「展示市民小安」體驗，不需要帳號或密碼。會員、回報、提案與投票均為本機展示資料，不會寫入後端。
           </p>

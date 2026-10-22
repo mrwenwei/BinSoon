@@ -1,4 +1,5 @@
 import { isDemoToken } from "../../data/demoMode";
+import { Mascot } from "../Mascot";
 import { AdoptionMonthly } from "./AdoptionMonthly";
 import { useState } from "react";
 import {
@@ -39,45 +40,69 @@ const preferenceFields = [
 function PreferenceInputs({
   value,
   onChange,
+  fullOnly = false,
 }: {
   value: Preferences;
   onChange: (value: Preferences) => void;
+  fullOnly?: boolean;
 }) {
   return (
     <fieldset>
-      <legend>通知偏好</legend>
-      {preferenceFields.map(({ key, label }) => (
-        <label key={key}>
-          <input
-            type="checkbox"
-            checked={value[key]}
-            onChange={(e) => onChange({ ...value, [key]: e.target.checked })}
-          />
-          {label}
-        </label>
-      ))}
+      <legend>{fullOnly ? "BinU 通知我（可隨時關閉）" : "通知偏好"}</legend>
+      {preferenceFields
+        .filter(({ key }) => !fullOnly || key === "full")
+        .map(({ key, label }) => (
+          <label key={key}>
+            <input
+              type="checkbox"
+              checked={value[key]}
+              onChange={(e) =>
+                onChange({
+                  ...(fullOnly
+                    ? { full: false, dumping: false, dirty: false }
+                    : value),
+                  [key]: e.target.checked,
+                })
+              }
+            />
+            {fullOnly ? "吃飽了（80% 以上）" : label}
+          </label>
+        ))}
+      {fullOnly && (
+        <p className="tiny">
+          只在吃飽了時通知，不會一直吵你。本機展示尚未串接外部推播。
+        </p>
+      )}
     </fieldset>
   );
 }
 function AdoptionSummary({ item }: { item: Adoption }) {
+  const { session } = useSession();
+  const demo = isDemoToken(session?.access_token);
   return (
     <>
       <h2>{item.private_bin_name || item.display_name}</h2>
       {item.private_bin_name && <p>私人桶名 · 只有你看得到</p>}
       <p>認養狀態：{states[item.status]}</p>
-      <p>身份：{item.role}</p>
+      {!demo && <p>身份：{item.role}</p>}
       {item.intro && <p>店家介紹：{item.intro}</p>}
-      <p>
-        目前通知：滿桶 {item.preferences.full ? "開啟" : "關閉"}、堆放{" "}
-        {item.preferences.dumping ? "開啟" : "關閉"}、髒污{" "}
-        {item.preferences.dirty ? "開啟" : "關閉"}
-      </p>
+      {demo ? (
+        <p>
+          目前通知：吃飽了（80% 以上）{item.preferences.full ? "開啟" : "關閉"}
+        </p>
+      ) : (
+        <p>
+          目前通知：滿桶 {item.preferences.full ? "開啟" : "關閉"}、堆放{" "}
+          {item.preferences.dumping ? "開啟" : "關閉"}、髒污{" "}
+          {item.preferences.dirty ? "開啟" : "關閉"}
+        </p>
+      )}
       <p>
         申請：{time(item.created_at)} · 更新：{time(item.updated_at)}
       </p>
       {item.reason && <p>原因：{item.reason}</p>}
       <a className="api-action-link" href={`#bin/${item.bin_id}`}>
-        查看 Bin友
+        查看 BinU
       </a>
     </>
   );
@@ -229,8 +254,8 @@ function Application({ binId }: { binId: string }) {
   const [intro, setIntro] = useState("");
   const [preferences, setPreferences] = useState<Preferences>({
     full: true,
-    dumping: true,
-    dirty: true,
+    dumping: !demo,
+    dirty: !demo,
   });
   const [applied, setApplied] = useState<Adoption | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
@@ -249,13 +274,29 @@ function Application({ binId }: { binId: string }) {
     onSuccess: (result) => setApplied(result.data as Adoption),
   });
   return (
-    <main className="page api-narrow">
-      <h1>{demo ? "認領 Bin友" : "申請認養"}</h1>
+    <main className={`page api-narrow${demo ? " binu-adoption-page" : ""}`}>
+      {demo && (
+        <a className="back-link" href={`#bin/${binId}`}>
+          返回桶詳情
+        </a>
+      )}
+      <h1>{demo ? "認領 BinU" : "申請認養"}</h1>
+      {demo && (
+        <section className="binu-adoption-hero" aria-label="等你認領的 BinU">
+          <div role="img" aria-label="等你認領的 BinU 吉祥物">
+            <Mascot />
+          </div>
+          <h2>和這隻 BinU 成為好朋友</h2>
+          {view.data && <p>{view.data.location.label}</p>}
+          <strong>×2 認領後回報點數加倍</strong>
+          <p>回報這隻 BinU，查證屬實的首報可獲得 +2 點。</p>
+        </section>
+      )}
       {demo && (
         <>
           <p>
             認領後就能為
-            Bin友取私人桶名，只有你看得到。同一個桶也能由其他人各自認領與命名。
+            BinU取私人桶名，只有你看得到。同一個桶也能由其他人各自認領與命名。
           </p>
           <p>已認領 {count} / 5 個桶（含待審申請）</p>
           <LoadState {...owned} />
@@ -267,13 +308,15 @@ function Application({ binId }: { binId: string }) {
       <LoadState {...view} />
       {view.data && (
         <>
-          <h2>{view.data.location.label}</h2>
+          {!demo && <h2>{view.data.location.label}</h2>}
           {!demo && (
             <p>公開認養：{view.data.adopter?.display_name || "尚無認養者"}</p>
           )}
-          <a className="back-link" href={`#bin/${binId}`}>
-            返回桶詳情
-          </a>
+          {!demo && (
+            <a className="back-link" href={`#bin/${binId}`}>
+              返回桶詳情
+            </a>
+          )}
         </>
       )}
       {applied ? (
@@ -312,20 +355,22 @@ function Application({ binId }: { binId: string }) {
         >
           <fieldset disabled={action.busy || !!action.pending}>
             <legend>認養申請資料</legend>
+            {!demo && (
+              <label>
+                認養身份
+                <select
+                  aria-label="認養身份"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as AdoptionRole)}
+                >
+                  {(["居民", "店家", "學校", "社區團體"] as const).map((r) => (
+                    <option key={r}>{r}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label>
-              認養身份
-              <select
-                aria-label="認養身份"
-                value={role}
-                onChange={(e) => setRole(e.target.value as AdoptionRole)}
-              >
-                {(["居民", "店家", "學校", "社區團體"] as const).map((r) => (
-                  <option key={r}>{r}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {demo ? "Bin友的私人桶名" : "公開名稱"}
+              {demo ? "BinU的私人桶名" : "公開名稱"}
               <input
                 required
                 maxLength={50}
@@ -345,7 +390,16 @@ function Application({ binId }: { binId: string }) {
                 />
               </label>
             )}
-            <PreferenceInputs value={preferences} onChange={setPreferences} />
+            <PreferenceInputs
+              value={preferences}
+              onChange={setPreferences}
+              fullOnly={demo}
+            />
+            {demo && (
+              <p className="tiny">
+                同一隻 BinU 大家都能認領；清運仍由清潔隊負責，你不用自己清。
+              </p>
+            )}
           </fieldset>
           <button className="button primary" disabled={action.blocked}>
             {demo ? "預覽認領" : "預覽認養申請"}
@@ -602,7 +656,13 @@ function PreferenceEditor({
   disabled: boolean;
   submit: (value: Preferences) => void;
 }) {
-  const [value, setValue] = useState(item.preferences);
+  const { session } = useSession();
+  const demo = isDemoToken(session?.access_token);
+  const [value, setValue] = useState(
+    demo
+      ? { full: item.preferences.full, dumping: false, dirty: false }
+      : item.preferences,
+  );
   return (
     <form
       className="card api-form"
@@ -613,7 +673,7 @@ function PreferenceEditor({
     >
       <fieldset disabled={disabled}>
         <legend>更新通知偏好</legend>
-        <PreferenceInputs value={value} onChange={setValue} />
+        <PreferenceInputs value={value} onChange={setValue} fullOnly={demo} />
       </fieldset>
       <button className="button primary" disabled={disabled}>
         預覽更新偏好
@@ -641,7 +701,7 @@ function PrivateNameEditor({
       }}
     >
       <label>
-        Bin友的私人桶名
+        BinU的私人桶名
         <input
           required
           maxLength={50}

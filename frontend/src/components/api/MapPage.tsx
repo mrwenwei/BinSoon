@@ -691,7 +691,7 @@ export function MapPage({
   );
 }
 
-// 清單列沿用 .location-row：Bin友（所選種類那一槽的狀態）、桶名（新設時旁邊
+// 清單列沿用 .location-row：BinU（所選種類那一槽的狀態）、桶名（新設時旁邊
 // 一顆「新設」膠囊）、距離，下一行兩槽滿度條並排（所選種類在左），右側兩槽可丟數。
 function NearbyRow({
   item,

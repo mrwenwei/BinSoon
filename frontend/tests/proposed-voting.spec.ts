@@ -58,7 +58,7 @@ test("suggested Bin opens a shared local ballot with persistent change and withd
   await ballot.getByRole("link", { name: "查看提案進度" }).click();
   await page.reload();
   await expect(
-    page.getByText("支持 0 · 反對 0 · 投票人數 0", { exact: true }),
+    page.getByText("支持 25 · 反對 2 · 投票人數 27", { exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "查看待現勘或示範設置點位" }).click();
   await ballot.getByRole("link", { name: "登入參與投票" }).click();
@@ -71,7 +71,7 @@ test("suggested Bin opens a shared local ballot with persistent change and withd
     page.getByRole("heading", { name: "你支持了這個點" }),
   ).toBeVisible();
   await expect(page.getByRole("region", { name: "投票結果" })).toContainText(
-    "1 / 60",
+    "28 / 60",
   );
   await expect(page.locator(".vote-done-cta a")).toHaveCount(1);
   await expect(page.locator(".vote-done-cta a")).toHaveText("回到地圖");
@@ -80,17 +80,17 @@ test("suggested Bin opens a shared local ballot with persistent change and withd
     page.getByRole("heading", { name: "你支持了這個點" }),
   ).toBeVisible();
   await expect(page.getByRole("region", { name: "投票結果" })).toContainText(
-    "支持 1 · 反對 0",
+    "支持 26 · 反對 2",
   );
   await page.getByRole("link", { name: "返回設置點", exact: true }).click();
   await expect(ballot.getByRole("button", { name: "支持設桶" })).toBeDisabled();
   await ballot.getByRole("button", { name: "不要設這裡" }).click();
   await expect(
-    ballot.getByText("支持 0 · 反對 1", { exact: true }),
+    ballot.getByText("支持 25 · 反對 3", { exact: true }),
   ).toBeVisible();
   await ballot.getByRole("button", { name: "撤回投票" }).click();
   await expect(
-    ballot.getByText("支持 0 · 反對 0", { exact: true }),
+    ballot.getByText("支持 25 · 反對 2", { exact: true }),
   ).toBeVisible();
   await ballot.getByRole("button", { name: "支持設桶" }).click();
   await expect(
@@ -115,7 +115,7 @@ test("suggested Bin opens a shared local ballot with persistent change and withd
     await page.getByRole("link", { name: "返回設置點", exact: true }).click();
   }
   await expect(
-    ballot.getByText("支持 1 · 反對 0", { exact: true }),
+    ballot.getByText("支持 26 · 反對 2", { exact: true }),
   ).toBeVisible();
   await page.locator(".mx-panel-body").evaluate((el) => {
     el.scrollTop = 0;
@@ -138,12 +138,12 @@ test("suggested Bin opens a shared local ballot with persistent change and withd
   expect(overflow).toBe(false);
   await ballot.getByRole("link", { name: "查看提案進度" }).click();
   await expect(
-    page.getByText("支持 1 · 反對 0 · 投票人數 1", { exact: true }),
+    page.getByText("支持 26 · 反對 2 · 投票人數 28", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "反對", exact: true }).click();
   await page.getByRole("link", { name: "查看待現勘或示範設置點位" }).click();
   await expect(
-    ballot.getByText("支持 0 · 反對 1", { exact: true }),
+    ballot.getByText("支持 25 · 反對 3", { exact: true }),
   ).toBeVisible();
   expect(writes).toBe(0);
 });

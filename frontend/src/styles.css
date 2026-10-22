@@ -7864,3 +7864,35 @@ input[type="file"]::file-selector-button {
 .citizen-home .member-hero a:not(.button) {
   color: var(--teal-on-mint);
 }
+
+.binu-adoption-hero {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  margin-block: var(--space-4);
+  padding: var(--space-6) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--mint);
+  color: var(--text-on-light);
+}
+.binu-adoption-hero .mascot {
+  display: block;
+  width: 112px;
+  height: 126px;
+}
+.binu-adoption-hero .mascot svg {
+  width: 100%;
+  height: 100%;
+}
+.binu-adoption-hero h2,
+.binu-adoption-hero p {
+  margin: 0;
+}
+.binu-adoption-hero p {
+  color: var(--text-on-light);
+}
+.binu-adoption-hero strong {
+  color: var(--teal-on-mint);
+}

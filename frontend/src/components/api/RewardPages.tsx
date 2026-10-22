@@ -169,7 +169,7 @@ export function Rewards() {
         <section className="card reward-coming-soon" aria-label="規劃中獎勵">
           <h2>更多獎勵，準備中</h2>
           <p>超商購物金 · 點數待定</p>
-          <p>Bin友周邊 · 點數待定</p>
+          <p>BinU周邊 · 點數待定</p>
           <p className="tiny">
             尚未開放兌換；展示券可在「我的兌換」查看，未串接 LINE 或真實核銷。
           </p>

@@ -148,7 +148,7 @@ export function ParticipationPage({
           我的投票進度
         </a>
         <a className="button secondary" href="#adopt">
-          我的Bin友
+          我的BinU
         </a>
         <a className="button secondary" href="#nearby">
           查看缺桶情境
@@ -456,7 +456,7 @@ export function ParticipationPage({
                     }}
                   >
                     <label>
-                      為Bin友取名
+                      為BinU取名
                       <input
                         required
                         maxLength={30}
@@ -657,7 +657,7 @@ export function ParticipationPage({
         )}
       </div>
       <section className="card participation-adoption-link">
-        <h2>一起照顧附近的Bin友</h2>
+        <h2>一起照顧附近的BinU</h2>
         <p>投票提案仍需評估；你也可以先認養既有公布桶位置。</p>
         <a className="button secondary" href="#adopt">
           挑選既有桶認養

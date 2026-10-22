@@ -9,7 +9,7 @@ import { stateVisual } from "../components/binVisual";
 import { binBotSvg, removedBinSvg } from "./binBot";
 
 // 一個點位只放一個標記（不加 ♻ 或數字徽章）。桶是垃圾桶機器人（binBot.ts），
-// 整隻顏色與表情是整個點的狀態；撤除只剩虛線外框＋中間的「撤」；場所代表點仍是Bin友。
+// 整隻顏色與表情是整個點的狀態；撤除只剩虛線外框＋中間的「撤」；場所代表點仍是BinU。
 export function markerIcon(
   kind: LocationKind,
   selected: boolean,

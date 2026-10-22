@@ -25,6 +25,7 @@ import { demoBinLocations, demoLocation } from "./demoBins";
 import { locations } from "./locations";
 import { validatePhoto } from "./media";
 import { isPhoneBrowser } from "./phone";
+import { demoPhotoSvg } from "./demoPhoto";
 
 export const DEMO_SIGNED_IN = "binsoon-demo-signed-in";
 const KEY = DEMO_STORE_KEY;
@@ -91,6 +92,8 @@ type State = {
   version: 1;
   adoption_naming_version?: 1;
   flow_version?: 1;
+  binu_ui_version?: 1;
+  vote_seeded_ids?: string[];
   crew_completions?: Record<string, DemoCrewCompletion>;
   reports: Report[];
   entries: PointEntry[];
@@ -137,7 +140,7 @@ function seed(): State {
     id: `demo-proposal-${i + 1}`,
     bin_id: `demo-proposed-bin-${i + 1}`,
     version: 1,
-    name: ["公園入口 Bin友提案", "商圈路口 Bin友提案"][i],
+    name: ["公園入口 BinU提案", "商圈路口 BinU提案"][i],
     reason: "展示需求，仍須現勘，並非真實設桶。",
     district: "大安區",
     latitude: bin.latitude + 0.004 + i * 0.002,
@@ -210,7 +213,7 @@ function seed(): State {
       {
         id: "demo-reward-1",
         code: "demo-coupon",
-        name: "Bin友超商展示券",
+        name: "BinU超商展示券",
         category: "coupon",
         cost: 35,
         stock: 8,
@@ -220,7 +223,7 @@ function seed(): State {
       {
         id: "demo-reward-2",
         code: "demo-coffee",
-        name: "Bin友咖啡展示券",
+        name: "BinU咖啡展示券",
         category: "coupon",
         cost: 70,
         stock: 3,
@@ -230,7 +233,7 @@ function seed(): State {
       {
         id: "demo-reward-3",
         code: "demo-grand",
-        name: "Bin友旅行展示獎",
+        name: "BinU旅行展示獎",
         category: "grand",
         cost: 1000,
         stock: 1,
@@ -255,7 +258,7 @@ function seed(): State {
       {
         id: "demo-notice-1",
         type: "report_reviewed",
-        title: "Bin友感謝你的照顧",
+        title: "BinU感謝你的照顧",
         message: "這是本機展示通知，不代表真實查證。",
         created_at: CREATED,
         read_at: null,
@@ -340,7 +343,7 @@ function withPrivateAdoptions(value: State): State {
 }
 // Add only explicit demo fixtures; never reset existing reports, points, votes or vouchers.
 function withFlowData(value: State): State {
-  if (value.flow_version === 1) return value;
+  if (value.flow_version === 1) return withBinUData(value);
   value.crew_completions ||= {};
   for (const report of value.reports) {
     if (
@@ -366,6 +369,38 @@ function withFlowData(value: State): State {
     coffee.name = "超商咖啡（試營運展示）";
   }
   value.flow_version = 1;
+  return withBinUData(value);
+}
+function withBinUData(value: State): State {
+  value.vote_seeded_ids ||= [];
+  for (const proposal of value.proposals) {
+    if (
+      !proposal.id.startsWith("demo-suggested-") ||
+      value.vote_seeded_ids.includes(proposal.id)
+    )
+      continue;
+    const hash = [...proposal.bin_id].reduce(
+      (sum, char) => sum + char.charCodeAt(0),
+      0,
+    );
+    proposal.support += 5 + (hash % 30);
+    proposal.oppose += 1 + (hash % 7);
+    proposal.total_votes = proposal.support + proposal.oppose;
+    proposal.support_ratio = proposal.support / proposal.total_votes;
+    value.vote_seeded_ids.push(proposal.id);
+  }
+  if (value.binu_ui_version === 1) return value;
+  // Only the fixed historical fixture changes handler; newly completed work stays with its real demo actor.
+  const report = value.reports.find((r) => r.id === "demo-report-2");
+  const completion = report && value.crew_completions?.[report.event_id];
+  if (completion) completion.staffId = "demo-crew-an";
+  for (const items of [value.proposals, value.rewards])
+    for (const item of items) item.name = item.name.replaceAll("Bin友", "BinU");
+  for (const notice of value.notifications) {
+    notice.title = notice.title.replaceAll("Bin友", "BinU");
+    notice.message = notice.message.replaceAll("Bin友", "BinU");
+  }
+  value.binu_ui_version = 1;
   return value;
 }
 let memory: State | undefined;
@@ -606,14 +641,7 @@ function quota(value = state()) {
   };
 }
 function placeholder() {
-  const tokens = getComputedStyle(document.documentElement);
-  const color = (name: string) => tokens.getPropertyValue(name).trim();
-  return (
-    "data:image/svg+xml," +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480"><rect width="640" height="480" fill="${color("--chrome")}"/><text x="40" y="160" fill="${color("--teal")}" font-size="56">DEMO</text><text x="40" y="240" fill="${color("--text")}" font-size="28">本機展示照片 · 非現場證據</text></svg>`,
-    )
-  );
+  return demoPhotoSvg();
 }
 function publicGet(url: URL, value: State): Result<unknown> | null {
   const name = url.pathname;
@@ -870,7 +898,7 @@ async function mutate(
         "REPORTING_SUSPENDED",
         "本機展示：近期不實回報達三次，暫停回報七天；其他會員功能仍可使用。",
       );
-    const bin = found(binLocation(body.bin_id, value), "Bin友");
+    const bin = found(binLocation(body.bin_id, value), "BinU");
     const position = coordinate(
       body.position?.latitude,
       body.position?.longitude,
@@ -879,12 +907,12 @@ async function mutate(
       bin.placement_status === "proposed" ||
       bin.bin_status?.operational_status !== "normal"
     )
-      throw new ApiError(409, "INVALID_TRANSITION", "此 Bin友目前無法回報。");
+      throw new ApiError(409, "INVALID_TRANSITION", "此 BinU目前無法回報。");
     if (distance(position, bin) > 50)
       throw new ApiError(
         422,
         "PROXIMITY_TOO_FAR",
-        "本機展示位置距 Bin友超過 50 公尺，請使用此桶座標。這不是實測 GPS。",
+        "本機展示位置距 BinU超過 50 公尺，請使用此桶座標。這不是實測 GPS。",
       );
     if (
       !Array.isArray(body.photo_ids) ||
@@ -1100,7 +1128,7 @@ async function mutate(
         "每人至多認領 5 個桶；請先結束現有認領再選新桶。",
       );
     const privateName = text(body.private_bin_name, 50);
-    const bin = found(binLocation(body.bin_id, value), "Bin友");
+    const bin = found(binLocation(body.bin_id, value), "BinU");
     if (
       bin.placement_status === "proposed" ||
       bin.bin_status?.operational_status !== "normal" ||
@@ -1113,7 +1141,7 @@ async function mutate(
       throw new ApiError(
         409,
         "INVALID_TRANSITION",
-        "此展示 Bin友目前無法申請認養。",
+        "此展示 BinU目前無法申請認養。",
       );
     if (!["居民", "店家", "學校", "社區團體"].includes(body.role))
       throw new ApiError(422, "VALIDATION_ERROR", "認養身份無效。");

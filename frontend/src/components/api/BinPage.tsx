@@ -185,7 +185,7 @@ export function BinPanel({
               aria-label="申請認養此桶"
             >
               {useDemoData(session?.access_token)
-                ? "認領這位 Bin友"
+                ? "認領這位 BinU"
                 : "待認養 · 申請認養此桶"}
             </a>
           )}

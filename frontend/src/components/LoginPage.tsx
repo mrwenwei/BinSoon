@@ -28,7 +28,7 @@ export function LoginPage({
             <span>嗨，很高興認識你！</span>
           </div>
           <h1>
-            先讓Bin友
+            先讓BinU
             <br />
             認識你<span className="dot">。</span>
           </h1>
