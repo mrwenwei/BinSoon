@@ -17,7 +17,7 @@ test("member keeps levels and opens separate reward and report pages", async ({
     await page.setViewportSize({ width: 320, height: 844 });
   await page.goto("/#login?next=levels");
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await expect(page.locator("main")).toHaveCount(1);
   await expect(
@@ -59,7 +59,7 @@ test("member keeps levels and opens separate reward and report pages", async ({
     rewards.getByRole("region", { name: "規劃中獎勵" }),
   ).toContainText("點數待定");
   await rewards
-    .getByRole("button", { name: "選擇 超商咖啡（試營運展示）", exact: true })
+    .getByRole("button", { name: "選擇 超商咖啡", exact: true })
     .click();
   await rewards.getByRole("button", { name: "確認兌換", exact: true }).click();
   await expect(
@@ -106,7 +106,7 @@ test("notifications live in member and unclaimed bins open their own adoption ap
   await apiFixture(page, undefined, { demo: true });
   await page.goto("/#login?next=member");
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await page.getByRole("link", { name: "通知與進度", exact: true }).click();
   await expect(page).toHaveURL(/#notifications$/);

@@ -19,12 +19,12 @@ export async function asPhone(page: Page) {
 }
 export async function captureReport(page: Page) {
   await page
-    .getByRole("button", { name: "分享目前位置（模擬）", exact: true })
+    .getByRole("button", { name: "分享目前位置", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "現場拍照（模擬）", exact: true })
+    .getByRole("button", { name: "現場拍照", exact: true })
     .click();
   await expect(
-    page.getByRole("img", { name: "待送出的模擬測試照片" }),
+    page.getByRole("img", { name: "待送出的照片" }),
   ).toBeVisible();
 }

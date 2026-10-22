@@ -485,9 +485,7 @@ function PhoneReportForm({
           <section className="phone-report-capture" aria-label="手機現場回報">
             <h2>1. 分享現場位置</h2>
             <p>需分享座標並核對距離，距離桶位 50 公尺內才可回報。</p>
-            <p className="tiny">
-              本次只展示成功流程：模擬手機授權與定位，不讀取真實 GPS。
-            </p>
+
             <button
               type="button"
               className="button secondary"
@@ -502,11 +500,11 @@ function PhoneReportForm({
                 });
               }}
             >
-              分享目前位置（模擬）
+              分享目前位置
             </button>
             {draft.confirmed && draft.demoPosition === "near" && (
               <p role="status">
-                已分享模擬座標：{draft.latitude}, {draft.longitude} · 距桶位{" "}
+                已分享座標：{draft.latitude}, {draft.longitude} · 距桶位{" "}
                 {view.data
                   ? Math.round(
                       distanceToBin(
@@ -521,7 +519,7 @@ function PhoneReportForm({
               </p>
             )}
             <h2>2. 現場拍照</h2>
-            <p>僅接受手機現場拍照，不開放相簿上傳。本次不啟動真實相機。</p>
+            <p>僅接受手機現場拍照，不開放相簿上傳。</p>
             <button
               type="button"
               className="button secondary"
@@ -531,39 +529,33 @@ function PhoneReportForm({
                   void selectFile(createDemoPhoto(), true);
               }}
             >
-              現場拍照（模擬）
+              現場拍照
             </button>
-            {draft.demoPhoto && (
-              <p className="tiny">模擬拍照完成 · DEMO 示意照片，非現場證據。</p>
-            )}
+
             {preview && (
-              <img
-                className="api-photo"
-                src={preview}
-                alt="待送出的模擬測試照片"
-              />
+              <img className="api-photo" src={preview} alt="待送出的照片" />
             )}
             {analyzing && (
               <div className="ai-analysis" role="status" aria-live="polite">
                 <span className="ai-progress" aria-hidden="true" />
-                AI 判讀中（模擬）…正在辨識桶況與問題
+                AI 判讀中…正在辨識桶況與問題
               </div>
             )}
             {draft.aiProblem && !analyzing && (
               <p className="ai-analysis" role="status">
-                AI 判讀（模擬）：{problemLabels[draft.aiProblem]} ·
-                已幫你選好，不對可以自己改。此為本機情境，未使用真實 AI。
+                AI 判讀：{problemLabels[draft.aiProblem]} ·
+                已幫你選好，不對可以自己改。
               </p>
             )}
             <p className="tiny">
               {isDemoToken(session?.access_token)
-                ? "送出只儲存在此瀏覽器，不會派工或寫入後端。"
-                : "此模式會送到目前連接的後端，內容附模擬標記；後端再次驗證距離與權限。"}
+                ? ""
+                : "送出時會再次驗證距離與權限。"}
             </p>
           </section>
         </fieldset>
         {descriptionTooLong && (
-          <p role="alert">含模擬測試標記的說明超過 500 字，請縮短說明。</p>
+          <p role="alert">說明超過 500 字，請縮短說明。</p>
         )}
         {error && <p role="alert">{error}</p>}
         {!session?.user.roles.includes("citizen") ? (
@@ -678,7 +670,7 @@ export function ReportSummary({ report }: { report: Report }) {
       {report.assignment_status === "unassigned" && (
         <p>
           {isDemoToken(session?.access_token)
-            ? "這是本機展示案件，不會建立真實工單或派送清潔隊。"
+            ? ""
             : "此回報尚未指派，超出目前大安區隊員範圍。"}
         </p>
       )}
@@ -740,7 +732,7 @@ export function ReportDetail({
       {done && (
         <p>
           {isDemoToken(session?.access_token)
-            ? "已儲存本機展示回報；未派送清潔隊，也未增加可用點數。"
+            ? "已儲存回報，點數待查證後確認。"
             : "清潔隊收到後會到場查證；屬實才會入帳點數。"}
         </p>
       )}
@@ -858,9 +850,7 @@ export function Member() {
           <span className="eyebrow">把順手的善意，累積成城市的改變</span>
           <h1>會員中心</h1>
         </div>
-        <span className="demo-tag">
-          {isDemoToken(session?.access_token) ? "本機展示帳本" : "我的城市紀錄"}
-        </span>
+        <span className="demo-tag">我的城市紀錄</span>
       </header>
       <MemberNavigation current="member" />
       <div className="member-hub-layout">

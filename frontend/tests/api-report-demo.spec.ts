@@ -89,7 +89,7 @@ test("phone requires shared coordinates before simulated capture and never acces
   await login(page, "citizen", `report/${binId}`);
   await expect(page.locator('input[type="file"]')).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "現場拍照（模擬）" }),
+    page.getByRole("button", { name: "現場拍照" }),
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "確認送出回報" }),
@@ -124,14 +124,14 @@ test("phone capture and shared location drafts stay separated by waste stream", 
     .fill("測試回報");
   await page.getByRole("radio", { name: "資源回收", exact: true }).click();
   await expect(
-    page.getByRole("img", { name: "待送出的模擬測試照片" }),
+    page.getByRole("img", { name: "待送出的照片" }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "現場拍照（模擬）" }),
+    page.getByRole("button", { name: "現場拍照" }),
   ).toBeDisabled();
   await page.getByRole("radio", { name: "一般垃圾", exact: true }).click();
   await expect(
-    page.getByRole("img", { name: "待送出的模擬測試照片" }),
+    page.getByRole("img", { name: "待送出的照片" }),
   ).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "說明", exact: true }),

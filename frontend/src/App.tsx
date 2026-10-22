@@ -202,7 +202,7 @@ function AppContent() {
         }
         right={
           page === "crew" ? (
-            <span className="role-chip">清潔員模擬模式</span>
+            <span className="role-chip">清潔員模式</span>
           ) : session?.user.roles.includes("citizen") ? (
             <PointsButton />
           ) : session ? (
@@ -217,11 +217,6 @@ function AppContent() {
         }
         account={page !== "crew" && session && <Account onLogout={signOut} />}
       />
-      {!isMapView && page !== "crew" && useDemoData(session?.access_token) && (
-        <p className="demo-mode-notice">
-          市民展示模式 · 桶況與個人資料為示意，市民操作只儲存在此瀏覽器。
-        </p>
-      )}
       {notice && (
         <p className="storage-warning" role="status">
           {notice} <button onClick={clearNotice}>關閉提示</button>
@@ -381,7 +376,6 @@ function AppContent() {
       </div>
       {!isMapView && page !== "vote-done" && page !== "crew" && (
         <footer className="api-footer">
-          所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。
           <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}
           <a href="#rewards">兌換</a>
         </footer>

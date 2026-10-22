@@ -57,9 +57,9 @@ export function CrewDemo({ section, id }: { section?: string; id?: string }) {
         <section className="card api-form">
           <h2>大安區清潔隊 · 清潔員端</h2>
           <p>
-            以「模擬清潔員阿順」體驗今日派工、現場處理與建議路線，不需要帳號或密碼。
+            以「清潔員阿順」體驗今日派工、現場處理與建議路線，不需要帳號或密碼。
           </p>
-          <p>全部是假資料與模擬照片，不會派出真實工單、啟動相機或寫入後端。</p>
+
           <button
             className="button primary"
             onClick={() => {
@@ -68,11 +68,11 @@ export function CrewDemo({ section, id }: { section?: string; id?: string }) {
                 window.location.hash = "crew";
                 setError("");
               } catch {
-                setError("無法儲存模擬登入，請允許此頁使用瀏覽器儲存空間。");
+                setError("無法儲存登入，請允許此頁使用瀏覽器儲存空間。");
               }
             }}
           >
-            以模擬清潔員登入
+            以清潔員登入
           </button>
           {error && <p role="alert">{error}</p>}
         </section>
@@ -81,7 +81,7 @@ export function CrewDemo({ section, id }: { section?: string; id?: string }) {
   return (
     <div className="crew-shell">
       <div className="crew-demo-notice">
-        <span>模擬清潔員阿順 · 所有派工、照片、路線均為本機展示</span>
+        <span>清潔員阿順</span>
         <button onClick={() => setCrewSignedIn(false)}>登出清潔員</button>
       </div>
       {section === "task" && id ? (
@@ -119,7 +119,7 @@ function CrewList({ tasks }: { tasks: CrewTask[] }) {
             本月{" "}
             {crewRanking("大安區", taipeiMonth()).find((row) => row.current)
               ?.likes || 0}{" "}
-            讚 · 示意
+            讚
           </a>
         </div>
         <div className="crew-tabs" aria-label="派工狀態">
@@ -176,11 +176,7 @@ function CrewList({ tasks }: { tasks: CrewTask[] }) {
                       </span>
                     </div>
                     <h2>{task.name}</h2>
-                    <p>
-                      {task.status === "done"
-                        ? "已完成 · 本機模擬紀錄"
-                        : task.detail}
-                    </p>
+                    <p>{task.status === "done" ? "已完成" : task.detail}</p>
                   </a>
                 ))}
               </section>
@@ -193,7 +189,7 @@ function CrewList({ tasks }: { tasks: CrewTask[] }) {
       </div>
       <div className="crew-bottom">
         <a className="button primary" href="#crew/route">
-          看今日建議路線（{routeTasks.length} 個桶 · 模擬）
+          看今日建議路線（{routeTasks.length} 個桶 · ）
         </a>
       </div>
     </main>
@@ -211,7 +207,7 @@ function CrewTaskPage({
   if (!task)
     return (
       <main className="crew-demo">
-        <h1>找不到此模擬派工</h1>
+        <h1>找不到此派工</h1>
         <a href="#crew">返回今日派工</a>
       </main>
     );
@@ -244,7 +240,7 @@ function CrewTaskPage({
         <div>
           <h1>{task.name}</h1>
           <p className="crew-attention">
-            {task.status === "done" ? "已完成 · 模擬清運結案" : task.issue}
+            {task.status === "done" ? "已完成 · 清運結案" : task.issue}
           </p>
         </div>
       </header>
@@ -257,12 +253,12 @@ function CrewTaskPage({
         <img
           className="crew-evidence"
           src={task.reportPhoto || crewPhoto("report")}
-          alt="民眾回報的模擬現場照片"
+          alt="民眾回報的現場照片"
         />
         <p>
           {task.source === "citizen"
-            ? `民眾回報 · 同事件 ${task.reportCount || 1} 筆 · 本機模擬照片`
-            : "感測器自動派工 · 附圖為模擬現場照片"}
+            ? `民眾回報 · 同事件 ${task.reportCount || 1} 筆`
+            : "感測器自動派工"}
         </p>
       </section>
       <a className="crew-task-card crew-between" href="#crew/route">
@@ -278,11 +274,9 @@ function CrewTaskPage({
           <h2>結案完成</h2>
           <p>
             已完成清運 · {task.truth === "yes" ? "查證屬實" : "查證不實"}
-            {task.eventId ? "，市民回報紀錄已同步更新" : " · 本機展示紀錄"}
+            {task.eventId ? "，市民回報紀錄已同步更新" : ""}
           </p>
-          <p>
-            本機模擬結案，不會影響真實桶況或派工；讀值異常及不實案件不列入排名。
-          </p>
+          <p>讀值異常及不實案件不列入排名。</p>
           {nextTask ? (
             <a className="button primary" href={`#crew/task/${nextTask.id}`}>
               下一張工單：{nextTask.name}
@@ -299,14 +293,14 @@ function CrewTaskPage({
             <img
               className="crew-evidence"
               src={task.completionPhoto}
-              alt="已保存的模擬完成照"
+              alt="已保存的完成照"
             />
           )}
           {task.interiorPhoto && (
             <img
               className="crew-evidence"
               src={task.interiorPhoto}
-              alt="已保存的模擬桶內照"
+              alt="已保存的桶內照"
             />
           )}
         </section>
@@ -316,7 +310,6 @@ function CrewTaskPage({
           <p>
             桌面可查看派工與路線；到場確認、拍照及完成清運僅限手機瀏覽器。縮小桌面視窗也無法操作。
           </p>
-          <p>手機只生成模擬照片，不會啟動相機或接受相簿上傳。</p>
         </section>
       ) : (
         <>
@@ -325,7 +318,7 @@ function CrewTaskPage({
               className="button primary"
               onClick={() => apply({ status: "processing" })}
             >
-              確認到場，開始處理（模擬）
+              確認到場，開始處理
             </button>
           )}
           <fieldset className="crew-work-fields" disabled={!processing || busy}>
@@ -358,7 +351,7 @@ function CrewTaskPage({
                   ),
                 )}
               </div>
-              <p>家戶垃圾會標記為本機稽查示意；桶內照可選填。</p>
+              <p>家戶垃圾會標記為稽查；桶內照可選填。</p>
             </fieldset>
             <div className="crew-choice">
               <button
@@ -366,28 +359,26 @@ function CrewTaskPage({
                   apply({ completionPhoto: crewPhoto("completion") })
                 }
               >
-                拍完成照（模擬）
+                拍完成照
               </button>
               <button
                 onClick={() => apply({ interiorPhoto: crewPhoto("interior") })}
               >
-                加拍桶內照（模擬・選填）
+                加拍桶內照（選填）
               </button>
             </div>
-            <p className="crew-demo-caption">
-              只產生 DEMO 假照片，不使用真實相機或相簿。
-            </p>
+
             <div className="crew-photo-grid">
               {task.completionPhoto && (
                 <figure>
-                  <img src={task.completionPhoto} alt="待確認的模擬完成照" />
-                  <figcaption>模擬完成照已就緒</figcaption>
+                  <img src={task.completionPhoto} alt="待確認的完成照" />
+                  <figcaption>完成照已就緒</figcaption>
                 </figure>
               )}
               {task.interiorPhoto && (
                 <figure>
-                  <img src={task.interiorPhoto} alt="待確認的模擬桶內照" />
-                  <figcaption>模擬桶內照已就緒</figcaption>
+                  <img src={task.interiorPhoto} alt="待確認的桶內照" />
+                  <figcaption>桶內照已就緒</figcaption>
                 </figure>
               )}
             </div>
@@ -400,7 +391,7 @@ function CrewTaskPage({
             >
               完成清運
             </button>
-            <p>需確認到場、是否屬實、垃圾組成及模擬完成照，才能結案。</p>
+            <p>需確認到場、是否屬實、垃圾組成及完成照，才能結案。</p>
           </div>
         </>
       )}
@@ -433,10 +424,7 @@ function CrewRoute({ tasks }: { tasks: CrewTask[] }) {
       <a className="back-link" href="#crew">
         ← 返回今日工單
       </a>
-      <p className="tiny">
-        固定展示起點與模擬派工，沒有即時 GPS；沿用 Valhalla
-        地圖道路規劃，未做順序最佳化。
-      </p>
+      <p className="tiny">地圖道路規劃，未做順序最佳化。</p>
       <CrewRoutePlanner
         title="今日清運路線"
         vehicle={vehicle}
@@ -485,7 +473,7 @@ function CrewRoute({ tasks }: { tasks: CrewTask[] }) {
                   <span aria-hidden="true">✓</span>
                   <div>
                     <strong>{g.location.label}</strong>
-                    <small>已完成 · 本機展示</small>
+                    <small>已完成</small>
                   </div>
                   <a href={crewTaskHref(g.tasks[0].id)}>查看結案</a>
                 </li>
@@ -548,9 +536,7 @@ function CrewRanking() {
                 {row.name}
                 {row.current ? "（你）" : ""}
               </h2>
-              {row.rank <= 3 && (
-                <span className="status-pill">專案加給 · 示意</span>
-              )}
+              {row.rank <= 3 && <span className="status-pill">專案加給</span>}
               <p>市民給的讚 {row.likes}</p>
             </div>
             <strong className="numeral-md">
@@ -560,10 +546,10 @@ function CrewRanking() {
           </li>
         ))}
       </ol>
-      {valid && !ranking.length && <p>此行政區與月份尚無展示成果。</p>}
+      {valid && !ranking.length && <p>此行政區與月份尚無成果。</p>}
       <aside className="member-how">
         <p>
-          本機展示：每月前三名標示專案加給，不發放款項。U3
+          每月前三名標示專案加給。市民
           對處理清潔員的讚會同步顯示；每次完成限讚一次，按讚不改變件數排名。不實與讀值異常案件不列入計件。
         </p>
       </aside>

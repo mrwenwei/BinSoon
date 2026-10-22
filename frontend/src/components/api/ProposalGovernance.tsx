@@ -15,7 +15,7 @@ import {
 const stages = {
   village: { action: "village_approve", label: "通過里辦評議" },
   evaluation: { action: "evaluation_approve", label: "通過評估" },
-  survey: { action: "survey_approve", label: "確認示範設置" },
+  survey: { action: "survey_approve", label: "確認設置" },
 } as const;
 function canReview(item: Proposal, intent: Intent) {
   const body = intent.body as { action?: string; reason?: string };
@@ -123,7 +123,7 @@ function AdminProposal({ id }: { id: string }) {
         confirmation={confirmation}
         etag={etag}
         cancel={() => setConfirmation(null)}
-        impact="操作會更新市民提案進度；示範設置只更新同一 proposed Bin 的展示狀態，不代表現場已完成設置。"
+        impact="操作會更新市民提案進度與點位狀態。"
       />
       {item && (
         <ProposalNaming

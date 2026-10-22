@@ -42,7 +42,7 @@ export function demoSession(): Session {
     expires_at: new Date(Date.now() + 3600000).toISOString(),
     user: {
       id: "local-demo-citizen",
-      display_name: "展示市民小安",
+      display_name: "市民小安",
       roles: ["citizen"],
       districts: [],
       auth_source: "demo",
@@ -118,7 +118,7 @@ function seed(): State {
       type: i === 1 ? "dirty" : "full",
       waste_type: i % 2 ? "recycling" : "general",
       classification_source: "demo_assumption",
-      description: "本機示意案件，非現場回報。",
+      description: "",
       photo_ids: ["demo-seed-photo"],
       status: status as Report["status"],
       work_status: null,
@@ -141,7 +141,7 @@ function seed(): State {
     bin_id: `demo-proposed-bin-${i + 1}`,
     version: 1,
     name: ["公園入口 BinU提案", "商圈路口 BinU提案"][i],
-    reason: "展示需求，仍須現勘，並非真實設桶。",
+    reason: "仍須評估與現勘。",
     district: "大安區",
     latitude: bin.latitude + 0.004 + i * 0.002,
     longitude: bin.longitude,
@@ -173,7 +173,7 @@ function seed(): State {
         report_id: null,
         redemption_id: null,
         created_at: CREATED,
-        type: "展示初始點數",
+        type: "初始點數",
       },
       ...reports.slice(0, 3).map((report, i) => ({
         id: `demo-award-${i}`,
@@ -182,7 +182,7 @@ function seed(): State {
         report_id: report.id,
         redemption_id: null,
         created_at: CREATED,
-        type: "展示回報獎勵",
+        type: "回報獎勵",
       })),
       {
         id: "demo-redemption-entry",
@@ -191,7 +191,7 @@ function seed(): State {
         report_id: null,
         redemption_id: "demo-redemption-initial",
         created_at: CREATED,
-        type: "展示獎品兌換",
+        type: "獎品兌換",
       },
     ],
     adoptions: [
@@ -200,20 +200,20 @@ function seed(): State {
         version: 1,
         bin_id: bin.id,
         role: "居民",
-        display_name: "展示市民小安",
+        display_name: "市民小安",
         intro: "",
         preferences: { full: true, dumping: true, dirty: false },
         status: "active",
         created_at: CREATED,
         updated_at: CREATED,
-        reason: "預設的本機展示認養，非後端核准紀錄。",
+        reason: "",
       },
     ],
     rewards: [
       {
         id: "demo-reward-1",
         code: "demo-coupon",
-        name: "BinU超商展示券",
+        name: "BinU超商兌換券",
         category: "coupon",
         cost: 35,
         stock: 8,
@@ -223,7 +223,7 @@ function seed(): State {
       {
         id: "demo-reward-2",
         code: "demo-coffee",
-        name: "BinU咖啡展示券",
+        name: "BinU咖啡兌換券",
         category: "coupon",
         cost: 70,
         stock: 3,
@@ -233,7 +233,7 @@ function seed(): State {
       {
         id: "demo-reward-3",
         code: "demo-grand",
-        name: "BinU旅行展示獎",
+        name: "BinU旅行獎",
         category: "grand",
         cost: 1000,
         stock: 1,
@@ -259,7 +259,7 @@ function seed(): State {
         id: "demo-notice-1",
         type: "report_reviewed",
         title: "BinU感謝你的照顧",
-        message: "這是本機展示通知，不代表真實查證。",
+        message: "請查看最新查證結果。",
         created_at: CREATED,
         read_at: null,
         waste_type: "general",
@@ -327,14 +327,14 @@ function withPrivateAdoptions(value: State): State {
         version: 1,
         bin_id: bin.id,
         role: "居民",
-        display_name: "展示市民小安",
+        display_name: "市民小安",
         private_bin_name: names[index],
         intro: "",
         status: "active",
         preferences: { full: true, dumping: true, dirty: false },
         created_at: CREATED,
         updated_at: CREATED,
-        reason: "本機展示認領，非真實認領。",
+        reason: "",
       });
     }
   }
@@ -366,7 +366,7 @@ function withFlowData(value: State): State {
   const coffee = value.rewards.find((r) => r.code === "demo-coffee");
   if (coffee) {
     coffee.cost = 3;
-    coffee.name = "超商咖啡（試營運展示）";
+    coffee.name = "超商咖啡";
   }
   value.flow_version = 1;
   return withBinUData(value);
@@ -437,7 +437,7 @@ function commit(value: State) {
     throw new ApiError(
       507,
       "DEMO_STORAGE_FULL",
-      "本機展示儲存空間不足或不可用，請使用較小照片；本次未儲存，也未送往後端。",
+      "儲存空間不足或不可用，請使用較小照片；本次未儲存，也未送往後端。",
     );
   }
   memory = value;
@@ -506,11 +506,7 @@ const result = (data: unknown, version?: number): Result<unknown> => ({
 });
 function found<T>(item: T | undefined, description: string): T {
   if (!item)
-    throw new ApiError(
-      404,
-      "DEMO_NOT_FOUND",
-      `找不到這筆本機展示${description}。`,
-    );
+    throw new ApiError(404, "DEMO_NOT_FOUND", `找不到這筆${description}。`);
   return item;
 }
 function coordinate(latitude: unknown, longitude: unknown) {
@@ -581,7 +577,7 @@ function binLocation(id: string, value = state()): ApiLocation | undefined {
           id,
           label: proposal.approved_name || proposal.name,
           address: null,
-          note: "本機展示提案，尚未現勘或設置。",
+          note: "提案，尚未現勘或設置。",
           kind: "bin",
           district: proposal.district,
           latitude: proposal.latitude,
@@ -799,7 +795,7 @@ function privateGet(url: URL, value: State): Result<unknown> | null {
     return result(
       found(
         value.redemptions.find((item) => item.id === redemption[1]),
-        "展示券",
+        "兌換券",
       ),
     );
   const media = name.match(/^\/media\/([^/]+)\/access$/);
@@ -850,7 +846,7 @@ function checkVersion(version: number, options: Options) {
     throw new ApiError(
       412,
       "VERSION_CONFLICT",
-      "本機展示資料已更新，請重新確認後操作。",
+      "資料已更新，請重新確認後操作。",
     );
 }
 function text(value: unknown, max = 500) {
@@ -874,7 +870,7 @@ async function mutate(
   if (name === "/media" && body instanceof FormData) {
     const file = body.get("file");
     if (!(file instanceof File) || body.get("purpose") !== "report")
-      throw new ApiError(422, "VALIDATION_ERROR", "展示市民只能上傳回報照片。");
+      throw new ApiError(422, "VALIDATION_ERROR", "市民只能上傳回報照片。");
     await validatePhoto(file);
     const url = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -896,7 +892,7 @@ async function mutate(
       throw new ApiError(
         403,
         "REPORTING_SUSPENDED",
-        "本機展示：近期不實回報達三次，暫停回報七天；其他會員功能仍可使用。",
+        "近期不實回報達三次，暫停回報七天；其他會員功能仍可使用。",
       );
     const bin = found(binLocation(body.bin_id, value), "BinU");
     const position = coordinate(
@@ -912,7 +908,7 @@ async function mutate(
       throw new ApiError(
         422,
         "PROXIMITY_TOO_FAR",
-        "本機展示位置距 BinU超過 50 公尺，請使用此桶座標。這不是實測 GPS。",
+        "位置距 BinU超過 50 公尺，請使用此桶座標。",
       );
     if (
       !Array.isArray(body.photo_ids) ||
@@ -921,7 +917,7 @@ async function mutate(
         (item) => item.id === body.photo_ids[0] && item.purpose === "report",
       )
     )
-      throw new ApiError(422, "INVALID_MEDIA", "請先提供本機展示照片。");
+      throw new ApiError(422, "INVALID_MEDIA", "請先提供照片。");
     if (
       !["full", "dirty", "dumping", "broken", "other"].includes(body.type) ||
       !["general", "recycling"].includes(body.waste_type)
@@ -945,7 +941,7 @@ async function mutate(
       (item) => item.bin_id === bin.id && item.status === "active",
     );
     if (body.quick && !adopter)
-      throw new ApiError(403, "FORBIDDEN", "僅展示中的有效認養可快捷通報。");
+      throw new ApiError(403, "FORBIDDEN", "僅有效認養可快捷通報。");
     const item: Report = {
       id: `demo-report-${crypto.randomUUID()}`,
       bin_id: bin.id,
@@ -979,7 +975,7 @@ async function mutate(
       throw new ApiError(
         409,
         "MONTHLY_QUOTA_EXCEEDED",
-        "本機展示本月最多建立三個提案。",
+        "本月最多建立三個提案。",
       );
     const point = coordinate(body.latitude, body.longitude);
     const nearby = availability(
@@ -996,7 +992,7 @@ async function mutate(
       throw new ApiError(
         409,
         "NEARBY_PROPOSAL",
-        "此處附近已有本機展示提案，請先查看與投票。",
+        "此處附近已有提案，請先查看與投票。",
       );
     const item: Proposal = {
       id: `demo-proposal-${crypto.randomUUID()}`,
@@ -1058,7 +1054,7 @@ async function mutate(
       );
     } else {
       if (item.status !== "collecting" || item.voting_closed_at)
-        throw new ApiError(409, "VOTING_CLOSED", "此展示提案已關票。");
+        throw new ApiError(409, "VOTING_CLOSED", "此提案已關票。");
       if (![null, "support", "oppose"].includes(body.vote))
         throw new ApiError(422, "VALIDATION_ERROR", "投票選項無效。");
       if (item.my_vote === "support") item.support--;
@@ -1103,7 +1099,7 @@ async function mutate(
     reward.stock--;
     value.entries.push({
       id: crypto.randomUUID(),
-      type: "展示獎品兌換",
+      type: "獎品兌換",
       amount: -reward.cost,
       balance_after: member.available_points - reward.cost,
       report_id: null,
@@ -1150,7 +1146,7 @@ async function mutate(
       version: 1,
       bin_id: bin.id,
       role: body.role,
-      display_name: "展示市民小安",
+      display_name: "市民小安",
       private_bin_name: privateName,
       intro: body.role === "店家" ? String(body.intro || "").slice(0, 500) : "",
       preferences: {
@@ -1161,7 +1157,7 @@ async function mutate(
       status: "active",
       created_at: now(),
       updated_at: now(),
-      reason: "本機展示認領，非真實認領。",
+      reason: "",
     };
     value.adoptions.unshift(item);
     return result(item, item.version);
@@ -1191,9 +1187,7 @@ async function mutate(
       };
     else {
       item.status = adoption[2] === "withdraw" ? "withdrawn" : "ended";
-      item.reason = body.reason
-        ? text(body.reason)
-        : "本機展示結束或撤回認養。";
+      item.reason = body.reason ? text(body.reason) : "結束或撤回認養。";
       item.preferences = { full: false, dirty: false, dumping: false };
     }
     item.version++;
@@ -1209,11 +1203,7 @@ async function mutate(
     item.read_at ||= now();
     return result(item);
   }
-  throw new ApiError(
-    403,
-    "LOCAL_DEMO_ONLY",
-    "此操作不屬於市民本機展示，不會送往後端。",
-  );
+  throw new ApiError(403, "LOCAL_DEMO_ONLY", "目前尚未開放此操作。");
 }
 export function decorateCitizenView(
   path: string,
@@ -1326,7 +1316,7 @@ export function demoReportCompletion(report: Report) {
   return state().crew_completions?.[report.event_id];
 }
 export async function likeDemoReport(reportId: string) {
-  if (!restoreDemoLogin()) throw new Error("請先以展示市民登入。");
+  if (!restoreDemoLogin()) throw new Error("請先以市民登入。");
   return localWrite(() => {
     const value = structuredClone(state());
     const report = found(
@@ -1359,15 +1349,15 @@ export async function updateDemoCrewCase(
     sessionStorage.getItem("binsoon-crew-demo-session") !== "yes" ||
     !isPhoneBrowser()
   )
-    throw new Error("請以模擬清潔員登入，並使用手機現場處理。");
+    throw new Error("請以清潔員登入，並使用手機現場處理。");
   return localWrite(() => {
     const value = structuredClone(state());
     const reports = value.reports.filter((r) => r.event_id === eventId);
-    if (!reports.length) throw new Error("找不到本機展示案件。");
+    if (!reports.length) throw new Error("找不到案件。");
     if (
       reports.some((r) => binLocation(r.bin_id, value)?.district !== "大安區")
     )
-      throw new Error("此案件不在大安區模擬清潔員的展示責任區。");
+      throw new Error("此案件不在大安區清潔員的責任區。");
     if (value.crew_completions?.[eventId]) return;
     const at = now();
     if (change.arrived)
@@ -1395,7 +1385,7 @@ export async function updateDemoCrewCase(
         report.pending_points = 0;
         report.awarded_points = points;
         report.rejection_reason =
-          change.truth === "no" ? "模擬現場查證：與回報不符" : null;
+          change.truth === "no" ? "現場查證：與回報不符" : null;
         if (points)
           value.entries.push({
             id: `demo-settlement-${report.id}`,
@@ -1409,7 +1399,7 @@ export async function updateDemoCrewCase(
         value.notifications.unshift({
           id: `demo-reviewed-${report.id}`,
           type: "report_reviewed",
-          title: "清潔員已完成查證（模擬）",
+          title: "清潔員已完成查證",
           message: points
             ? `查證屬實，已入帳 ${points} 點。`
             : "查證結果已更新，請查看回報紀錄。",
@@ -1426,7 +1416,7 @@ export async function updateDemoCrewCase(
         !["street", "household", "mixed"].includes(change.composition || "") ||
         !change.photo?.startsWith("data:image/svg+xml,")
       )
-        throw new Error("完成前需到場、查證、垃圾組成及模擬完成照。");
+        throw new Error("完成前需到場、查證、垃圾組成及完成照。");
       for (const report of reports) {
         report.work_status = "completed";
         report.event_status = "closed";

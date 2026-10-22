@@ -304,3 +304,7 @@ Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of
 Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
 
 THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+### 2026-10-22 介面文案精簡
+
+依使用者要求，App 移除模擬／假資料揭露文案、DEMO 身份標籤與新產生照片的展示浮水印。既有操作規則及待現勘狀態保留；資料來源欄位、API 契約與本機帳本隔離不變，未新增 GPS、相機、AI 或 IoT 串接。既存帳本與照片保持原樣；下方及歷史文件中的模擬限制仍適用於實作。

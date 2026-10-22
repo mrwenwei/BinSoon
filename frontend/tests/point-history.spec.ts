@@ -9,7 +9,7 @@ test("member overview uses separate tabs for point history, redemptions and noti
     await page.setViewportSize({ width: 320, height: 844 });
   await page.goto("/#login?next=member");
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await expect(page.locator(".member-ledger")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "回報摘要" })).toHaveCount(0);

@@ -90,7 +90,7 @@ test("citizen signs in without credentials and sees a persistent fictional membe
   await page.goto("/#login?next=member");
   await expect(page.getByLabel("密碼", { exact: true })).toHaveCount(0);
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "我的", exact: true }),
@@ -126,13 +126,13 @@ test("citizen reports, creates proposals, votes and redeems entirely locally acr
   );
   await page.goto(`/#login?next=${encodeURIComponent(`report/${binId}`)}`);
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "分享目前位置（模擬）", exact: true })
+    .getByRole("button", { name: "分享目前位置", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "現場拍照（模擬）", exact: true })
+    .getByRole("button", { name: "現場拍照", exact: true })
     .click();
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
   await expect(page).toHaveURL(/#report-done\//);
@@ -173,7 +173,7 @@ test("citizen reports, creates proposals, votes and redeems entirely locally acr
   ).toBeVisible();
   await page.goto("/#rewards");
   await page
-    .getByRole("button", { name: "選擇 超商咖啡（試營運展示）", exact: true })
+    .getByRole("button", { name: "選擇 超商咖啡", exact: true })
     .click();
   await page.getByRole("button", { name: "確認兌換", exact: true }).click();
   await expect(
@@ -212,7 +212,7 @@ test("demo notifications and adoption preferences stay local and can be changed 
   );
   await page.goto("/#login?next=notifications");
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await page.getByRole("button", { name: "標為已讀", exact: true }).click();
   await expect(page.getByText(/已讀時間：/)).toBeVisible();
@@ -262,7 +262,7 @@ test("demo surfaces fit desktop and 320px phones and use the BinU wording", asyn
     });
   }
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await expect(
     page
@@ -291,7 +291,7 @@ test("two demo tabs cannot spend the same points twice", async ({
     );
     await tab.goto("/#login?next=rewards");
     await tab
-      .getByRole("button", { name: "以展示市民登入", exact: true })
+      .getByRole("button", { name: "以市民登入", exact: true })
       .click();
     if (
       !(await tab.evaluate(() =>
@@ -318,7 +318,7 @@ test("two demo tabs cannot spend the same points twice", async ({
       });
     }
     await tab
-      .getByRole("button", { name: "選擇 超商咖啡（試營運展示）", exact: true })
+      .getByRole("button", { name: "選擇 超商咖啡", exact: true })
       .click();
   };
   await setup(page);
@@ -369,11 +369,11 @@ test("unavailable local storage never falls back to writing a report to the back
   });
   await page.goto(`/#login?next=${encodeURIComponent(`report/${binId}`)}`);
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await captureReport(page);
   await page.getByRole("button", { name: "確認送出回報", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("本機展示儲存空間不足");
+  await expect(page.getByRole("alert")).toContainText("儲存空間不足");
   await expect(page).toHaveURL(new RegExp(`#report/${binId}$`));
   expect(writes).toEqual([]);
 });

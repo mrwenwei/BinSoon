@@ -28,7 +28,7 @@ const labels: Record<Proposal["status"], string> = {
   village: "里辦評議",
   evaluation: "評估中",
   survey: "現勘中",
-  installed: "示範設置",
+  installed: "設置",
   declined: "未通過",
 };
 const voteOptions = [
@@ -56,8 +56,7 @@ export function ProposalSummary({ item }: { item: Proposal }) {
     <>
       <h2>{item.approved_name || item.name}</h2>
       <p>
-        {labels[item.status]} · {item.is_demo ? "DEMO · " : ""}
-        {item.district}
+        {labels[item.status]} ·{item.district}
       </p>
       <p>{item.reason}</p>
       <p>
@@ -122,7 +121,7 @@ export function ProposalList({
       <ProposalLinks votingHistory={mode === "votes"} />
       <p>
         {useDemoData(session?.access_token)
-          ? "提案與票數為本機展示；投票通過仍不代表獲准設桶或已完成現勘。"
+          ? "投票通過仍不代表獲准設桶或已完成現勘。"
           : "提案仍須現勘；票數與關票狀態由伺服器決定，投票通過不代表已設置。"}
       </p>
       {mode === "all" && (
@@ -271,7 +270,7 @@ export function ProposalDetail({
             </div>
             <p className="tiny">
               {useDemoData(session?.access_token)
-                ? "本機展示：60 人參與後依支持率進入評估或里辦評議。"
+                ? "60 人參與後依支持率進入評估或里辦評議。"
                 : "投票及審查進度以伺服器為準。"}
             </p>
             <p className="tiny">
@@ -381,7 +380,7 @@ export function ProposalDetail({
           <p>關票：{time(item.voting_closed_at)}</p>
           {item.outcome_reason && <p>結果說明：{item.outcome_reason}</p>}
           <a className="api-action-link" href={`#bin/${item.bin_id}`}>
-            查看待現勘或示範設置點位
+            查看待現勘或設置點位
           </a>
         </section>
       )}
@@ -428,7 +427,7 @@ export function ProposalDetail({
         item && (
           <p>
             {useDemoData(session?.access_token)
-              ? "本機展示投票已關閉，未送交真實後台審查。"
+              ? "投票已關閉。"
               : "投票已關閉，進度以伺服器為準。"}
           </p>
         )
@@ -542,7 +541,7 @@ export function ProposalForm() {
       <ProposalLinks />
       <p>
         {useDemoData(session?.access_token)
-          ? "點擊地圖或輸入展示座標；這是本機提案，不進行真實行政區審查、現勘或設置。"
+          ? "點擊地圖或輸入座標。"
           : "點擊地圖、拖曳選點或輸入座標。大安區界由後端驗證，不會自動修改你的座標。"}
       </p>
       <LoadState {...quota} />
@@ -675,10 +674,6 @@ export function ProposalForm() {
                     {b.distance_m === null
                       ? "距離未知"
                       : `${Math.round(b.distance_m)} 公尺`}
-                    {b.bin_type === "proposed" &&
-                      b.placement_status === "installed" && (
-                        <p>新增提案 · DEMO 示範設置，非現場驗收</p>
-                      )}
                     {b.distance_m !== null && b.distance_m <= 150 && (
                       <p>150 公尺內已有設置桶，請確認需求；仍可提案。</p>
                     )}

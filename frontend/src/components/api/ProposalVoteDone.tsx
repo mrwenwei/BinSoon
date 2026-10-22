@@ -60,7 +60,7 @@ export function ProposalVoteDone({
         { label: "現場會勘", note: "確認位置與設置可行性", state: "survey" },
         {
           label: "設置完成",
-          note: demo ? "本機展示設置狀態，非真實設桶" : "以審查及點位狀態為準",
+          note: demo ? "以點位進度為準" : "以審查及點位狀態為準",
           state: "installed",
         },
       ]
@@ -118,9 +118,7 @@ export function ProposalVoteDone({
               </p>
             )}
             <p className="tiny">
-              {demo
-                ? "本機展示票數，未送交環保局。"
-                : "票數及審查狀態由伺服器提供。"}
+              {demo ? "票數，未送交環保局。" : "票數及審查狀態由伺服器提供。"}
             </p>
           </section>
           <section
@@ -153,7 +151,7 @@ export function ProposalVoteDone({
                     <div>
                       <strong>{stage.label}</strong>
                       <p>
-                        {complete ? "已完成 · " : active ? "進行中 · " : ""}
+                        {complete ? "已完成" : active ? "進行中" : ""}
                         {stage.note}
                       </p>
                     </div>

@@ -139,9 +139,9 @@ test("work lists filter by waste and administrator clearing follows the work str
   await f.setup(admin);
   await login(admin, "admin", `admin/work-orders/${workId}`);
   await expect(admin.getByText(/資源回收 · 分類依據/).first()).toBeVisible();
-  await admin.getByLabel("確認這是示範清空回傳，非真實 IoT").check();
+  await admin.getByLabel("確認送出清空回傳").check();
   await admin
-    .getByRole("button", { name: "送出示範清空", exact: true })
+    .getByRole("button", { name: "送出清空", exact: true })
     .click();
   await expect(
     admin
@@ -193,7 +193,7 @@ test("switching waste preserves separate photo drafts and does not expose a stal
     .fill("回收投入口情況");
   await captureReport(page);
   await expect(
-    page.getByRole("img", { name: "待送出的模擬測試照片", exact: true }),
+    page.getByRole("img", { name: "待送出的照片", exact: true }),
   ).toBeVisible();
   await page.getByRole("radio", { name: "一般垃圾", exact: true }).click();
   await expect(
@@ -203,7 +203,7 @@ test("switching waste preserves separate photo drafts and does not expose a stal
     page.getByRole("textbox", { name: "說明", exact: true }),
   ).toHaveValue("");
   await expect(
-    page.getByRole("img", { name: "待送出的模擬測試照片", exact: true }),
+    page.getByRole("img", { name: "待送出的照片", exact: true }),
   ).toHaveCount(0);
   await page
     .getByRole("textbox", { name: "說明", exact: true })
@@ -216,7 +216,7 @@ test("switching waste preserves separate photo drafts and does not expose a stal
     page.getByRole("textbox", { name: "說明", exact: true }),
   ).toHaveValue("回收投入口情況");
   await expect(
-    page.getByRole("img", { name: "待送出的模擬測試照片", exact: true }),
+    page.getByRole("img", { name: "待送出的照片", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "返回桶詳情", exact: true }).click();
   await expect(

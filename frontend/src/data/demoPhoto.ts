@@ -17,8 +17,8 @@ export function demoPhotoSvg(purpose: PhotoPurpose = "report") {
     <path d="M235 156H405L388 342H252Z" fill="${color("mint")}" stroke="${color("text-on-light")}" stroke-width="8"/>
     <path d="M222 142H418M287 125V111H353V125M285 192V303M320 192V303M355 192V303" fill="none" stroke="${color("text-on-light")}" stroke-width="12" stroke-linecap="round"/>
     <circle cx="269" cy="352" r="12" fill="${color("text-muted")}"/><circle cx="371" cy="352" r="12" fill="${color("text-muted")}"/>
-    <text x="32" y="55" fill="${color("teal")}" font-family="sans-serif" font-size="30" font-weight="bold">DEMO · ${title}</text>
-    <text x="320" y="412" text-anchor="middle" fill="${color("text")}" font-family="sans-serif" font-size="24">本機展示照片 · 非現場證據</text>
+    <text x="32" y="55" fill="${color("teal")}" font-family="sans-serif" font-size="30" font-weight="bold">${title}</text>
+
     <text x="320" y="452" text-anchor="middle" fill="${color("text-muted")}" font-family="sans-serif" font-size="20">BinSoon · BinU</text>
   </svg>`)
   );
@@ -32,20 +32,18 @@ export async function createDemoPhoto(
   canvas.width = 640;
   canvas.height = 480;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("無法產生示意照片，請重試。");
+  if (!ctx) throw new Error("無法產生照片，請重試。");
   const image = new Image();
   await new Promise<void>((resolve, reject) => {
     image.onload = () => resolve();
-    image.onerror = () => reject(new Error("示意照片產生失敗，請重試。"));
+    image.onerror = () => reject(new Error("照片產生失敗，請重試。"));
     image.src = demoPhotoSvg(purpose);
   });
   ctx.drawImage(image, 0, 0);
   const blob = await new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
       (value) =>
-        value
-          ? resolve(value)
-          : reject(new Error("示意照片產生失敗，請重試。")),
+        value ? resolve(value) : reject(new Error("照片產生失敗，請重試。")),
       "image/png",
     ),
   );

@@ -32,7 +32,7 @@ async function setup(page: Page, phone = false) {
   });
   await page.goto("/#crew");
   await page
-    .getByRole("button", { name: "以模擬清潔員登入", exact: true })
+    .getByRole("button", { name: "以清潔員登入", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "今日派工", exact: true }),
@@ -68,7 +68,7 @@ test("one crew menu entry opens one-click local login, three dispatch tabs and r
   await page.getByRole("button", { name: "登出清潔員", exact: true }).click();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "以模擬清潔員登入", exact: true }),
+    page.getByRole("button", { name: "以清潔員登入", exact: true }),
   ).toBeVisible();
   expect(requests).toEqual([]);
 });
@@ -81,21 +81,21 @@ test("phone field work requires arrival, verdict, composition and fake completio
   const complete = page.getByRole("button", { name: "完成清運", exact: true });
   await expect(complete).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "拍完成照（模擬）", exact: true }),
+    page.getByRole("button", { name: "拍完成照", exact: true }),
   ).toBeDisabled();
   await page
-    .getByRole("button", { name: "確認到場，開始處理（模擬）", exact: true })
+    .getByRole("button", { name: "確認到場，開始處理", exact: true })
     .click();
   await page.getByRole("button", { name: "屬實", exact: true }).click();
   await expect(complete).toBeDisabled();
   await page.getByRole("button", { name: "家戶垃圾", exact: true }).click();
   await expect(complete).toBeDisabled();
   await page
-    .getByRole("button", { name: "拍完成照（模擬）", exact: true })
+    .getByRole("button", { name: "拍完成照", exact: true })
     .click();
   await expect(complete).toBeEnabled();
   await page
-    .getByRole("button", { name: "加拍桶內照（模擬・選填）", exact: true })
+    .getByRole("button", { name: "加拍桶內照（選填）", exact: true })
     .click();
   for (const name of ["待確認的模擬完成照", "待確認的模擬桶內照"])
     await expect(page.getByRole("img", { name, exact: true })).toHaveAttribute(
@@ -135,7 +135,7 @@ test("phone field work requires arrival, verdict, composition and fake completio
   await page.getByRole("button", { name: "不實", exact: true }).click();
   await page.getByRole("button", { name: "混合", exact: true }).click();
   await page
-    .getByRole("button", { name: "拍完成照（模擬）", exact: true })
+    .getByRole("button", { name: "拍完成照", exact: true })
     .click();
   await page.getByRole("button", { name: "完成清運", exact: true }).click();
   await expect(

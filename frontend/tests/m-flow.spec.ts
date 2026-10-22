@@ -31,13 +31,13 @@ test("M4 simulates AI analysis after capture, allows correction and keeps waste 
   );
   await page.goto(`/#login?next=report/${binId}`);
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "分享目前位置（模擬）", exact: true })
+    .getByRole("button", { name: "分享目前位置", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "現場拍照（模擬）", exact: true })
+    .getByRole("button", { name: "現場拍照", exact: true })
     .click();
   await expect(
     page.getByRole("status").filter({ hasText: "AI 判讀中" }),
@@ -67,7 +67,7 @@ test("M4 simulates AI analysis after capture, allows correction and keeps waste 
   });
   await page.getByRole("radio", { name: "資源回收", exact: true }).click();
   await expect(
-    page.getByRole("img", { name: "待送出的模擬測試照片" }),
+    page.getByRole("img", { name: "待送出的照片" }),
   ).toHaveCount(0);
   await expect(page.getByText(/已幫你選好/)).toHaveCount(0);
   expect(writes).toBe(0);

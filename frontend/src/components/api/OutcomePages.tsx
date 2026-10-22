@@ -55,7 +55,7 @@ function OutcomeView({ staff }: { staff: boolean }) {
       <h1>{staff ? "我的月份成果與排名" : "清潔隊公開成果"}</h1>
       <p>
         {useDemoData(session?.access_token)
-          ? "以下是台北曆月的本機展示成果，並非真實工作統計。"
+          ? ""
           : "依台北曆月（Asia/Taipei）統計後端有效完成紀錄。讚與速度不改變同分名次。"}
       </p>
       <div className="card api-form">
@@ -118,7 +118,7 @@ function OutcomeView({ staff }: { staff: boolean }) {
       {privateData && (
         <>
           <h2>隊員排名</h2>
-          <p>加給僅為展示說明，沒有金額計算或發放。</p>
+
           <ol className="api-items" aria-label="隊員排名">
             {privateData.ranking.map((row) => (
               <li className="card" key={row.staff_id}>

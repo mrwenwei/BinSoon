@@ -149,7 +149,7 @@ export function Navigation({
       : "";
   const route = planned?.key === routeKey ? planned.route : undefined;
   const routeError = planned?.key === routeKey ? planned.error : undefined;
-  // 模擬開始導航：walked＝沿路線已走公尺數。
+  // 開始導航：walked＝沿路線已走公尺數。
   const [phase, setPhase] = useState<"idle" | "navigating" | "arrived">("idle");
   const [walked, setWalked] = useState(0);
   const [listOpen, setListOpen] = useState(false);
@@ -262,7 +262,7 @@ export function Navigation({
                 }
               : undefined
           }
-          routeLabel="步行路線示意"
+          routeLabel="步行路線"
         />
         {phase !== "idle" && step && (
           <div
@@ -326,7 +326,7 @@ export function Navigation({
             </h2>
             <p>
               {view.location.label} ·
-              保持目前垃圾種類，改找距離示意起點最近的可用桶。
+              保持目前垃圾種類，改找距離起點最近的可用桶。
             </p>
             {alternative && !alternatives.error && (
               <>
@@ -335,7 +335,6 @@ export function Navigation({
                   {alternative.distance_m == null
                     ? "距離未知"
                     : `距起點 ${Math.round(alternative.distance_m)} 公尺`}
-                  （示意）
                 </p>
                 {redirected ? (
                   <p>已改導至最近未滿的桶。</p>
@@ -400,7 +399,7 @@ export function Navigation({
                   </button>
                 ) : (
                   <button className="button secondary" onClick={stop}>
-                    {phase === "arrived" ? "重新模擬" : "停止模擬"}
+                    {phase === "arrived" ? "重新導航" : "停止導航"}
                   </button>
                 )}
                 <button
@@ -446,9 +445,7 @@ export function Navigation({
             )}
             <div className="gnav-foot">
               <p className="tiny gnav-note">
-                示意起點：大安森林公園，非即時
-                GPS；路線與時間僅供示意，請依現場道路通行。
-                {phase !== "idle" && "模擬前進為加速示意。"}
+                起點：大安森林公園，請依現場道路通行。
               </p>
               <a
                 className={`gnav-report${phase === "arrived" ? " arrived" : ""}`}

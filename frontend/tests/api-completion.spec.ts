@@ -33,9 +33,9 @@ test("staff attaches completion evidence before finishing and waits for administ
   const admin = await context.newPage();
   await fixture.setup(admin);
   await login(admin, "admin", `admin/work-orders/${workId}`);
-  await admin.getByLabel("確認這是示範清空回傳，非真實 IoT").check();
+  await admin.getByLabel("確認送出清空回傳").check();
   await admin
-    .getByRole("button", { name: "送出示範清空", exact: true })
+    .getByRole("button", { name: "送出清空", exact: true })
     .click();
   await expect(
     admin.getByText("工單狀態：已完成", { exact: true }),
@@ -91,8 +91,8 @@ async function attach(page: import("@playwright/test").Page) {
     .click();
 }
 async function clear(page: import("@playwright/test").Page) {
-  await page.getByLabel("確認這是示範清空回傳，非真實 IoT").check();
-  await page.getByRole("button", { name: "送出示範清空", exact: true }).click();
+  await page.getByLabel("確認送出清空回傳").check();
+  await page.getByRole("button", { name: "送出清空", exact: true }).click();
 }
 
 test("clearing before evidence changes capacity but never implies completion", async ({
@@ -338,12 +338,12 @@ test("admin routes do not borrow other roles and completion screens fit narrow w
   if (testInfo.project.name === "mobile")
     await page.setViewportSize({ width: 320, height: 900 });
   await expect(
-    page.getByRole("button", { name: "送出示範清空", exact: true }),
+    page.getByRole("button", { name: "送出清空", exact: true }),
   ).toBeDisabled();
-  await page.getByLabel("確認這是示範清空回傳，非真實 IoT").focus();
+  await page.getByLabel("確認送出清空回傳").focus();
   await page.keyboard.press("Space");
   await expect(
-    page.getByRole("button", { name: "送出示範清空", exact: true }),
+    page.getByRole("button", { name: "送出清空", exact: true }),
   ).toBeEnabled();
   await expect
     .poll(() =>

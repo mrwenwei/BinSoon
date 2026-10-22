@@ -68,11 +68,7 @@ function PreferenceInputs({
             {fullOnly ? "吃飽了（80% 以上）" : label}
           </label>
         ))}
-      {fullOnly && (
-        <p className="tiny">
-          只在吃飽了時通知，不會一直吵你。本機展示尚未串接外部推播。
-        </p>
-      )}
+      {fullOnly && <p className="tiny">只在吃飽了時通知，不會一直吵你。</p>}
     </fieldset>
   );
 }
@@ -151,7 +147,7 @@ function AdoptionList({ admin }: { admin: boolean }) {
       <h1>{admin ? "認養審核列表" : "我的認養"}</h1>
       <p>
         {isDemoToken(session?.access_token)
-          ? "認養與歷史紀錄僅保存在此瀏覽器，展示狀態不代表真實認養權益。"
+          ? ""
           : "認養待審期間沒有權益，歷史紀錄由後端保留。"}
       </p>
       {!admin && (
@@ -423,7 +419,7 @@ function Application({ binId }: { binId: string }) {
         cancel={() => setConfirmation(null)}
         impact={
           isDemoToken(session?.access_token)
-            ? "認領與私人桶名僅保存在本機展示帳號，不會公開、送審或寫入後端。每人至多認領 5 個桶。"
+            ? "私人桶名不會公開。每人至多認領 5 個桶。"
             : "送出後為 pending，尚無加倍資格；須管理員核准，且不能保證一定取得認養。"
         }
       />

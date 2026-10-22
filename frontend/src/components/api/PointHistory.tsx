@@ -56,7 +56,7 @@ export function PointHistory() {
               <a href={"#review/" + entry.report_id}>查看回報</a>
             )}
             {entry.redemption_id && (
-              <a href={"#redemptions/" + entry.redemption_id}>查看展示券</a>
+              <a href={"#redemptions/" + entry.redemption_id}>查看兌換券</a>
             )}
           </li>
         ))}

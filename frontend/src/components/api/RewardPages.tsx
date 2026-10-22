@@ -74,7 +74,7 @@ export function Rewards() {
         返回會員中心
       </a>
       <h1>{demo ? "兌換獎勵" : "兌換獎品"}</h1>
-      <p>所有獎品與券碼僅為 DEMO 展示，無真實核銷能力。</p>
+
       <p>可用點數 {balance ?? "—"}</p>
       <LoadState {...member} />
       <a className="button secondary" href="#redemptions">
@@ -102,15 +102,14 @@ export function Rewards() {
         <section className="card" role="status">
           <h2>兌換成功</h2>
           <p>
-            本次扣點 {result.redemption.cost} ·{" "}
-            {isDemoToken(session?.access_token) ? "展示餘額" : "後端餘額"}{" "}
+            本次扣點 {result.redemption.cost} · 可用餘額{" "}
             {result.membership.available_points} · 庫存 {result.reward.stock}
           </p>
           <a
             className="api-action-link"
             href={`#redemptions/${result.redemption.id}`}
           >
-            查看本次展示券
+            查看本次兌換券
           </a>
         </section>
       )}
@@ -135,10 +134,7 @@ export function Rewards() {
                   </span>
                 </div>
                 <h2>{item.name}</h2>
-                <p>
-                  {item.is_demo ? "DEMO · " : ""}
-                  {item.cost} 點
-                </p>
+                <p>{item.cost} 點</p>
                 <p>庫存 {current.stock}</p>
                 <button
                   className="button primary"
@@ -170,9 +166,7 @@ export function Rewards() {
           <h2>更多獎勵，準備中</h2>
           <p>超商購物金 · 點數待定</p>
           <p>BinU周邊 · 點數待定</p>
-          <p className="tiny">
-            尚未開放兌換；展示券可在「我的兌換」查看，未串接 LINE 或真實核銷。
-          </p>
+          <p className="tiny">尚未開放兌換；兌換券可在「我的兌換」查看。</p>
         </section>
       )}
       {list.data?.items.length === 0 && <p>目前沒有獎品</p>}
@@ -189,7 +183,7 @@ export function Rewards() {
           <p>
             將使用 {selected.cost} 點；
             {isDemoToken(session?.access_token)
-              ? "只扣除本機展示點數，不具真實核銷能力。"
+              ? "確認後扣除可用點數。"
               : "實際點數及庫存由後端確認。"}
           </p>
           <button
@@ -216,9 +210,7 @@ export function Rewards() {
       )}
       <aside className="member-how">
         <h3>兌換規則</h3>
-        <p>
-          兌換只扣可用點數；等級依累積點數計算，不因兌換降低。展示獎品與券碼無真實核銷能力。
-        </p>
+        <p>兌換只扣可用點數；等級依累積點數計算，不因兌換降低。</p>
       </aside>
     </main>
   );
@@ -244,16 +236,16 @@ export function Redemptions({ id }: { id?: string }) {
   );
   return (
     <main className="page api-narrow">
-      <h1>{id ? "我的展示券" : "我的兌換"}</h1>
+      <h1>{id ? "我的兌換券" : "我的兌換"}</h1>
       <MemberNavigation current="redemptions" />
-      <p>僅供 DEMO 展示，無真實核銷能力。</p>
+
       <a className="back-link" href={id ? "#redemptions" : "#rewards"}>
         {id ? "返回我的兌換" : "返回兌換獎勵"}
       </a>
       <LoadState {...(id ? detail : list)} />
       {detail.data && (
         <section className="card api-voucher">
-          <h2>DEMO 展示券</h2>
+          <h2>兌換券</h2>
           <p>{detail.data.voucher_code}</p>
           <p>
             {detail.data.cost} 點 · {time(detail.data.created_at)}
@@ -268,9 +260,9 @@ export function Redemptions({ id }: { id?: string }) {
             {list.data?.items.map((item) => (
               <li className="card" key={item.id}>
                 <p>
-                  {time(item.created_at)} · {item.cost} 點 · DEMO
+                  {time(item.created_at)} · {item.cost} 點
                 </p>
-                <a href={`#redemptions/${item.id}`}>查看展示券 {item.id}</a>
+                <a href={`#redemptions/${item.id}`}>查看兌換券 {item.id}</a>
               </li>
             ))}
           </ul>

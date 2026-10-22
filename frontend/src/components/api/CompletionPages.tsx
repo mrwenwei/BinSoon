@@ -184,10 +184,9 @@ export function WorkPhoto({
         萬像素。上傳後須掛到本工單，再明確
         {purpose === "site" ? "確認無需處理" : "提交完成"}。
       </p>
-      <section className="api-demo-tools" aria-label={`模擬${photo}`}>
+      <section className="api-demo-tools" aria-label={`${photo}`}>
         <p className="tiny">
-          可先產生有 DEMO
-          浮水印的示意照片，非現場證據。此按鈕只填入照片；上傳並掛上照片才會寫入後端，不會自動完工。
+          此按鈕只填入照片；上傳並掛上照片才會寫入後端，不會自動完工。
         </p>
         <button
           type="button"
@@ -195,9 +194,8 @@ export function WorkPhoto({
           disabled={disabled || busy || validating}
           onClick={() => void select(createDemoPhoto(purpose), true)}
         >
-          產生模擬{photo}
+          產生{photo}
         </button>
-        {draft?.demo && <p className="tiny">已填入模擬{title}，非現場拍攝。</p>}
       </section>
       <label>
         {title}
@@ -212,11 +210,7 @@ export function WorkPhoto({
         />
       </label>
       {preview && (
-        <img
-          className="api-photo"
-          src={preview}
-          alt={`待送出的${draft?.demo ? "模擬" : ""}${title}`}
-        />
+        <img className="api-photo" src={preview} alt={`待送出的${title}`} />
       )}
       {error && <p role="alert">{error}</p>}
       {draft?.mediaId && <p>照片已上傳，尚待確認掛到本工單；不會重複上傳。</p>}
@@ -265,9 +259,7 @@ export function WorkEvidence({ detail }: { detail: WorkDetail }) {
             觀測 {time(detail.latest_reading.observed_at)} · 接收{" "}
             {time(detail.latest_reading.received_at)}
           </p>
-          <p className="tiny">
-            此處為真實作業時序；模擬歷史圖使用另一個模擬時鐘。
-          </p>
+          <p className="tiny">依作業時間顯示紀錄。</p>
         </div>
       )}
     </section>
@@ -317,7 +309,7 @@ export function AdminPage({ id }: { id?: string }) {
   if (!session?.user.roles.includes("admin"))
     return (
       <main className="page api-narrow">
-        <h1>管理員示範清空</h1>
+        <h1>管理員清空</h1>
         <p>此操作需要獨立管理員 session，市民與隊員不能執行。</p>
         <a
           className="button primary"
@@ -330,7 +322,7 @@ export function AdminPage({ id }: { id?: string }) {
   if (id) return <AdminWork key={id} id={id} />;
   return (
     <main className="page api-narrow">
-      <h1>管理員示範清空</h1>
+      <h1>管理員清空</h1>
       <p>輸入隊員提供的工單 ID；不使用共享維運 token。</p>
       <form
         className="card api-form"
@@ -385,7 +377,7 @@ function AdminWork({ id }: { id: string }) {
       <a className="back-link" href="#admin">
         返回管理員入口
       </a>
-      <h1>管理員示範清空</h1>
+      <h1>管理員清空</h1>
       <LoadState {...detail} />
       {detail.data && (
         <>
@@ -404,7 +396,7 @@ function AdminWork({ id }: { id: string }) {
                 : "%"}
             </p>
             <p>
-              示範清空只更新容量及本次工作證據，不能代替完成照、全部查證與提交完成。
+              清空只更新容量及本次工作證據，不能代替完成照、全部查證與提交完成。
             </p>
             {canClear ? (
               <>
@@ -415,7 +407,7 @@ function AdminWork({ id }: { id: string }) {
                     disabled={action.blocked}
                     onChange={(e) => setConfirmed(e.target.checked)}
                   />
-                  確認這是示範清空回傳，非真實 IoT
+                  確認送出清空回傳
                 </label>
                 <button
                   className="button primary"
@@ -424,18 +416,18 @@ function AdminWork({ id }: { id: string }) {
                     void action.run({
                       path: `${path}/demo-clear`,
                       body: { reading_id: crypto.randomUUID() },
-                      label: "示範清空回傳（非真實 IoT）",
+                      label: "清空回傳",
                     });
                   }}
                 >
-                  送出示範清空
+                  送出清空
                 </button>
               </>
             ) : (
               <p>
                 {work!.clear_reading_id
                   ? "本工單已有清空回傳，不重複建立。"
-                  : "此工單目前不符合示範清空條件。"}
+                  : "此工單目前不符合清空條件。"}
               </p>
             )}
           </section>

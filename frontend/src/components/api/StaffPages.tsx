@@ -191,7 +191,7 @@ function WorkList() {
             <p>
               建立：{time(w.created_at)} · 目標：{time(w.target_at)}
             </p>
-            {w.is_overdue && <p>已超過示範目標時間，不代表真實到場承諾。</p>}
+
             <a className="button secondary" href={`#staff/tasks/${w.id}`}>
               查看工單 {w.id.slice(0, 8)}
             </a>
@@ -329,7 +329,7 @@ function WorkPage({ id }: { id: string }) {
             <p>
               接單 {time(work.accepted_at)} · 到場 {time(work.arrived_at)}
             </p>
-            {work.is_overdue && <p>超過示範目標，非真實到場承諾。</p>}
+
             {work.reason && <p>處理原因：{work.reason}</p>}
             {work.status === "repair" && (
               <p>
@@ -457,9 +457,9 @@ function WorkPage({ id }: { id: string }) {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  管理員示範清空入口（另開分頁，需獨立登入）
+                  管理員清空入口（另開分頁，需獨立登入）
                 </a>
-                <p>示範清空僅由管理員操作，不能代替現場處理。</p>
+                <p>清空僅由管理員操作，不能代替現場處理。</p>
               </>
             ) : (
               <p>
@@ -525,8 +525,8 @@ function Verification({
           onConfirm(decision, reason);
       }}
     >
-      <section className="api-demo-tools" aria-label="模擬查證資料">
-        <h3>模擬查證資料</h3>
+      <section className="api-demo-tools" aria-label="查證資料">
+        <h3>查證資料</h3>
         <p className="tiny">
           只填入測試資料，不會自動送出。確認查證會寫入後端，可能影響市民點數或停權；請僅用於測試案件。
         </p>
@@ -539,7 +539,7 @@ function Verification({
             setReason("[模擬測試] 示範屬實回報，非現場查證結論。");
           }}
         >
-          填入模擬屬實資料
+          填入屬實資料
         </button>
         <button
           type="button"
@@ -550,7 +550,7 @@ function Verification({
             setReason("[模擬測試] 示範不實回報，非現場查證結論。");
           }}
         >
-          填入模擬不實資料
+          填入不實資料
         </button>
       </section>
       <label>
@@ -618,14 +618,14 @@ function ReasonAction({
       }}
     >
       <section className="api-demo-tools">
-        <p className="tiny">只填入帶模擬標記的測試原因；確認操作才會送出。</p>
+        <p className="tiny">只填入帶標記的測試原因；確認操作才會送出。</p>
         <button
           type="button"
           className="button secondary"
           disabled={disabled}
           onClick={() => setReason(demoReason)}
         >
-          填入模擬{label}
+          填入{label}
         </button>
       </section>
       <label>

@@ -37,7 +37,7 @@ async function setup(page: Page) {
   );
   await page.goto("/#login?next=adopt");
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   return writes;
 }

@@ -7,7 +7,7 @@ test("M5 has a BinU hero, private naming and only an optional full notification"
   await apiFixture(page, undefined, { demo: true });
   await page.goto(`/#login?next=adopt/apply/${binId}`);
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   const hero = page.getByRole("region", {
     name: "等你認領的 BinU",
@@ -54,7 +54,7 @@ test("report history shows different handlers, bin-shaped demo media and a singl
   await apiFixture(page, undefined, { demo: true });
   await page.goto("/#login?next=reports");
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   for (const name of ["阿順", "阿清", "阿安"])
     await expect(
@@ -83,7 +83,7 @@ test("report history shows different handlers, bin-shaped demo media and a singl
   await page.goto("/#crew/login");
   await expect(page.getByText(/阿順/)).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "以模擬清潔員登入", exact: true }),
+    page.getByRole("button", { name: "以清潔員登入", exact: true }),
   ).toHaveCount(1);
   await expect(page.getByRole("combobox")).toHaveCount(0);
 });

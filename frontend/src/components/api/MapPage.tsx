@@ -70,10 +70,8 @@ const drawerNames: Record<Drawer, string> = {
 };
 const MOBILE_QUERY = "(max-width: 760px)";
 const SEARCH_DELAY_MS = 300;
-const originMarker = { ...ORIGIN, label: "起點（示意）" };
+const originMarker = { ...ORIGIN, label: "起點" };
 const initialCenter: [number, number] = [ORIGIN.latitude, ORIGIN.longitude];
-// 原本頁尾的資料揭露句；地圖頁不再顯示頁尾（避免整頁可捲），改放在面板底部。
-const DISCLOSURE = "所有滿度目前皆為 simulated 模擬讀值，尚無真實 IoT 接收。";
 
 function useMediaQuery(media: string) {
   const [matches, setMatches] = useState(
@@ -676,11 +674,6 @@ export function MapPage({
               )}
             </>
           )}
-          <p className="tiny mx-disclosure">
-            {useDemoData(session?.access_token)
-              ? "桶況與市民資料為本機展示，非實測；市民操作不會寫入後端。"
-              : DISCLOSURE}
-          </p>
         </div>
       </section>
       <div className="mx-map">
@@ -757,10 +750,6 @@ function NearbyRow({
             ))}
           </span>
         )}
-        {item.bin_type === "proposed" &&
-          item.placement_status === "installed" && (
-            <small>新增提案 · DEMO 示範設置，非現場驗收</small>
-          )}
       </span>
       {!proposed && !removed && (
         <span

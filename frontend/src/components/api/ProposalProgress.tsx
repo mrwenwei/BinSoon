@@ -43,13 +43,13 @@ export function ProposalProgress({ item }: { item: Proposal }) {
       <p>
         {item.status === "installed"
           ? item.is_demo
-            ? "你支持的點位已在本機示範設置，不代表實際驗收。"
+            ? "你支持的點位已進入設置階段。"
             : "提案已完成設置流程，請以點位狀態為準。"
           : item.status === "declined"
             ? item.outcome_reason || "依本機審查結果停止本次提案。"
             : item.status === "collecting"
               ? item.is_demo
-                ? `本機展示門檻：60 人參與，目前 ${item.total_votes} 人；仍須評估與現勘。`
+                ? `門檻：60 人參與，目前 ${item.total_votes} 人；仍須評估與現勘。`
                 : `目前 ${item.total_votes} 人參與，關票規則以伺服器為準。`
               : item.status === "village"
                 ? "里辦評議中，尚未核准設置。"

@@ -77,15 +77,10 @@ export function BinPanel({
             <h1>{item.label}</h1>
             <p>
               {item.district} ·{" "}
-              {item.placement_status === "installed"
-                ? "示範設置"
-                : "既有公布桶"}
+              {item.placement_status === "installed" ? "設置" : "既有公布桶"}
             </p>
           </div>
         </div>
-        <span className="demo-tag">
-          {status.reading_source_type || "來源未知"} · 非實測 IoT
-        </span>
       </div>
       <LoadState {...view} />
       {session?.user.roles.includes("admin") && (

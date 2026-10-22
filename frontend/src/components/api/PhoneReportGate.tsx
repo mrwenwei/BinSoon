@@ -13,9 +13,6 @@ export function PhoneReportGate({ children }: { children: ReactNode }) {
           拍照回報僅限手機瀏覽器。請攜帶手機到桶位附近，分享位置並使用現場拍照流程。
         </p>
         <p>桌面網頁無法拍照或送出回報，也不接受相簿照片。</p>
-        <p className="tiny">
-          目前手機端提供模擬位置與拍照的展示流程，不會啟動真實相機。
-        </p>
       </section>
       <a className="button primary" href="#map">
         回到地圖

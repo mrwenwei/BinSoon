@@ -44,16 +44,16 @@ test("one-click verification data is explicit and never sends a review before co
   });
   await login(page, "staff", `staff/tasks/${workId}`);
   await expect(
-    page.getByRole("button", { name: "填入模擬屬實資料", exact: true }),
+    page.getByRole("button", { name: "填入屬實資料", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "填入模擬屬實資料", exact: true })
+    .getByRole("button", { name: "填入屬實資料", exact: true })
     .click();
   await expect(
     page.getByRole("combobox", { name: "查證結果", exact: true }),
   ).toHaveValue("approved");
   await page
-    .getByRole("button", { name: "填入模擬不實資料", exact: true })
+    .getByRole("button", { name: "填入不實資料", exact: true })
     .click();
   await expect(
     page.getByRole("combobox", { name: "查證結果", exact: true }),
@@ -63,7 +63,7 @@ test("one-click verification data is explicit and never sends a review before co
   ).toHaveValue("[模擬測試] 示範不實回報，非現場查證結論。");
   expect(calls).toHaveLength(0);
   await page
-    .getByRole("region", { name: "模擬查證資料" })
+    .getByRole("region", { name: "查證資料" })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: info.outputPath(`staff-verification-${info.project.name}.png`),
@@ -82,7 +82,7 @@ test("one-click verification data is explicit and never sends a review before co
     },
   ]);
   await expect(
-    page.getByRole("button", { name: "填入模擬屬實資料", exact: true }),
+    page.getByRole("button", { name: "填入屬實資料", exact: true }),
   ).toBeDisabled();
   await page
     .getByRole("button", { name: "重試原工單操作", exact: true })
@@ -156,25 +156,25 @@ test("demo work photos and reasons prefill independently without uploading or fi
   });
   await login(page, "staff", `staff/tasks/${workId}`);
   await expect(
-    page.getByRole("button", { name: "產生模擬完成照", exact: true }),
+    page.getByRole("button", { name: "產生完成照", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "產生模擬完成照", exact: true })
+    .getByRole("button", { name: "產生完成照", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "產生模擬現況照", exact: true })
+    .getByRole("button", { name: "產生現況照", exact: true })
     .click();
   await expect(
-    page.getByRole("img", { name: "待送出的模擬完成照片" }),
+    page.getByRole("img", { name: "待送出的完成照片" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("img", { name: "待送出的模擬現況照片" }),
+    page.getByRole("img", { name: "待送出的現況照片" }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "填入模擬待修繕原因", exact: true })
+    .getByRole("button", { name: "填入待修繕原因", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "填入模擬無需處理原因", exact: true })
+    .getByRole("button", { name: "填入無需處理原因", exact: true })
     .click();
   await expect(
     page.getByRole("textbox", { name: "待修繕原因", exact: true }),
@@ -196,7 +196,7 @@ test("demo work photos and reasons prefill independently without uploading or fi
     fullPage: true,
   });
   await page
-    .getByRole("region", { name: "模擬完成照", exact: true })
+    .getByRole("region", { name: "完成照", exact: true })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: info.outputPath(`staff-photo-tools-${info.project.name}.png`),
@@ -206,7 +206,7 @@ test("demo work photos and reasons prefill independently without uploading or fi
     .click();
   await expect(page.getByText("完成照已保存", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("img", { name: "待送出的模擬現況照片" }),
+    page.getByRole("img", { name: "待送出的現況照片" }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "上傳並掛上現況照", exact: true })
@@ -250,18 +250,18 @@ for (const scenario of ["not-arrived", "other-owner", "removed"] as const) {
     });
     await login(page, "staff", `staff/tasks/${workId}`);
     await expect(
-      page.getByRole("button", { name: "填入模擬屬實資料", exact: true }),
+      page.getByRole("button", { name: "填入屬實資料", exact: true }),
     ).toBeDisabled();
     await expect(
-      page.getByRole("button", { name: "填入模擬不實資料", exact: true }),
+      page.getByRole("button", { name: "填入不實資料", exact: true }),
     ).toBeDisabled();
     if (scenario === "removed")
       await expect(
-        page.getByRole("button", { name: "產生模擬完成照", exact: true }),
+        page.getByRole("button", { name: "產生完成照", exact: true }),
       ).toBeDisabled();
     else
       await expect(
-        page.getByRole("button", { name: "產生模擬完成照", exact: true }),
+        page.getByRole("button", { name: "產生完成照", exact: true }),
       ).toHaveCount(0);
   });
 }

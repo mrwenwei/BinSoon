@@ -32,7 +32,7 @@ export function CrewRoutePlanner({
   available = true,
   stopNotes,
   taskHref = defaultTaskHref,
-  title = "今日示範清運路線",
+  title = "今日清運路線",
   afterMap,
   backHref = "#staff/tasks",
 }: {
@@ -180,7 +180,7 @@ export function CrewRoutePlanner({
           </span>
           <div>
             <span>
-              出發地點 <small>示範起點</small>
+              出發地點 <small>起點</small>
             </span>
             <strong>大安森林公園</strong>
             <small>

@@ -315,7 +315,7 @@ test("quick retry after expiry retains command; same event uses existing report 
       location.hash = `quick-report/${id}`;
     }, adoptionId);
     await expect(
-      page.getByRole("img", { name: "待送出的模擬測試照片" }),
+      page.getByRole("img", { name: "待送出的照片" }),
     ).toHaveCount(0);
     await fillAndSubmit();
     await expect(page).toHaveURL(new RegExp(`#report-done/${id}$`));

@@ -37,13 +37,13 @@ async function setup(page: Page) {
 async function citizen(page: Page, next = "member") {
   await page.goto(`/#login?next=${encodeURIComponent(next)}`);
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
 }
 async function crew(page: Page) {
   await page.goto("/#crew/login");
   await page
-    .getByRole("button", { name: "以模擬清潔員登入", exact: true })
+    .getByRole("button", { name: "以清潔員登入", exact: true })
     .click();
 }
 
@@ -97,9 +97,9 @@ test("B U1-U4 retain points, private bins and shared M4; coffee costs three poin
     fullPage: true,
   });
   await page.goto("/#rewards");
-  await expect(page.getByText("DEMO · 3 點", { exact: true })).toBeVisible();
+  await expect(page.getByText("3 點", { exact: true })).toBeVisible();
   await page
-    .getByRole("button", { name: "選擇 超商咖啡（試營運展示）", exact: true })
+    .getByRole("button", { name: "選擇 超商咖啡", exact: true })
     .click();
   await page.getByRole("button", { name: "確認兌換", exact: true }).click();
   await expect(
@@ -185,12 +185,12 @@ test("M4 to S2 settlement and S3 completion connect U3 staff kudos to S4 exactly
     })
     .click();
   await page
-    .getByRole("button", { name: "確認到場，開始處理（模擬）", exact: true })
+    .getByRole("button", { name: "確認到場，開始處理", exact: true })
     .click();
   await page.getByRole("button", { name: "屬實", exact: true }).click();
   await page.getByRole("button", { name: "行人垃圾", exact: true }).click();
   await page
-    .getByRole("button", { name: "拍完成照（模擬）", exact: true })
+    .getByRole("button", { name: "拍完成照", exact: true })
     .click();
   await page.getByRole("button", { name: "完成清運", exact: true }).click();
   await expect(

@@ -112,7 +112,7 @@ const initial: CrewTask[] = [
     id: `done-${i + 1}`,
     name: ["金華街口", "師大路口", "麗水街口"][i % 3] + ` #E-00${i + 1}`,
     issue: "今日清運完成",
-    detail: "模擬完成紀錄",
+    detail: "完成紀錄",
     distance: 0,
     minutes: 65 + i * 12,
     urgent: false,
@@ -161,9 +161,9 @@ export function readCrewTasks(): CrewTask[] {
       eventId,
       binId: report.bin_id,
       wasteType: report.waste_type || "general",
-      name: bin?.label || "本機展示桶",
+      name: bin?.label || "桶位",
       issue: problemLabels[report.type],
-      detail: `${report.waste_type === "recycling" ? "資源回收" : "一般垃圾"} · 市民回報 ${reports.length} 筆 · 本機展示`,
+      detail: `${report.waste_type === "recycling" ? "資源回收" : "一般垃圾"} · 市民回報 ${reports.length} 筆`,
       distance: bin?.distance_m || 0,
       minutes: 0,
       urgent: report.type === "full" || report.type === "dumping",
@@ -310,7 +310,7 @@ export function crewPhoto(kind: "report" | "completion" | "interior") {
   return (
     "data:image/svg+xml," +
     encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="${color("field")}"/><path d="M266 100h108l-12 142h-84z" fill="${color("mint")}"/><path d="M254 90h132" stroke="${color("text")}" stroke-width="12"/><text x="320" y="285" text-anchor="middle" fill="${color("text")}" font-size="22">${label}</text><text x="320" y="328" text-anchor="middle" fill="${color("text-muted")}" font-size="19">DEMO · 模擬照片，非現場證據</text></svg>`,
+      `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="${color("field")}"/><path d="M266 100h108l-12 142h-84z" fill="${color("mint")}"/><path d="M254 90h132" stroke="${color("text")}" stroke-width="12"/><text x="320" y="285" text-anchor="middle" fill="${color("text")}" font-size="22">${label}</text></svg>`,
     )
   );
 }
@@ -323,11 +323,11 @@ export async function updateCrewTask(
     >
   >,
 ) {
-  if (!crewSignedIn()) throw new Error("請先以模擬清潔員登入。");
+  if (!crewSignedIn()) throw new Error("請先以清潔員登入。");
   if (!isPhoneBrowser()) throw new Error("請使用手機現場處理派工。");
   const tasks = readCrewTasks();
   const task = tasks.find((item) => item.id === id);
-  if (!task) throw new Error("找不到此模擬派工。");
+  if (!task) throw new Error("找不到此派工。");
   if (task.status === "done") throw new Error("此派工已完成，請返回清單查看。");
   const next = { ...task, ...change };
   if (next.status === "done") {
@@ -337,9 +337,7 @@ export async function updateCrewTask(
       !next.composition ||
       !next.completionPhoto
     )
-      throw new Error(
-        "請先確認到場、回報是否屬實、垃圾組成，並產生模擬完成照。",
-      );
+      throw new Error("請先確認到場、回報是否屬實、垃圾組成，並產生完成照。");
     next.completedAt = new Date().toISOString();
   }
   localStorage.setItem(

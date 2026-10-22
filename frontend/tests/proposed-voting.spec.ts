@@ -60,10 +60,10 @@ test("suggested Bin opens a shared local ballot with persistent change and withd
   await expect(
     page.getByText("支持 25 · 反對 2 · 投票人數 27", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "查看待現勘或示範設置點位" }).click();
+  await page.getByRole("link", { name: "查看待現勘或設置點位" }).click();
   await ballot.getByRole("link", { name: "登入參與投票" }).click();
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await expect(page).toHaveURL(new RegExp(`#bin/${binId}`));
   await ballot.getByRole("button", { name: "支持設桶", exact: true }).click();
@@ -141,7 +141,7 @@ test("suggested Bin opens a shared local ballot with persistent change and withd
     page.getByText("支持 26 · 反對 2 · 投票人數 28", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "反對", exact: true }).click();
-  await page.getByRole("link", { name: "查看待現勘或示範設置點位" }).click();
+  await page.getByRole("link", { name: "查看待現勘或設置點位" }).click();
   await expect(
     ballot.getByText("支持 25 · 反對 3", { exact: true }),
   ).toBeVisible();

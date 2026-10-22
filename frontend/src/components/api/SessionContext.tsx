@@ -110,9 +110,7 @@ export function Login({ role, next }: { role: Role; next: string }) {
         <h1>市民登入</h1>
         <section className="card api-form">
           <h2>和 BinU一起讓台北更乾淨</h2>
-          <p>
-            使用「展示市民小安」體驗，不需要帳號或密碼。會員、回報、提案與投票均為本機展示資料，不會寫入後端。
-          </p>
+          <p>使用「市民小安」體驗，不需要帳號或密碼。</p>
           <button
             className="button primary"
             onClick={() => {
@@ -122,7 +120,7 @@ export function Login({ role, next }: { role: Role; next: string }) {
               window.location.hash = returnPath(next, "citizen");
             }}
           >
-            以展示市民登入
+            以市民登入
           </button>
         </section>
       </main>
@@ -169,7 +167,7 @@ function BackendLogin({ role, next }: { role: Role; next: string }) {
       </h1>
       {role === "citizen" && (
         <section className="card api-form">
-          <p>不需要密碼即可切換為本機展示市民；後端帳號登入僅供整合驗證。</p>
+          <p>不需要密碼即可切換為市民；後端帳號登入僅供整合驗證。</p>
           <button
             className="button primary"
             onClick={() => {
@@ -179,7 +177,7 @@ function BackendLogin({ role, next }: { role: Role; next: string }) {
               window.location.hash = returnPath(next, "citizen");
             }}
           >
-            以展示市民登入
+            以市民登入
           </button>
         </section>
       )}

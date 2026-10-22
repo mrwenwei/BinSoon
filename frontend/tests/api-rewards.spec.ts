@@ -52,13 +52,13 @@ test("citizen redeems by reward UUID and reads server balance, stock and DEMO vo
   await expect(page.getByText("兌換成功", { exact: true })).toBeVisible();
   await expect(page.getByText("可用點數 50", { exact: true })).toBeVisible();
   await expect(page.getByText("庫存 1", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "查看本次展示券" }).click();
+  await page.getByRole("link", { name: "查看本次兌換券" }).click();
   await expect(
     page.getByText("DEMO-FIXTURE-ONLY", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("僅供 DEMO 展示，無真實核銷能力。", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
 });
 
 test("unknown redemption keeps its key through re-login and never trusts local balance", async ({
@@ -231,7 +231,7 @@ test("catalogue categories, pagination, insufficient balance and own redemption 
     page.getByText("共 21 筆 · 第 2 頁", { exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("link", { name: `查看展示券 ${redemption.id}`, exact: true })
+    .getByRole("link", { name: `查看兌換券 ${redemption.id}`, exact: true })
     .click();
   await expect(
     page.getByText(redemption.voucher_code, { exact: true }),

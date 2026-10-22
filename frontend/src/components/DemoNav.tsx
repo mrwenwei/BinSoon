@@ -25,8 +25,8 @@ export function DemoNav({
             BinSoon<span className="brand-sub">台北丟垃圾變順</span>
           </span>
         </a>
-        <nav className="demo-identity" aria-label="Demo 身份切換">
-          <span className="label">DEMO 身份</span>
+        <nav className="demo-identity" aria-label="身份切換">
+          <span className="label">身份</span>
           <a href="#login?next=map" aria-current={!crew ? "page" : undefined}>
             市民
           </a>

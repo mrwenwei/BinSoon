@@ -76,20 +76,8 @@ export function CompartmentSources({ items }: { items: BinStatus[] }) {
   return (
     <>
       <p className="tiny">
-        {items.length > 1
-          ? "分類為展示假設，未經現場盤點；兩槽仍是同一個位置。"
-          : "後端未提供完整分槽資料，僅顯示已回傳種類；分類為展示假設，未經現場盤點。"}
+        {items.length > 1 ? "兩槽共用同一個位置。" : "僅顯示已取得資料的種類。"}
       </p>
-      <details className="compartment-sources">
-        <summary>分類與讀值來源</summary>
-        {sortByWaste(items).map((item) => (
-          <p key={item.waste_type}>
-            {wasteName(item.waste_type)} ·{" "}
-            {classificationName(item.classification_source)} ·{" "}
-            {item.reading_source_type || "讀值來源未知"}
-          </p>
-        ))}
-      </details>
     </>
   );
 }

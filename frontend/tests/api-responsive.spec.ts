@@ -67,7 +67,7 @@ test("M navigation has three responsive tabs and identity switches through login
   const identity = page.getByRole("navigation", { name: "Demo 身份切換" });
   await identity.getByRole("link", { name: "清潔隊", exact: true }).click();
   await page
-    .getByRole("button", { name: "以模擬清潔員登入", exact: true })
+    .getByRole("button", { name: "以清潔員登入", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "今日派工", exact: true }),
@@ -77,7 +77,7 @@ test("M navigation has three responsive tabs and identity switches through login
     page.getByRole("heading", { name: "市民登入", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "以展示市民登入", exact: true })
+    .getByRole("button", { name: "以市民登入", exact: true })
     .click();
   await expect(page).toHaveURL(/#map$/);
 });

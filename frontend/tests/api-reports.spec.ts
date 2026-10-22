@@ -197,7 +197,7 @@ test("photo and server proximity errors retain the form without claiming success
     page.getByRole("textbox", { name: "說明", exact: true }),
   ).toHaveValue("保留我的說明");
   await expect(
-    page.getByRole("img", { name: "待送出的模擬測試照片" }),
+    page.getByRole("img", { name: "待送出的照片" }),
   ).toBeVisible();
   expect(reports).toBe(1);
 });

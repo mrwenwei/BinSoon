@@ -75,7 +75,7 @@ interface Props {
   markerIcon?: (location: LocationRecord, selected: boolean) => L.DivIcon;
   markerLabel?: (location: LocationRecord) => string;
   markerDescription?: (location: LocationRecord) => string | undefined;
-  /** 固定示意起點標記（不可點、不影響視野）。 */
+  /** 固定起點標記（不可點、不影響視野）。 */
   origin?: { latitude: number; longitude: number; label: string };
   /** 有給時：只在選取對象改變時置中，並把選取點往上移這麼多像素（手機抽屜遮住下半部）。 */
   focusOffsetY?: number;
@@ -555,7 +555,7 @@ export function LocationMap({
         html: "<span>起</span>",
         iconSize: [44, 44],
       }),
-      title: "大安森林公園示意起點",
+      title: "大安森林公園起點",
     }).addTo(instance);
     const bounds =
       line?.getBounds() ||
@@ -826,7 +826,7 @@ export function LocationMap({
               : roadRoute || navRoute
                 ? routeLabel || "沿道路規劃的路線"
                 : demoRoute
-                  ? "虛線為示意路線 · 未依實際道路規劃"
+                  ? "虛線為路線 · 未依實際道路規劃"
                   : routeOrigin
                     ? "選擇交通方式後，產生道路路線"
                     : "點選像素小夥伴，查看位置詳情"}

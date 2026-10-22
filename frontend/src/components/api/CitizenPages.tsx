@@ -63,7 +63,7 @@ export function CitizenHome() {
       <header className="page-heading">
         <div>
           <h1>我的</h1>
-          <p>展示市民小安 · 本機免密碼登入</p>
+          <p>市民小安 · 本機免密碼登入</p>
         </div>
         <Mascot />
       </header>
@@ -113,7 +113,7 @@ export function CitizenHome() {
           <span>
             <strong>投票紀錄</strong>
             <small>
-              投過 {votes} 個點 · 支持的點已示範設置 {installed} 個
+              投過 {votes} 個點 · 支持的點已設置 {installed} 個
             </small>
           </span>
           <Icon name="arrow" />
@@ -125,7 +125,6 @@ export function CitizenHome() {
           清潔員查證屬實，一般首報 +1 點；認養的 BinU首報 +2
           點。同一事件只有第一位回報者得點。
         </p>
-        <p>試營運展示：3 點可兌換超商咖啡，並非真實優惠。</p>
       </aside>
       <nav className="api-pagination" aria-label="更多會員功能">
         <a href="#point-history">點數歷史紀錄</a>
@@ -147,7 +146,7 @@ export function CitizenReports() {
         ← 返回我的
       </a>
       <h1>回報紀錄</h1>
-      <p>查證結果、點數與清潔員處理進度，皆為本機展示。</p>
+
       <label>
         垃圾種類
         <select
@@ -175,7 +174,7 @@ export function CitizenReports() {
           const label =
             owned?.private_bin_name ||
             demoBinById(report.bin_id)?.label ||
-            "展示桶位";
+            "桶位";
           return (
             <li className="card citizen-report-row" key={report.id}>
               <div className="crew-between">
@@ -310,7 +309,7 @@ function CitizenBin({
       )}
       <p>
         本月回報 {reports.length} 次 · 完成處理 {completed} 次 · 桶旁堆放回報{" "}
-        {reports.filter((r) => r.type === "dumping").length} 次（本機展示紀錄）
+        {reports.filter((r) => r.type === "dumping").length} 次
       </p>
       {bin.data?.can_report ? (
         <a
