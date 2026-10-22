@@ -1,4 +1,3 @@
-import { MapNotice } from "./MapNotice";
 import { useDemoData } from "../../data/demoMode";
 import {
   wasteName,
@@ -341,7 +340,7 @@ export function MapPage({
     const measure = () => {
       const next = {
         layout: layoutRef.current?.clientHeight ?? 0,
-        toolbar: mobile ? 0 : (toolbarRef.current?.offsetHeight ?? 0),
+        toolbar: toolbarRef.current?.offsetHeight ?? 0,
         head:
           (handleRef.current?.offsetHeight ?? 0) +
           (headRef.current?.offsetHeight ?? 0),
@@ -379,7 +378,7 @@ export function MapPage({
         full,
         Math.max(
           dims.head,
-          Math.round(dims.layout * (showingBallot ? 0.72 : 0.55)),
+          Math.max(280, Math.round(dims.layout * (showingBallot ? 0.72 : 0.5))),
         ),
       ),
       full,
@@ -478,6 +477,7 @@ export function MapPage({
   const view = binId ? "bin" : place ? "place" : "list";
   const listHref = wasteHref(voting ? "vote" : "map", wasteType);
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const controls =
     view === "list" && !voting ? (
       <div
@@ -506,7 +506,29 @@ export function MapPage({
               onChange={replaceWaste}
             />
           )}
-          <div className="filter-chips" role="group" aria-label="篩選">
+          <button
+            type="button"
+            className="mx-filter-toggle"
+            aria-label="篩選桶況"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              aria-hidden="true"
+            >
+              <path d="M4 7h16M4 17h16M9 4v6m6 4v6" />
+            </svg>
+          </button>
+          <div
+            className="filter-chips"
+            role="group"
+            aria-label="篩選"
+            hidden={!filtersOpen}
+          >
             {(voting ? [] : filters).map(([value, label]) => (
               <button
                 type="button"
@@ -519,7 +541,6 @@ export function MapPage({
             ))}
           </div>
         </div>
-        <MapNotice />
       </div>
     ) : null;
 
@@ -530,7 +551,7 @@ export function MapPage({
       style={style}
       data-drawer={mobile ? drawer : undefined}
     >
-      {!mobile && controls}
+      {controls}
       <section
         className={`mx-panel${dragPx !== null ? " dragging" : ""}`}
         aria-label="資訊面板"
@@ -572,7 +593,6 @@ export function MapPage({
           )}
         </div>
         <div className="mx-panel-body" inert={collapsed}>
-          {mobile && controls}
           {view === "bin" ? (
             <BinPanel
               key={`${binId}/${wasteType}`}
@@ -689,10 +709,6 @@ export function MapPage({
           origin={originMarker}
           focusOffsetY={focusOffsetY}
           focusKey={focusKey}
-        />
-        <LegendPopover
-          wasteType={wasteType}
-          closeKey={`${binId ?? ""}|${placeId ?? ""}`}
         />
       </div>
     </main>
@@ -861,69 +877,3 @@ export function MapLegend({
 // 地圖右上角的圖例按鈕（沿用 .menu-button 圖示按鈕）＋按鈕下方的 popover。
 // 預設收起；點外面、按 Esc、再點一次按鈕都會關閉，Esc 與按鈕關閉後焦點回到按鈕。
 // 面板換畫面（選桶／地標／回清單）或焦點離開圖例時也會關閉。
-function LegendPopover({
-  wasteType,
-  closeKey,
-}: {
-  wasteType: WasteType;
-  closeKey: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    setOpen(false);
-  }, [closeKey]);
-  useEffect(() => {
-    if (!open) return;
-    const outside = (event: Event) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const escape = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      button.current?.focus();
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", escape);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", escape);
-    };
-  }, [open]);
-  return (
-    <div
-      className="mx-legend"
-      ref={root}
-      onBlur={(event) => {
-        if (!root.current?.contains(event.relatedTarget as Node | null))
-          setOpen(false);
-      }}
-    >
-      <button
-        type="button"
-        ref={button}
-        className="menu-button"
-        aria-label="圖例"
-        aria-expanded={open}
-        aria-controls="mx-legend-popover"
-        onClick={() => setOpen((value) => !value)}
-      >
-        <svg
-          viewBox="0 0 20 20"
-          width="20"
-          height="20"
-          aria-hidden="true"
-          fill="currentColor"
-        >
-          <path d="M3 4h4v4H3zM9 5h8v2H9zM3 12h4v4H3zM9 13h8v2H9z" />
-        </svg>
-      </button>
-      {open && (
-        <div className="mx-legend-popover" id="mx-legend-popover" tabIndex={-1}>
-          <MapLegend wasteType={wasteType} landmarks stacked />
-        </div>
-      )}
-    </div>
-  );
-}

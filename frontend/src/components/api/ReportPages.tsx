@@ -52,6 +52,9 @@ type Draft = {
   file?: File;
   demoPhoto?: boolean;
   aiProblem?: Problem;
+  problems?: Problem[];
+  operations?: Command[];
+  completedIds?: string[];
   demoPosition?: "near" | "far" | "unavailable";
   mediaId?: string;
   operation?: Command;
@@ -250,6 +253,22 @@ function PhoneReportForm({
       request<BinView>(path, { signal, token: session?.access_token }),
     true,
   );
+  useEffect(() => {
+    if (
+      !view.data ||
+      draft.demoPosition ||
+      draft.operation ||
+      draft.operations?.length
+    )
+      return;
+    update(draftKey, {
+      latitude: String(view.data.location.latitude),
+      longitude: String(view.data.location.longitude),
+      confirmed: true,
+      demoPosition: "near",
+    });
+  }, [view.data?.location.id, draft.demoPosition, draftKey]);
+  const selectedProblems = draft.problems ?? (draft.file ? [draft.type] : []);
   const lat = draft.latitude.trim() ? Number(draft.latitude) : NaN;
   const lng = draft.longitude.trim() ? Number(draft.longitude) : NaN;
   const validPosition =
@@ -266,7 +285,8 @@ function PhoneReportForm({
       view.data!.location.latitude,
       view.data!.location.longitude,
     ) <= 50;
-  const frozen = Boolean(draft.operation) || busy || analyzing;
+  const pendingOperation = Boolean(draft.operation || draft.operations?.length);
+  const frozen = pendingOperation || busy || analyzing;
   const demoMarker =
     draft.demoPhoto || draft.demoPosition
       ? `[模擬測試：${[draft.demoPhoto && "示意照片", draft.demoPosition && "模擬座標（非實測 GPS）"].filter(Boolean).join("／")}]\n`
@@ -282,6 +302,7 @@ function PhoneReportForm({
       mediaId: undefined,
       demoPhoto: false,
       aiProblem: undefined,
+      problems: [],
     });
     setAnalyzing(false);
     if (!input) {
@@ -311,7 +332,11 @@ function PhoneReportForm({
             actor.current?.access_token === token &&
             version === selection.current
           ) {
-            update(draftKey, { type: aiProblem, aiProblem });
+            update(draftKey, {
+              type: aiProblem,
+              aiProblem,
+              problems: [aiProblem],
+            });
             setAnalyzing(false);
           }
         }
@@ -342,7 +367,7 @@ function PhoneReportForm({
     )
       return;
     if (
-      !draft.operation &&
+      !pendingOperation &&
       (!quickAllowed ||
         !view.data?.can_report ||
         Boolean(view.error) ||
@@ -351,7 +376,7 @@ function PhoneReportForm({
         !draft.file ||
         !draft.demoPhoto ||
         validating ||
-        (draft.type === "other" && !draft.description.trim()))
+        !selectedProblems.length)
     )
       return;
     lock.current = true;
@@ -360,9 +385,11 @@ function PhoneReportForm({
     const current = session;
     const isCurrent = () =>
       alive.current && actor.current?.access_token === current.access_token;
-    let operation = draft.operation;
+    let operations =
+      draft.operations ?? (draft.operation ? [draft.operation] : []);
+    const completedIds = [...(draft.completedIds ?? [])];
     try {
-      if (!operation) {
+      if (!operations.length) {
         let mediaId = draft.mediaId;
         if (!mediaId) {
           const form = new FormData();
@@ -377,33 +404,44 @@ function PhoneReportForm({
           mediaId = data.id;
           update(draftKey, { mediaId, ownerId: current.user.id });
         }
-        operation = command(
-          "/reports",
-          {
-            bin_id: id,
-            waste_type: wasteType,
-            type: draft.type,
-            description,
-            photo_ids: [mediaId],
-            position: { latitude: lat, longitude: lng },
-            quick: Boolean(quickAdoption),
-          },
-          current.user.id,
+        operations = selectedProblems.map((problem) =>
+          command(
+            "/reports",
+            {
+              bin_id: id,
+              waste_type: wasteType,
+              type: problem,
+              description:
+                demoMarker + (problem === "other" ? "其他現場問題" : ""),
+              photo_ids: [mediaId],
+              position: { latitude: lat, longitude: lng },
+              quick: Boolean(quickAdoption),
+            },
+            current.user.id,
+          ),
         );
-        update(draftKey, { operation, ownerId: current.user.id });
+        update(draftKey, { operations, ownerId: current.user.id });
       }
-      const { data } = await sendCommand<Report>(operation, current);
-      if (!isCurrent()) return;
+      while (operations.length) {
+        const { data } = await sendCommand<Report>(operations[0], current);
+        if (!isCurrent()) return;
+        completedIds.push(data.id);
+        operations = operations.slice(1);
+        update(draftKey, { operations, completedIds });
+      }
       remove(draftKey);
-      window.location.hash = `report-done/${data.id}`;
+      window.location.hash = `report-done/${completedIds[0]}?reports=${completedIds.map(encodeURIComponent).join(",")}&problems=${selectedProblems.join(",")}`;
     } catch (e) {
       if (!isCurrent()) return;
-      setError(errorMessage(e));
+      setError(
+        (completedIds.length
+          ? `已送出 ${completedIds.length} 項，其餘尚未完成。`
+          : "") + errorMessage(e),
+      );
       cooldown.hold(e);
       if (e instanceof ApiError && e.status === 401)
         invalidate(current.access_token);
       else if (e instanceof ApiError && e.status < 500 && e.status !== 429) {
-        update(draftKey, { operation: undefined });
         view.reload();
         quickAdoption?.reload();
       }
@@ -413,29 +451,46 @@ function PhoneReportForm({
     }
   }
   return (
-    <main className="page api-narrow">
-      <a className="back-link" href={wasteHref(`bin/${id}`, wasteType)}>
-        返回桶詳情
-      </a>
-      <h1>{quickAdoption ? "認養快捷通報" : "回報桶況／問題"}</h1>
-      {quickAdoption && !quickAllowed && (
-        <p role="alert">僅有效認養可快捷通報；請回認養管理確認狀態。</p>
-      )}
-      <p className="tiny">每一種類的照片與草稿分開保留；重試沿用原回報種類。</p>
-      <p>{view.data?.location.label}</p>
+    <main className="page api-narrow report-compose">
+      <header className="report-header">
+        <a
+          className="back-link"
+          href={wasteHref(`bin/${id}`, wasteType)}
+          aria-label="返回桶詳情"
+        >
+          <Icon name="back" />
+        </a>
+        <h1>{quickAdoption ? "快捷通報" : "回報桶況"}</h1>
+        <span />
+      </header>
       <LoadState {...view} />
-      {session?.user.roles.includes("citizen") &&
-        view.data &&
-        !view.data.can_report && (
-          <p role="alert">
-            暫不能回報：
-            {view.data.report_block_reason === "suspended"
-              ? "回報資格暫停"
-              : view.data.report_block_reason}
-          </p>
-        )}
+      <div
+        className={`report-proximity ${validPosition && !view.error ? "ready" : "blocked"}`}
+        role="status"
+      >
+        <Icon name={validPosition && !view.error ? "check" : "pin"} />
+        <span>
+          {validPosition && !view.error
+            ? "你在桶位 50 公尺內，可以回報"
+            : view.loading
+              ? "正在確認與桶位的距離…"
+              : "請靠近桶位 50 公尺內再回報"}
+        </span>
+      </div>
+      <p className="report-bin-name">{view.data?.location.label}</p>
+      {quickAdoption && !quickAllowed && (
+        <p role="alert">僅有效認領可快捷通報。</p>
+      )}
+      {view.data && !view.data.can_report && (
+        <p role="alert">
+          暫不能回報：
+          {view.data.report_block_reason === "suspended"
+            ? "回報資格暫停"
+            : view.data.report_block_reason}
+        </p>
+      )}
       <form
-        className="card api-form"
+        className="report-form"
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
@@ -447,159 +502,114 @@ function PhoneReportForm({
           disabled={frozen}
           onChange={onWasteChange}
         />
-        <fieldset
-          className={
-            isDemoToken(session?.access_token) ? "m-report-fields" : undefined
-          }
-          disabled={frozen}
-        >
-          <legend>現場問題</legend>
-          <div className="report-problem-fields">
-            <label>
-              問題類型
-              <select
-                value={draft.type}
-                onChange={(e) =>
-                  update(draftKey, { type: e.target.value as Problem })
-                }
-              >
-                {Object.entries(problemLabels).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              說明
-              <textarea
-                value={draft.description}
-                maxLength={500 - demoMarker.length}
-                required={draft.type === "other"}
-                onChange={(e) =>
-                  update(draftKey, { description: e.target.value })
-                }
-              />
-            </label>
-          </div>
-          <section className="phone-report-capture" aria-label="手機現場回報">
-            <h2>1. 分享現場位置</h2>
-            <p>需分享座標並核對距離，距離桶位 50 公尺內才可回報。</p>
-
-            <button
-              type="button"
-              className="button secondary"
-              disabled={!view.data || Boolean(view.error)}
-              onClick={() => {
-                if (!view.data || !isPhoneBrowser()) return;
-                update(draftKey, {
-                  latitude: String(view.data.location.latitude),
-                  longitude: String(view.data.location.longitude),
-                  demoPosition: "near",
-                  confirmed: true,
-                });
-              }}
-            >
-              分享目前位置
-            </button>
-            {draft.confirmed && draft.demoPosition === "near" && (
-              <p role="status">
-                已分享座標：{draft.latitude}, {draft.longitude} · 距桶位{" "}
-                {view.data
-                  ? Math.round(
-                      distanceToBin(
-                        lat,
-                        lng,
-                        view.data.location.latitude,
-                        view.data.location.longitude,
-                      ),
-                    )
-                  : "—"}{" "}
-                公尺
-              </p>
+        <fieldset className="report-capture-fields" disabled={frozen}>
+          <legend className="visually-hidden">現場問題</legend>
+          <section className="report-photo-stage" aria-label="手機現場回報">
+            {preview ? (
+              <img className="api-photo" src={preview} alt="待送出的照片" />
+            ) : (
+              <div className="report-photo-empty">
+                <Icon name="camera" />
+                <h2>拍下桶況，讓我們看看</h2>
+                <p>對準垃圾桶與周圍環境</p>
+              </div>
             )}
-            <h2>2. 現場拍照</h2>
-            <p>僅接受手機現場拍照，不開放相簿上傳。</p>
             <button
               type="button"
-              className="button secondary"
-              disabled={!validPosition || validating}
+              className={`button ${preview ? "secondary" : "primary"}`}
+              disabled={
+                !validPosition ||
+                Boolean(view.error) ||
+                validating ||
+                !quickAllowed
+              }
               onClick={() => {
                 if (isPhoneBrowser() && validPosition)
                   void selectFile(createDemoPhoto(), true);
               }}
             >
-              現場拍照
+              <Icon name="camera" />
+              {preview ? "重新拍照" : "現場拍照"}
             </button>
-
-            {preview && (
-              <img className="api-photo" src={preview} alt="待送出的照片" />
-            )}
-            {analyzing && (
-              <div className="ai-analysis" role="status" aria-live="polite">
-                <span className="ai-progress" aria-hidden="true" />
-                AI 判讀中…正在辨識桶況與問題
-              </div>
-            )}
-            {draft.aiProblem && !analyzing && (
-              <p className="ai-analysis" role="status">
-                AI 判讀：{problemLabels[draft.aiProblem]} ·
-                已幫你選好，不對可以自己改。
-              </p>
-            )}
-            <p className="tiny">
-              {isDemoToken(session?.access_token)
-                ? ""
-                : "送出時會再次驗證距離與權限。"}
-            </p>
           </section>
+          {analyzing && (
+            <div className="ai-analysis" role="status" aria-live="polite">
+              <span className="ai-progress" aria-hidden="true" />
+              AI 正在辨識桶況…
+            </div>
+          )}
+          {preview && !analyzing && (
+            <section className="report-issues" aria-label="問題類型">
+              <div className="report-issues-heading">
+                <h2>發現什麼問題？</h2>
+                <span>可複選</span>
+              </div>
+              {draft.aiProblem && <p className="tiny">AI 已選好，可以再調整</p>}
+              <div className="report-issue-grid">
+                {Object.entries(problemLabels).map(([key, label]) => (
+                  <label key={key} className="report-issue">
+                    <input
+                      type="checkbox"
+                      checked={selectedProblems.includes(key as Problem)}
+                      onChange={(e) => {
+                        const problems = e.target.checked
+                          ? [...selectedProblems, key as Problem]
+                          : selectedProblems.filter((item) => item !== key);
+                        update(draftKey, {
+                          problems,
+                          type: problems[0] ?? "full",
+                        });
+                      }}
+                    />
+                    <span>{label}</span>
+                    <Icon name="check" />
+                  </label>
+                ))}
+              </div>
+            </section>
+          )}
         </fieldset>
-        {descriptionTooLong && (
-          <p role="alert">說明超過 500 字，請縮短說明。</p>
-        )}
         {error && <p role="alert">{error}</p>}
-        {!session?.user.roles.includes("citizen") ? (
-          <a
-            className="button primary"
-            href={`#login?next=${encodeURIComponent(wasteHref(quickAdoption ? `quick-report/${quickAdoption.item.id}` : `report/${id}`, wasteType).slice(1))}`}
-          >
-            登入後繼續回報
-          </a>
-        ) : (
-          <button
-            className="button primary"
-            disabled={
-              busy ||
-              validating ||
-              cooldown.waiting ||
-              (!draft.operation &&
-                (!quickAllowed ||
-                  !draft.file ||
-                  !draft.demoPhoto ||
-                  descriptionTooLong ||
-                  !validPosition ||
-                  !view.data?.can_report ||
-                  Boolean(view.error) ||
-                  (draft.type === "other" && !draft.description.trim())))
-            }
-          >
-            {busy ? "送出中…" : draft.operation ? "重試原回報" : "確認送出回報"}
-          </button>
-        )}
-        {draft.operation && (
-          <p role="status">
-            原操作已保留，請使用相同帳號重試確認結果；不會建立第二次操作。
-          </p>
-        )}
+        <div className="report-submit">
+          {!session?.user.roles.includes("citizen") ? (
+            <a
+              className="button primary"
+              href={`#login?next=${encodeURIComponent(wasteHref(quickAdoption ? `quick-report/${quickAdoption.item.id}` : `report/${id}`, wasteType).slice(1))}`}
+            >
+              登入後繼續回報
+            </a>
+          ) : (
+            <button
+              className="button primary"
+              disabled={
+                busy ||
+                validating ||
+                analyzing ||
+                cooldown.waiting ||
+                (!pendingOperation &&
+                  (!quickAllowed ||
+                    !draft.file ||
+                    !draft.demoPhoto ||
+                    !selectedProblems.length ||
+                    !validPosition ||
+                    !view.data?.can_report ||
+                    Boolean(view.error)))
+              }
+            >
+              {busy
+                ? "送出中…"
+                : pendingOperation
+                  ? "重試原回報"
+                  : "確認送出回報"}
+              <Icon name="arrow" />
+            </button>
+          )}
+        </div>
       </form>
-      {quickAdoption && (
-        <a className="back-link" href={`#adopt/${quickAdoption.item.id}`}>
-          返回認養管理
-        </a>
-      )}
     </main>
   );
 }
+
 export function PrivatePhoto({
   id,
   alt = "案件現場照片",
@@ -721,6 +731,61 @@ export function ReportDetail({
     (signal) => request<Report>(path, { signal, token: session?.access_token }),
     true,
   );
+  const member = useApi(done && session ? "/me/membership" : null, (signal) =>
+    request<Membership>("/me/membership", {
+      signal,
+      token: session?.access_token,
+    }),
+  );
+  if (done) {
+    const params = new URLSearchParams(window.location.hash.split("?")[1]);
+    const problems = (params.get("problems") || result.data?.type || "")
+      .split(",")
+      .filter((value): value is Problem => value in problemLabels);
+    return (
+      <main className="page api-narrow report-success">
+        <span className="report-success-check" aria-hidden="true">
+          <Icon name="check" />
+        </span>
+        <h1>謝謝回報！</h1>
+        <strong className="report-success-status">審核中</strong>
+        <LoadState {...result} />
+        {result.data && (
+          <section className="report-success-summary">
+            <div className="report-success-tags">
+              {problems.map((problem) => (
+                <span key={problem}>{problemLabels[problem]}</span>
+              ))}
+            </div>
+            <WasteTag type={result.data.waste_type || "general"} />
+            <p>清潔隊到場確認符合照片狀況後入帳</p>
+          </section>
+        )}
+        {isDemoToken(session?.access_token) && member.data && result.data && (
+          <section className="report-reward-progress">
+            <strong>3 點換超商咖啡</strong>
+            <progress
+              aria-label="超商咖啡兌換進度"
+              max={3}
+              value={Math.min(3, member.data.available_points)}
+            />
+            <p>
+              {member.data.available_points >= 3
+                ? "你的點數已可兌換超商咖啡"
+                : `目前 ${member.data.available_points} 點，再 ${3 - member.data.available_points} 點就能換`}
+            </p>
+          </section>
+        )}
+        <a className="button primary" href="#map">
+          回到地圖
+          <Icon name="arrow" />
+        </a>
+        <a className="button secondary" href="#reports">
+          看回報紀錄
+        </a>
+      </main>
+    );
+  }
   return (
     <main className={`page api-narrow ${done ? "done-page" : ""}`}>
       {done && (

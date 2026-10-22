@@ -374,12 +374,16 @@ function AppContent() {
           </main>
         )}
       </div>
-      {!isMapView && page !== "vote-done" && page !== "crew" && (
-        <footer className="api-footer">
-          <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}
-          <a href="#rewards">兌換</a>
-        </footer>
-      )}
+      {!isMapView &&
+        !["vote-done", "report", "report-done", "quick-report"].includes(
+          page,
+        ) &&
+        page !== "crew" && (
+          <footer className="api-footer">
+            <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}
+            <a href="#rewards">兌換</a>
+          </footer>
+        )}
     </div>
   );
 }

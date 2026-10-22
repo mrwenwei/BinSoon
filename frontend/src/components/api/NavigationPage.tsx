@@ -1,3 +1,4 @@
+import { Icon } from "../Icon";
 import { wasteHref, type WasteControls } from "../../data/waste";
 import { WasteSelect } from "./Waste";
 import { WasteIcon, WastePicker, WasteTag } from "../WasteType";
@@ -444,14 +445,13 @@ export function Navigation({
               </section>
             )}
             <div className="gnav-foot">
-              <p className="tiny gnav-note">
-                起點：大安森林公園，請依現場道路通行。
-              </p>
               <a
-                className={`gnav-report${phase === "arrived" ? " arrived" : ""}`}
+                className="button primary gnav-report"
                 href={wasteHref(`report/${destination.id}`, wasteType)}
               >
-                抵達後回報
+                <Icon name="camera" />
+                {phase === "arrived" ? "拍照回報桶況" : "抵達後回報"}
+                <Icon name="arrow" />
               </a>
             </div>
           </>

@@ -1,7 +1,8 @@
+import { Icon } from "../Icon";
 import { useDemoData } from "../../data/demoMode";
 import { BinProposal } from "./BinProposal";
 import { wasteHref, type WasteControls } from "../../data/waste";
-import { WasteInfo, compartmentCards, CompartmentSources } from "./Waste";
+import { compartmentCards } from "./Waste";
 import { useEffect } from "react";
 import {
   apiBinState,
@@ -14,7 +15,6 @@ import {
 import { StationCard } from "../StationCard";
 import { Mascot } from "../Mascot";
 import { LoadState } from "./LoadState";
-import { CompletionThanks } from "./CompletionPages";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
 import { reasonLabels, Status } from "./mapShared";
@@ -90,20 +90,16 @@ export function BinPanel({
       )}
       <section className="card bin-overview">
         <section aria-label="各類桶槽" className="bin-compartment-overview">
+          <div className="bin-detail-buddy">
+            <Mascot state={apiBinState(status)} />
+          </div>
           {/* 面板同時顯示兩槽、由使用者自己判斷；不傳 onSelectWaste，槽只顯示不能點。
               種類由地圖篩選列的選單決定。 */}
-          <StationCard compartments={compartmentCards(parts)} />
-          <CompartmentSources items={parts} />
+          <StationCard compartments={compartmentCards(parts)} label="" />
         </section>
         <div className="bin-action-panel">
           <div>
             <Status status={status} />
-            <WasteInfo value={status} />
-            <p>
-              {status.is_usable
-                ? "只收隨手小垃圾，請依現場狀況使用。"
-                : `目前不可用：${status.unavailable_reasons.map((r) => reasonLabels[r] || r).join("、")}`}
-            </p>
           </div>
           <div className="bin-actions">
             {!view.error &&
@@ -175,18 +171,23 @@ export function BinPanel({
               !view.data.my_adoption_id &&
               status.operational_status !== "removed")) && (
             <a
-              className="button secondary"
+              className="button secondary bin-adopt-cta"
               href={`#adopt/apply/${id}`}
               aria-label="申請認養此桶"
             >
-              {useDemoData(session?.access_token)
-                ? "認領這位 BinU"
-                : "待認養 · 申請認養此桶"}
+              {useDemoData(session?.access_token) ? (
+                <>
+                  <Icon name="heart" />
+                  <span>認領這位 BinU</span>
+                  <small>屬實首報 ×2</small>
+                  <Icon name="arrow" />
+                </>
+              ) : (
+                "待認養 · 申請認養此桶"
+              )}
             </a>
           )}
-        {useDemoData(session?.access_token) && (
-          <p className="tiny">每人至多認領 5 個桶；私人桶名只有自己看得到。</p>
-        )}
+
         {view.data.my_adoption_id && (
           <a
             className="button secondary"
@@ -196,17 +197,6 @@ export function BinPanel({
           </a>
         )}
       </section>
-      <div className="bin-support-grid">
-        <section className="card bin-community">
-          <CompletionThanks
-            cleanup={view.data.latest_cleanup}
-            binId={id}
-            wasteType={wasteType}
-            ready={!view.loading && !view.error}
-            refresh={view.reload}
-          />
-        </section>
-      </div>
     </div>
   );
 }

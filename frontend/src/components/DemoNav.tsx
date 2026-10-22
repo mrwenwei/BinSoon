@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Icon } from "./Icon";
 import { Mascot } from "./Mascot";
 import type { NavLink } from "./AppNav";
 
@@ -48,7 +49,13 @@ export function DemoNav({
               aria-current={link.current ? "page" : undefined}
             >
               <span aria-hidden="true" className="m-tab-icon">
-                {["⌖", "＋", "◉"][i]}
+                <Icon
+                  name={
+                    (crew
+                      ? (["report", "route", "star"] as const)
+                      : (["map", "pin", "user"] as const))[i]
+                  }
+                />
               </span>
               {link.label}
             </a>
