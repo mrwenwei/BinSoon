@@ -378,7 +378,10 @@ export function MapPage({
         full,
         Math.max(
           dims.head,
-          Math.max(280, Math.round(dims.layout * (showingBallot ? 0.72 : 0.5))),
+          Math.min(
+            300,
+            Math.round(dims.layout * (showingBallot ? 0.46 : 0.42)),
+          ),
         ),
       ),
       full,
@@ -550,12 +553,14 @@ export function MapPage({
       ref={layoutRef}
       style={style}
       data-drawer={mobile ? drawer : undefined}
+      data-voting={voting || undefined}
     >
       {controls}
       <section
         className={`mx-panel${dragPx !== null ? " dragging" : ""}`}
         aria-label="資訊面板"
         data-view={view}
+        data-ballot={showingBallot || undefined}
         onPointerDown={pointerDown}
         onPointerMove={pointerMove}
         onPointerUp={pointerEnd}
@@ -617,33 +622,6 @@ export function MapPage({
             </>
           ) : (
             <>
-              {voting && (
-                <div className="mx-vote-intro">
-                  <p>
-                    這裡需要桶？支持你希望設置的位置。建議點仍須現勘，投票不代表已設桶。
-                  </p>
-                  <nav className="api-pagination" aria-label="提案導覽">
-                    <a href="#vote/create">建立提案</a>
-                    <a href="#vote/mine">我的提案</a>
-                    <a href="#vote/votes">我的投票</a>
-                  </nav>
-                </div>
-              )}
-              {voting && (
-                <div className="mx-filters">
-                  <label className="search-field">
-                    <span className="visually-hidden">搜尋地點</span>
-                    <input
-                      type="search"
-                      aria-label="搜尋地點"
-                      placeholder="搜尋建議設置點⋯"
-                      maxLength={200}
-                      value={q}
-                      onChange={(e) => setQ(e.target.value)}
-                    />
-                  </label>
-                </div>
-              )}
               <LoadState {...list} />
               {voting && voteNotice && <p role="status">{voteNotice}</p>}
               {rows && rows.length > 0 && (

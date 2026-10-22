@@ -307,6 +307,8 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 
 ### 2026-10-22 介面文案精簡
 
+第二輪 V1／V2、U1–U3、S2–S4 依參考稿精簡，手機 sheet 預設較短。投票紀錄移除頁碼控制但自動載入全部頁；LINE 分享使用[官方分享連結](https://developers.line.biz/en/docs/line-social-plugins/install-guide/using-line-share-buttons/)，由使用者自行完成分享。本機五項獎勵沿用既有帳本與庫存，更新內容／成本不重置舊交易；清運路線只預建三筆完成樣本，新完成操作照常累加。範圍、相關測試及實機限制見 [M flow](../docs/M_FLOW.md) 最新段落。
+
 同日 M1–M4 追加調整：手機地圖使用上緣單列控制與較矮分頁，桶詳情滿版、導航回報 CTA 加強。回報改為自動 50m banner、拍照與複選問題，移除分享位置及說明欄；仍使用原本機位置情境。各問題分別送既有單問題 API，保留原命令並只重試未完成項目，不修改後端契約。驗證及限制見 [M flow](../docs/M_FLOW.md) 最新段落。
 
 依使用者要求，App 移除模擬／假資料揭露文案、DEMO 身份標籤與新產生照片的展示浮水印。既有操作規則及待現勘狀態保留；資料來源欄位、API 契約與本機帳本隔離不變，未新增 GPS、相機、AI 或 IoT 串接。既存帳本與照片保持原樣；下方及歷史文件中的模擬限制仍適用於實作。

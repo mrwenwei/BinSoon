@@ -1,3 +1,4 @@
+import { Icon } from "../Icon";
 import { useEffect, useMemo, useState } from "react";
 import {
   CREW_STORE,
@@ -231,6 +232,25 @@ function CrewTaskPage({
     !!task.truth &&
     !!task.composition &&
     !!task.completionPhoto;
+  if (task.status === "done")
+    return (
+      <main className="crew-demo crew-detail crew-complete">
+        <header className="crew-page-header">
+          <h1>{task.name}</h1>
+        </header>
+        <section className="card crew-complete-card" role="status">
+          <Icon name="check" />
+          <h2>結案完成</h2>
+          <p>已完成清運</p>
+          <a
+            className="button primary"
+            href={nextTask ? `#crew/task/${nextTask.id}` : "#crew"}
+          >
+            {nextTask ? "下一張單" : "返回今日工單"}
+          </a>
+        </section>
+      </main>
+    );
   return (
     <main className="crew-demo crew-detail">
       <header className="crew-page-header">
@@ -239,16 +259,9 @@ function CrewTaskPage({
         </a>
         <div>
           <h1>{task.name}</h1>
-          <p className="crew-attention">
-            {task.status === "done" ? "已完成 · 清運結案" : task.issue}
-          </p>
+          <p className="crew-attention">{task.issue}</p>
         </div>
       </header>
-      <ol className="crew-progress" aria-label="派工進度">
-        <li data-current={task.status === "pending"}>已派單</li>
-        <li data-current={processing}>處理中</li>
-        <li data-current={task.status === "done"}>完成</li>
-      </ol>
       <section className="crew-task-card">
         <img
           className="crew-evidence"
@@ -269,42 +282,7 @@ function CrewTaskPage({
         <strong>看路線 →</strong>
       </a>
       {error && <p role="alert">{error}</p>}
-      {task.status === "done" ? (
-        <section className="crew-task-card" role="status">
-          <h2>結案完成</h2>
-          <p>
-            已完成清運 · {task.truth === "yes" ? "查證屬實" : "查證不實"}
-            {task.eventId ? "，市民回報紀錄已同步更新" : ""}
-          </p>
-          <p>讀值異常及不實案件不列入排名。</p>
-          {nextTask ? (
-            <a className="button primary" href={`#crew/task/${nextTask.id}`}>
-              下一張工單：{nextTask.name}
-            </a>
-          ) : (
-            <a className="button primary" href="#crew">
-              返回今日工單
-            </a>
-          )}
-          <a className="back-link" href="#crew/route">
-            查看清運進度
-          </a>
-          {task.completionPhoto && (
-            <img
-              className="crew-evidence"
-              src={task.completionPhoto}
-              alt="已保存的完成照"
-            />
-          )}
-          {task.interiorPhoto && (
-            <img
-              className="crew-evidence"
-              src={task.interiorPhoto}
-              alt="已保存的桶內照"
-            />
-          )}
-        </section>
-      ) : !phone ? (
+      {!phone ? (
         <section className="crew-task-card" aria-label="桌面派工處理限制">
           <h2>請使用手機現場處理</h2>
           <p>
@@ -406,7 +384,11 @@ function CrewRoute({ tasks }: { tasks: CrewTask[] }) {
       string,
       { location: ReturnType<typeof crewTaskLocation>; tasks: CrewTask[] }
     >();
-    for (const task of tasks.filter((t) => !t.offline)) {
+    for (const task of tasks.filter(
+      (t) =>
+        !t.offline &&
+        !(t.status === "done" && /^demo-event-[012]$/.test(t.eventId || "")),
+    )) {
       const location = crewTaskLocation(task);
       const group = groups.get(location.id);
       if (group) group.tasks.push(task);
@@ -424,7 +406,7 @@ function CrewRoute({ tasks }: { tasks: CrewTask[] }) {
       <a className="back-link" href="#crew">
         ← 返回今日工單
       </a>
-      <p className="tiny">地圖道路規劃，未做順序最佳化。</p>
+
       <CrewRoutePlanner
         title="今日清運路線"
         vehicle={vehicle}
@@ -442,12 +424,7 @@ function CrewRoute({ tasks }: { tasks: CrewTask[] }) {
         )}
         taskHref={crewTaskHref}
         backHref="#crew"
-        stopNotes={Object.fromEntries(
-          plan.pending.map((g) => [
-            g.location.id,
-            g.tasks.map((t) => t.detail).join("；"),
-          ]),
-        )}
+
         afterMap={
           <section
             className="crew-route-progress-section"
@@ -463,9 +440,7 @@ function CrewRoute({ tasks }: { tasks: CrewTask[] }) {
               value={plan.completed.length}
               max={Math.max(1, plan.all.length)}
             />
-            <p className="tiny">
-              同點多張工單全數完成才計為完成一個桶；讀值異常不列入此路線。
-            </p>
+
             <h3>已完成的桶</h3>
             <ul className="crew-completed-bins">
               {plan.completed.map((g) => (

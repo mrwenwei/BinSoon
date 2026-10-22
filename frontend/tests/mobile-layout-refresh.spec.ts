@@ -38,7 +38,7 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("compact M1 toolbar, three nearby rows and full M2 detail", async ({
+test("compact M1 toolbar, two nearby rows and full M2 detail", async ({
   page,
 }) => {
   await page.goto("/#map");
@@ -50,8 +50,8 @@ test("compact M1 toolbar, three nearby rows and full M2 detail", async ({
   expect(
     (await page.locator(".m-tabs").boundingBox())!.height,
   ).toBeLessThanOrEqual(54);
-  const third = await page.locator(".location-row").nth(2).boundingBox();
-  expect(third!.y + third!.height).toBeLessThanOrEqual(
+  const second = await page.locator(".location-row").nth(1).boundingBox();
+  expect(second!.y + second!.height).toBeLessThanOrEqual(
     panel!.y + panel!.height + 1,
   );
   await expect(

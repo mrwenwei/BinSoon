@@ -108,7 +108,7 @@ const initial: CrewTask[] = [
     source: "citizen",
     status: "processing",
   },
-  ...Array.from({ length: 9 }, (_, i): CrewTask => ({
+  ...Array.from({ length: 3 }, (_, i): CrewTask => ({
     id: `done-${i + 1}`,
     name: ["金華街口", "師大路口", "麗水街口"][i % 3] + ` #E-00${i + 1}`,
     issue: "今日清運完成",

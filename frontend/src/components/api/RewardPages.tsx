@@ -69,34 +69,17 @@ export function Rewards() {
       : member.data?.available_points;
   return (
     <main className="page api-narrow rewards-page">
-      <a className="back-link" href="#member">
-        <Icon name="back" />
-        返回會員中心
-      </a>
-      <h1>{demo ? "兌換獎勵" : "兌換獎品"}</h1>
-
-      <p>可用點數 {balance ?? "—"}</p>
+      <header className="compact-page-head">
+        <a className="back-link" href="#member" aria-label="返回我的">
+          <Icon name="back" />
+        </a>
+        <div>
+          <h1>{demo ? "兌換獎勵" : "兌換獎品"}</h1>
+          <p>可用 {balance ?? "—"} 點</p>
+        </div>
+      </header>
       <LoadState {...member} />
-      <a className="button secondary" href="#redemptions">
-        我的兌換
-      </a>
-      {!demo && (
-        <label className="api-filter">
-          獎品分類
-          <select
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              setOffset(0);
-              setSelected(null);
-            }}
-          >
-            <option value="all">全部</option>
-            <option value="coupon">超商券</option>
-            <option value="grand">大獎</option>
-          </select>
-        </label>
-      )}
+
       <LoadState {...list} />
       {result && (
         <section className="card" role="status">
@@ -114,69 +97,60 @@ export function Rewards() {
         </section>
       )}
       <CommandFeedback action={action} />
-      <ul className="api-items member-reward-grid">
-        {list.data?.items
-          .filter((item) => !demo || item.code === "demo-coffee")
-          .map((item) => {
-            const current =
-              result && list.loading && result.reward.id === item.id
-                ? result.reward
-                : item;
-            return (
-              <li className="card" key={item.id}>
-                <div
-                  className={`member-reward-art ${item.category}`}
-                  aria-hidden="true"
-                >
-                  <Icon name={item.category === "grand" ? "star" : "gift"} />
-                  <span>
-                    {item.category === "grand" ? "城市好禮" : "日常小確幸"}
-                  </span>
-                </div>
+      <ul className="reward-catalog">
+        {list.data?.items.map((item) => {
+          const current =
+            result && list.loading && result.reward.id === item.id
+              ? result.reward
+              : item;
+          const missing =
+            balance == null ? null : Math.max(0, item.cost - balance);
+          return (
+            <li className="card reward-catalog-row" key={item.id}>
+              <span className="reward-catalog-icon">
+                <Icon name={item.category === "grand" ? "star" : "gift"} />
+              </span>
+              <div className="reward-catalog-description">
                 <h2>{item.name}</h2>
-                <p>{item.cost} 點</p>
-                <p>庫存 {current.stock}</p>
+                <strong>{item.cost.toLocaleString()} 點</strong>
+                {item.code === "demo-merch" && <small>貼紙、徽章</small>}
+              </div>
+              <div className="reward-catalog-action">
                 <button
                   className="button primary"
+                  aria-label={`選擇 ${item.name}`}
                   disabled={
                     action.blocked ||
-                    !item.available ||
-                    item.stock <= 0 ||
+                    !current.available ||
+                    current.stock <= 0 ||
                     balance == null ||
-                    balance < item.cost
+                    !!missing
                   }
                   onClick={() => {
                     action.cancel();
                     setSelected(item);
                   }}
-                  aria-label={`選擇 ${item.name}`}
                 >
-                  {!item.available || item.stock <= 0
-                    ? "已售罄"
-                    : balance != null && balance < item.cost
-                      ? `還差 ${item.cost - balance} 點`
-                      : "兌換"}
+                  {!current.available || current.stock <= 0 ? "已售罄" : "兌換"}
                 </button>
-              </li>
-            );
-          })}
+                {missing !== null && missing > 0 && (
+                  <small>還差 {missing.toLocaleString()} 點</small>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
-      {demo && (
-        <section className="card reward-coming-soon" aria-label="規劃中獎勵">
-          <h2>更多獎勵，準備中</h2>
-          <p>超商購物金 · 點數待定</p>
-          <p>BinU周邊 · 點數待定</p>
-          <p className="tiny">尚未開放兌換；兌換券可在「我的兌換」查看。</p>
-        </section>
-      )}
       {list.data?.items.length === 0 && <p>目前沒有獎品</p>}
-      <Pagination
-        page={list.data?.page}
-        onChange={(value) => {
-          setOffset(value);
-          setSelected(null);
-        }}
-      />
+      {!demo && (
+        <Pagination
+          page={list.data?.page}
+          onChange={(value) => {
+            setOffset(value);
+            setSelected(null);
+          }}
+        />
+      )}
       {selected && (
         <section className="card api-command" aria-label="兌換確認">
           <h2>確認兌換 {selected.name}</h2>
@@ -208,10 +182,6 @@ export function Rewards() {
           </button>
         </section>
       )}
-      <aside className="member-how">
-        <h3>兌換規則</h3>
-        <p>兌換只扣可用點數；等級依累積點數計算，不因兌換降低。</p>
-      </aside>
     </main>
   );
 }

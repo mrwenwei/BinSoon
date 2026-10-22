@@ -1,3 +1,4 @@
+import { Icon } from "../Icon";
 import { ProposalProgress } from "./ProposalProgress";
 import { useDemoData } from "../../data/demoMode";
 import { useCallback, useState } from "react";
@@ -24,11 +25,11 @@ import { ProposalNaming } from "./ProposalNaming";
 import { useProposalDraft } from "./ProposalDraft";
 
 const labels: Record<Proposal["status"], string> = {
-  collecting: "收集中",
+  collecting: "投票中",
   village: "里辦評議",
   evaluation: "評估中",
-  survey: "現勘中",
-  installed: "設置",
+  survey: "會勘中",
+  installed: "已設桶",
   declined: "未通過",
 };
 const voteOptions = [
@@ -102,13 +103,53 @@ export function ProposalList({
   );
   const list = useApi(
     path,
-    (signal) =>
-      request<PageData<Proposal>>(path, {
+    async (signal) => {
+      const first = await request<PageData<Proposal>>(path, {
         signal,
         token: session?.access_token,
-      }),
+      });
+      if (mode !== "votes") return first;
+      const items = [...first.data.items];
+      while (items.length < first.data.page.total) {
+        const next = await request<PageData<Proposal>>(
+          query("/me/votes", { limit: 100, offset: items.length }),
+          { signal, token: session?.access_token },
+        );
+        if (!next.data.items.length) break;
+        items.push(...next.data.items);
+      }
+      return { ...first, data: { ...first.data, items } };
+    },
     true,
   );
+  if (mode === "votes")
+    return (
+      <main className="page api-narrow vote-history-page">
+        <header className="compact-page-head">
+          <a className="back-link" href="#member" aria-label="返回我的">
+            <Icon name="back" />
+          </a>
+          <h1>投票紀錄</h1>
+        </header>
+        <LoadState {...list} />
+        <ul className="vote-history-list">
+          {list.data?.items.map((item) => (
+            <li key={item.id} className="card vote-history-card">
+              <a href={`#proposals/${item.id}`}>
+                <div className="crew-between">
+                  <h2>{item.approved_name || item.name}</h2>
+                  <span className="status-pill">{labels[item.status]}</span>
+                </div>
+                <ProposalProgress item={item} compact />
+              </a>
+            </li>
+          ))}
+        </ul>
+        {list.data?.items.length === 0 && (
+          <p>還沒有投票紀錄，去地圖支持你希望設桶的位置。</p>
+        )}
+      </main>
+    );
   return (
     <main className="page api-narrow">
       <h1>
@@ -118,7 +159,7 @@ export function ProposalList({
             ? "我的提案"
             : "投票紀錄"}
       </h1>
-      <ProposalLinks votingHistory={mode === "votes"} />
+      <ProposalLinks />
       <p>
         {useDemoData(session?.access_token)
           ? "投票通過仍不代表獲准設桶或已完成現勘。"
@@ -171,7 +212,7 @@ export function ProposalList({
         {list.data?.items.map((item) => (
           <li className="card" key={item.id}>
             <ProposalSummary item={item} />
-            {mode === "votes" && <ProposalProgress item={item} />}
+
             <a
               href={
                 admin ? `#admin/proposals/${item.id}` : `#proposals/${item.id}`
@@ -258,47 +299,22 @@ export function ProposalDetail({
         <LoadState {...detail} />
         {item && (
           <>
-            <p className="proposal-context">
-              {item.district} · 建議設置點／待現勘
-            </p>
-            <p>{item.reason}</p>
             <div className="proposal-tally" aria-live="polite">
               <span>
-                支持 {item.support} · 反對 {item.oppose}
+                支持 {item.support} · 不支持 {item.oppose}
               </span>
-              <span>{labels[item.status]}</span>
+              <span className="status-pill">{labels[item.status]}</span>
             </div>
-            <p className="tiny">
-              {useDemoData(session?.access_token)
-                ? "60 人參與後依支持率進入評估或里辦評議。"
-                : "投票及審查進度以伺服器為準。"}
-            </p>
-            <p className="tiny">
-              支持率 {Math.round((item.support_ratio || 0) * 100)}% · 共{" "}
-              {item.total_votes} 人參與
-            </p>
-            <div
-              className="proposal-support"
-              role="meter"
-              aria-label="支持率"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round((item.support_ratio || 0) * 100)}
-            >
-              <span style={{ width: `${(item.support_ratio || 0) * 100}%` }} />
-            </div>
-            <p className="proposal-naming-note">
-              ☆ 每位認領者都能自由為 BinU命名，只有自己看得到；每人至多認領 5
-              個桶。
-            </p>
-            <p className="tiny" aria-live="polite">
-              我的票：
-              {item.my_vote === "support"
-                ? "支持"
-                : item.my_vote === "oppose"
-                  ? "反對"
-                  : "尚未投票"}
-            </p>
+            <progress
+              className="proposal-vote-progress"
+              aria-label={item.is_demo ? "投票參與進度" : "支持率"}
+              value={
+                item.is_demo
+                  ? Math.min(item.total_votes, 60)
+                  : Math.round((item.support_ratio || 0) * 100)
+              }
+              max={item.is_demo ? 60 : 100}
+            />
             {open ? (
               citizen ? (
                 <div className="proposal-ballot-actions">
@@ -316,24 +332,9 @@ export function ProposalDetail({
                         })
                       }
                     >
-                      {vote === "support" ? "支持設桶" : "不要設這裡"}
+                      {vote === "support" ? "支持" : "不支持"}
                     </button>
                   ))}
-                  {item.my_vote && (
-                    <button
-                      className="text-button"
-                      disabled={action.blocked}
-                      onClick={() =>
-                        void action.run({
-                          path: `${path}/vote`,
-                          body: { vote: null },
-                          label: "撤回投票",
-                        })
-                      }
-                    >
-                      撤回投票
-                    </button>
-                  )}
                 </div>
               ) : (
                 <a
@@ -346,15 +347,6 @@ export function ProposalDetail({
             ) : (
               <p role="status">投票已關閉 · {labels[item.status]}</p>
             )}
-            {item.outcome_reason && <p>結果說明：{item.outcome_reason}</p>}
-            <a className="text-button" href={`#proposals/${id}`}>
-              查看提案進度
-            </a>
-            <p className="tiny">
-              {useDemoData(session?.access_token)
-                ? "票數與操作僅儲存在此瀏覽器，未送交環保局。"
-                : "建議點尚未設置，須經審查與現勘。"}
-            </p>
           </>
         )}
         <CommandFeedback action={action} />

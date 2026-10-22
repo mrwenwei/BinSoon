@@ -375,9 +375,18 @@ function AppContent() {
         )}
       </div>
       {!isMapView &&
-        !["vote-done", "report", "report-done", "quick-report"].includes(
-          page,
-        ) &&
+        ![
+          "vote-done",
+          "report",
+          "report-done",
+          "quick-report",
+          "member",
+          "rewards",
+          "adopt",
+          "reports",
+          "vote",
+          "proposals",
+        ].includes(page) &&
         page !== "crew" && (
           <footer className="api-footer">
             <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}

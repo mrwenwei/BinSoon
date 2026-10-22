@@ -372,6 +372,62 @@ function withFlowData(value: State): State {
   return withBinUData(value);
 }
 function withBinUData(value: State): State {
+  const catalog: Array<
+    Pick<Reward, "code" | "id" | "name" | "category" | "cost" | "stock">
+  > = [
+    {
+      code: "demo-coffee",
+      id: "demo-reward-2",
+      name: "超商咖啡",
+      category: "coupon",
+      cost: 3,
+      stock: 3,
+    },
+    {
+      code: "demo-coupon",
+      id: "demo-reward-1",
+      name: "超商購物金",
+      category: "coupon",
+      cost: 5,
+      stock: 8,
+    },
+    {
+      code: "demo-merch",
+      id: "demo-reward-merch",
+      name: "BinU 周邊",
+      category: "coupon",
+      cost: 10,
+      stock: 20,
+    },
+    {
+      code: "demo-grand",
+      id: "demo-reward-3",
+      name: "來回日本機票",
+      category: "grand",
+      cost: 10000,
+      stock: 1,
+    },
+    {
+      code: "demo-phone",
+      id: "demo-reward-phone",
+      name: "iPhone 18",
+      category: "grand",
+      cost: 10000,
+      stock: 1,
+    },
+  ];
+  for (const offer of catalog) {
+    const existing = value.rewards.find((r) => r.code === offer.code);
+    if (existing) {
+      existing.name = offer.name;
+      existing.cost = offer.cost;
+    } else value.rewards.push({ ...offer, is_demo: true, available: true });
+  }
+  value.rewards.sort(
+    (a, b) =>
+      catalog.findIndex((r) => r.code === a.code) -
+      catalog.findIndex((r) => r.code === b.code),
+  );
   value.vote_seeded_ids ||= [];
   for (const proposal of value.proposals) {
     if (

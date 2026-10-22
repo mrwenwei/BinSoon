@@ -183,9 +183,6 @@ export function CrewRoutePlanner({
               出發地點 <small>起點</small>
             </span>
             <strong>大安森林公園</strong>
-            <small>
-              {origin[0]} / {origin[1]} · 無即時 GPS
-            </small>
           </div>
         </div>
         <button
@@ -203,30 +200,32 @@ export function CrewRoutePlanner({
           )}
           <span>{loading ? "正在規劃道路路線…" : "產生路線指引"}</span>
         </button>
-        <div className="crew-route-feedback">
-          {error ? (
-            <p role="alert">
-              <Icon name="report" />
-              <span>{currentProgress.message} 站點與工單仍可查看。</span>
-            </p>
-          ) : (
-            <p role="status">
-              <Icon name={route ? "check" : loading ? "clock" : "route"} />
-              <span>
-                {!bins.length
-                  ? "今日已無待清運站點。"
-                  : loading
-                    ? "正在取得" + vehicleLabels[vehicle] + "道路路線，請稍候。"
-                    : route
-                      ? vehicleLabels[vehicle] + "路線已更新，可展開各站指引。"
-                      : "選擇交通方式，依派工順序規劃每一站。"}
-              </span>
-            </p>
-          )}
-          <span className="crew-route-order-note">
-            車種或站點變動後須重新規劃
-          </span>
-        </div>
+        {(error || loading) && (
+          <div className="crew-route-feedback">
+            {error ? (
+              <p role="alert">
+                <Icon name="report" />
+                <span>{currentProgress.message} 站點與工單仍可查看。</span>
+              </p>
+            ) : (
+              <p role="status">
+                <Icon name={route ? "check" : loading ? "clock" : "route"} />
+                <span>
+                  {!bins.length
+                    ? "今日已無待清運站點。"
+                    : loading
+                      ? "正在取得" +
+                        vehicleLabels[vehicle] +
+                        "道路路線，請稍候。"
+                      : route
+                        ? vehicleLabels[vehicle] +
+                          "路線已更新，可展開各站指引。"
+                        : "選擇交通方式，依派工順序規劃每一站。"}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
       </section>
       <div className="crew-route-workspace">
         <section
@@ -275,7 +274,6 @@ export function CrewRoutePlanner({
             />
           </div>
           <p className="crew-route-attribution">
-            由{" "}
             <a
               href="https://valhalla.openstreetmap.de/"
               target="_blank"
@@ -283,8 +281,7 @@ export function CrewRoutePlanner({
             >
               Valhalla／FOSSGIS
             </a>{" "}
-            依 OpenStreetMap
-            計算。預估時間不含即時路況與停靠作業；請依現場標誌及車種限制行駛。
+            · OpenStreetMap
           </p>
           {afterMap}
         </section>
@@ -311,7 +308,7 @@ export function CrewRoutePlanner({
                     <p className="crew-stop-pending">{stopNotes[bin.id]}</p>
                   )}
                   {route ? (
-                    <details open={index === 0}>
+                    <details>
                       <summary>
                         <span>
                           前往此站的{vehicleLabels[vehicle]}指引{" "}
@@ -337,25 +334,21 @@ export function CrewRoutePlanner({
                         ))}
                       </ol>
                     </details>
-                  ) : (
-                    <p className="crew-stop-pending">
-                      {loading ? "指引規劃中…" : "規劃路線後查看道路指引"}
-                    </p>
-                  )}
-                  <div className="crew-stop-actions">
-                    {tasks
-                      .filter((task) => task.locationId === bin.id)
-                      .map((task) => (
-                        <a
-                          key={task.id}
-                          className="button secondary"
-                          href={taskHref(task.id)}
-                        >
-                          {task.label} · 查看工單
-                          <Icon name="arrow" />
-                        </a>
-                      ))}
-                  </div>
+                  ) : null}
+                </div>
+                <div className="crew-stop-actions">
+                  {tasks
+                    .filter((task) => task.locationId === bin.id)
+                    .map((task) => (
+                      <a
+                        key={task.id}
+                        className="button secondary"
+                        href={taskHref(task.id)}
+                      >
+                        查看工單
+                        <Icon name="arrow" />
+                      </a>
+                    ))}
                 </div>
               </li>
             ))}
@@ -373,9 +366,6 @@ export function CrewRoutePlanner({
               </a>
             </div>
           )}
-          <p className="crew-route-list-note">
-            按派工順序排列；待修繕／待感測確認另在處理中查看。站點順序未最佳化。
-          </p>
         </section>
       </div>
     </section>

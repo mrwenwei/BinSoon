@@ -63,9 +63,7 @@ export function CitizenHome() {
       <header className="page-heading">
         <div>
           <h1>我的</h1>
-          <p>市民小安 · 本機免密碼登入</p>
         </div>
-        <Mascot />
       </header>
       <LoadState {...member} />
       {member.data && (
@@ -76,11 +74,6 @@ export function CitizenHome() {
           <a className="button primary" href="#rewards">
             兌換獎勵 <Icon name="arrow" />
           </a>
-          <p className="tiny">
-            累積 {member.data.cumulative_points} 點 ·{" "}
-            {member.data.current_tier.name} ·{" "}
-            <a href="#levels">查看等級與徽章</a>
-          </p>
         </section>
       )}
       <nav className="citizen-shortcuts" aria-label="我的功能">
@@ -119,18 +112,6 @@ export function CitizenHome() {
           <Icon name="arrow" />
         </a>
       </nav>
-      <aside className="member-how">
-        <h2>怎麼拿點數</h2>
-        <p>
-          清潔員查證屬實，一般首報 +1 點；認養的 BinU首報 +2
-          點。同一事件只有第一位回報者得點。
-        </p>
-      </aside>
-      <nav className="api-pagination" aria-label="更多會員功能">
-        <a href="#point-history">點數歷史紀錄</a>
-        <a href="#redemptions">我的兌換</a>
-        <a href="#notifications">通知與進度</a>
-      </nav>
     </main>
   );
 }
@@ -138,27 +119,16 @@ export function CitizenReports() {
   const value = useDemoCitizenSnapshot();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
-  const [waste, setWaste] = useState<WasteType | "">("");
-  const reports = value.reports.filter((r) => !waste || r.waste_type === waste);
+  const reports = value.reports;
   return (
     <main className="page api-narrow citizen-reports">
-      <a className="back-link" href="#member" aria-label="返回我的">
-        ← 返回我的
-      </a>
-      <h1>回報紀錄</h1>
+      <header className="compact-page-head">
+        <a className="back-link" href="#member" aria-label="返回我的">
+          <Icon name="back" />
+        </a>
+        <h1>回報紀錄</h1>
+      </header>
 
-      <label>
-        垃圾種類
-        <select
-          aria-label="垃圾種類"
-          value={waste}
-          onChange={(e) => setWaste(e.target.value as WasteType | "")}
-        >
-          <option value="">全部種類</option>
-          <option value="general">一般垃圾</option>
-          <option value="recycling">資源回收</option>
-        </select>
-      </label>
       {error && <p role="alert">{error}</p>}
       <ul className="api-items" aria-label="回報紀錄">
         {reports.map((report) => {
@@ -180,30 +150,34 @@ export function CitizenReports() {
               <div className="crew-between">
                 <h2>{label}</h2>
                 <span className="status-pill">
-                  {reportLabels[report.status]}
+                  {report.status === "approved"
+                    ? report.awarded_points
+                      ? `+${report.awarded_points}`
+                      : "已查證"
+                    : report.status === "rejected"
+                      ? "不符合・無法給點"
+                      : "審核中"}
                 </span>
               </div>
               <p>
-                {time(report.created_at)} · {wasteName(report.waste_type)} ·{" "}
-                {problemLabels[report.type]}
-              </p>
-              <p>
-                {report.work_status
-                  ? workLabels[report.work_status]
-                  : "待清潔員處理"}{" "}
-                ·{" "}
-                {report.awarded_points
-                  ? `已入帳 +${report.awarded_points} 點`
-                  : report.pending_points
-                    ? `+${report.pending_points} 點審核中`
-                    : "本筆未發點"}
+                {new Date(report.created_at).toLocaleString("zh-TW", {
+                  month: "numeric",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                  timeZone: "Asia/Taipei",
+                })}{" "}
+                · {wasteName(report.waste_type)} · {problemLabels[report.type]}
               </p>
               <div className="citizen-report-actions">
-                <a href={`#review/${report.id}`}>查看回報詳情</a>
                 {canLike && (
                   <button
                     className="button secondary"
                     disabled={!!completion?.likedAt || !!busy}
+                    aria-label={
+                      completion?.likedAt ? `已感謝${staff}` : `幫${staff}按讚`
+                    }
                     aria-pressed={!!completion?.likedAt}
                     onClick={async () => {
                       setBusy(report.id);
@@ -218,7 +192,11 @@ export function CitizenReports() {
                     }}
                   >
                     <Icon name="heart" />
-                    {completion?.likedAt ? `已感謝${staff}` : `幫${staff}按讚`}
+                    <span>
+                      {completion?.likedAt
+                        ? `已感謝${staff}`
+                        : `幫${staff}按讚`}
+                    </span>
                   </button>
                 )}
               </div>
@@ -229,7 +207,7 @@ export function CitizenReports() {
       {!reports.length && <p>尚無符合的回報紀錄。</p>}
       <aside className="member-how">
         <p>
-          查證屬實且已完成的回報，可感謝處理該事件的清潔員。同一次完成只能按讚一次；讚會顯示在該清潔員的榮譽榜，不改變依完成件數計算的排名。近期不實回報達三次會暫停回報七天。
+          同一個事件只有第一位回報者得點；不實回報累積 3 次會暫停回報 7 天。
         </p>
       </aside>
     </main>
@@ -301,11 +279,17 @@ function CitizenBin({
   ).size;
   return (
     <article className="card citizen-bin-card">
-      <h2>{item.private_bin_name || "我的 BinU"}</h2>
+      <h2 className="citizen-bin-name">
+        <Mascot />
+        <span>{item.private_bin_name || "我的 BinU"}</span>
+      </h2>
       <p>{demoBinById(item.bin_id)?.label || item.bin_id} · 名字只有你看得到</p>
       <LoadState {...bin} />
       {bin.data && (
-        <StationCard compartments={compartmentCards(bin.data.compartments)} />
+        <StationCard
+          label=""
+          compartments={compartmentCards(bin.data.compartments)}
+        />
       )}
       <p>
         本月回報 {reports.length} 次 · 完成處理 {completed} 次 · 桶旁堆放回報{" "}
@@ -316,7 +300,7 @@ function CitizenBin({
           className="button primary"
           href={wasteHref(`report/${item.bin_id}`, wasteType)}
         >
-          這隻有狀況？回報桶況／問題
+          通報清潔隊
         </a>
       ) : (
         <p>此桶目前無法回報，請查看桶詳情。</p>
@@ -361,7 +345,7 @@ function CitizenBin({
       {(busy || notice) && (
         <p role="status">{busy ? "正在儲存通知偏好…" : notice}</p>
       )}
-      <p className="tiny">此為本機通知偏好，未串接外部推播。</p>
+
       {error && <p role="alert">{error}</p>}
     </article>
   );

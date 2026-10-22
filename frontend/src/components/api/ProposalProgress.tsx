@@ -1,12 +1,54 @@
 import type { Proposal } from "../../data/api";
 
-export function ProposalProgress({ item }: { item: Proposal }) {
+export function ProposalProgress({
+  item,
+  compact = false,
+}: {
+  item: Proposal;
+  compact?: boolean;
+}) {
   const current =
     item.status === "installed"
       ? 3
       : ["village", "evaluation", "survey"].includes(item.status)
         ? 2
         : 1;
+  if (compact)
+    return (
+      <section
+        className="proposal-progress-compact"
+        aria-label={`設桶進度：${item.name}`}
+      >
+        <div className="proposal-progress-track">
+          {[0, 1, 2, 3].map((index) => (
+            <span
+              key={index}
+              data-active={index <= current && item.status !== "declined"}
+            >
+              <i aria-hidden="true">
+                {index < current || item.status === "installed" ? "✓" : ""}
+              </i>
+              <small>
+                {["建議點", "市民投票", "環保局會勘", "設桶"][index]}
+              </small>
+            </span>
+          ))}
+        </div>
+        <p>
+          {item.status === "installed"
+            ? "你支持的 BinU 已上線"
+            : item.status === "declined"
+              ? "本次提案未通過"
+              : item.status === "collecting"
+                ? `支持 ${item.support} · 不支持 ${item.oppose}，${item.total_votes}${item.is_demo ? " / 60" : ""} 人參與`
+                : item.status === "village"
+                  ? "里辦評議中"
+                  : item.status === "survey"
+                    ? "現場會勘中"
+                    : "環保局評估中"}
+        </p>
+      </section>
+    );
   return (
     <section
       className="proposal-flow-progress"
