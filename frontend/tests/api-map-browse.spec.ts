@@ -738,7 +738,7 @@ test("the icon-only waste toggle switches with arrow keys and keeps focus (C)", 
   const recycling = group.getByRole("radio", { name: "資源回收", exact: true });
   const caption = page.locator(".mx-head-title .tiny");
   await expect(general).toBeChecked();
-  await expect(caption).toHaveText("3 個桶 · 一般垃圾優先");
+  await expect(caption).toHaveCount(0);
   // 純圖示：每格 44×44，滑鼠移上去有文字提示。
   for (const name of ["一般垃圾", "資源回收"]) {
     const label = page.locator(`.mx-home-toolbar label[title="${name}"]`);
@@ -751,12 +751,12 @@ test("the icon-only waste toggle switches with arrow keys and keeps focus (C)", 
   await page.keyboard.press("ArrowRight");
   await expect(recycling).toBeChecked();
   await expect(page).toHaveURL(/waste_type=recycling$/);
-  await expect(caption).toHaveText("3 個桶 · 資源回收優先");
+  await expect(caption).toHaveCount(0);
   await expect(recycling).toBeFocused();
   await page.keyboard.press("ArrowLeft");
   await expect(general).toBeChecked();
   await expect(general).toBeFocused();
-  await expect(caption).toHaveText("3 個桶 · 一般垃圾優先");
+  await expect(caption).toHaveCount(0);
   await page.keyboard.press("ArrowRight");
   await expect(recycling).toBeChecked();
   await expect(recycling).toBeFocused();

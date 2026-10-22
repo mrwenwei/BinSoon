@@ -558,16 +558,13 @@ export function MapPage({
         <div className="mx-panel-head" ref={headRef}>
           {view === "list" ? (
             <>
-              {/* 標題下方小字：數量＋排序依據（所選種類能丟的排前面）。 */}
               <div className="mx-head-title">
                 <h1 className="mx-title">{voting ? "要桶投票" : "附近的桶"}</h1>
-                <span className="tiny">
-                  {rows
-                    ? voting
-                      ? `${rows.length} 個建議點 · 待現勘`
-                      : `${rows.length} 個桶 · ${wasteName(wasteType)}優先`
-                    : "—"}
-                </span>
+                {voting && (
+                  <span className="tiny">
+                    {rows ? `${rows.length} 個建議點 · 待現勘` : "—"}
+                  </span>
+                )}
               </div>
             </>
           ) : (

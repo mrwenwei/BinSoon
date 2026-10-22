@@ -7959,6 +7959,7 @@ input[type="file"]::file-selector-button {
   white-space: nowrap;
 }
 .map-notice {
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -7986,20 +7987,7 @@ input[type="file"]::file-selector-button {
   flex: none;
   padding-right: var(--space-6);
 }
-.map-notice-toggle {
-  flex: none;
-  min-height: 44px;
-  min-width: 44px;
-  padding: var(--space-1);
-  background: none;
-  border: 0;
-  color: var(--text);
-  font: inherit;
-}
 .map-notice:focus-within .map-notice-track {
-  animation-play-state: paused;
-}
-.map-notice.paused .map-notice-track {
   animation-play-state: paused;
 }
 @keyframes map-notice-scroll {
@@ -8025,9 +8013,6 @@ input[type="file"]::file-selector-button {
     flex: 1;
     min-width: 0;
     white-space: normal;
-  }
-  .map-notice-toggle {
-    display: none;
   }
   .map-notice {
     min-height: 44px;

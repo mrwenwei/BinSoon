@@ -215,16 +215,15 @@ test("M1 puts phone controls in its sheet and desktop controls above the map wit
   );
   const track = notice.locator(".map-notice-track");
   await expect(track).toHaveCSS("animation-timing-function", "linear");
-  await notice
-    .getByRole("button", { name: "暫停提示跑馬燈", exact: true })
-    .click();
+  await expect(panel.locator(".mx-head-title .tiny")).toHaveCount(0);
+  await expect(notice.getByRole("button")).toHaveCount(0);
+  await notice.focus();
   await expect(track).toHaveCSS("animation-play-state", "paused");
-  await expect(
-    notice.getByRole("button", { name: "播放提示跑馬燈", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await notice
-    .getByRole("button", { name: "播放提示跑馬燈", exact: true })
-    .click();
+  await search.focus();
+  if (info.project.name === "desktop") {
+    await notice.hover();
+    await expect(track).toHaveCSS("animation-play-state", "paused");
+  }
   await search.focus();
   await page.mouse.move(0, 0);
   await expect(track).toHaveCSS("animation-play-state", "running");
