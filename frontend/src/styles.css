@@ -8294,6 +8294,7 @@ input[type="file"]::file-selector-button {
   .mx-home .mx-panel-head {
     min-height: 44px;
     padding-block: 0 var(--space-2);
+    border-bottom: 0;
   }
   .mx-panel-body .mx-home-controls .search-field input {
     padding-block: var(--space-2);
