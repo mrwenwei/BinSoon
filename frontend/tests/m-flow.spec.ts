@@ -188,7 +188,7 @@ test("map and voting are separate tabs with no proposed bins leaking into the bi
   });
 });
 
-test("M1 keeps search and filters above the list and supports pausing and reduced-motion notices", async ({
+test("M1 puts phone controls in its sheet and desktop controls above the map with accessible notices", async ({
   page,
 }, info) => {
   await apiFixture(page, undefined, { demo: true });
@@ -210,7 +210,9 @@ test("M1 keeps search and filters above the list and supports pausing and reduce
   expect((await notice.boundingBox())!.y).toBeGreaterThan(
     (await search.boundingBox())!.y,
   );
-  await expect(panel.getByRole("searchbox")).toHaveCount(0);
+  await expect(panel.getByRole("searchbox")).toHaveCount(
+    info.project.name === "mobile" ? 1 : 0,
+  );
   const track = notice.locator(".map-notice-track");
   await expect(track).toHaveCSS("animation-timing-function", "linear");
   await notice

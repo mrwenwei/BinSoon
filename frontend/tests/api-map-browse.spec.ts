@@ -341,6 +341,7 @@ test("map filters and the waste type drive the list, sorting and marker colours"
   await expect(rows.nth(2)).toContainText("0/2");
   await expect(page.locator(".mx-list")).not.toContainText("公園地標");
   await expect(page.locator(".mx-list")).not.toContainText("建議設置點");
+  await expect(marker(page, "地標：公園地標")).toHaveClass(/mx-landmark/);
   // 展開重疊的桶之後，標記顏色看一般槽。
   await page
     .getByRole("button", { name: "2 個桶，放大查看", exact: true })
@@ -350,7 +351,6 @@ test("map filters and the waste type drive the list, sorting and marker colours"
     /state-hungry/,
   );
   await expect(marker(page, "垃圾桶：一般滿回收空")).toHaveClass(/state-full/);
-  await expect(marker(page, "地標：公園地標")).toHaveClass(/mx-landmark/);
   await expect(marker(page, "建議點：建議設置點")).toHaveCount(0);
   await expect(page.locator(".mx-origin")).toContainText("起點（示意）");
   // 還能丟（一般垃圾）
@@ -599,6 +599,9 @@ test("markers work from the keyboard, focus follows selection and polling keeps 
   await expect(marker(page, "垃圾桶：一般空回收滿")).toHaveClass(/selected/);
   // 清單畫面的輪詢（每 10 秒）後，標記上的焦點仍在、元素沒有重建。
   await page.getByRole("link", { name: "← 返回清單" }).click();
+  // 回到清單後，視野外標記會釋放；先縮小讓目標回到視野，再驗證焦點保留。
+  for (let i = 0; i < 3; i++)
+    await page.locator(".leaflet-control-zoom-out").click();
   const target = marker(page, "垃圾桶：兩槽都滿");
   await target.focus();
   await target.evaluate((el) => el.setAttribute("data-probe", "1"));
@@ -665,7 +668,7 @@ test("a fresh half drawer shows at least one whole row at 360 and 390 wide", asy
     const row = (await page.locator(".location-row").first().boundingBox())!;
     expect(row.y).toBeGreaterThanOrEqual(panel.y);
     expect(row.y + row.height).toBeLessThanOrEqual(panel.y + panel.height);
-    // M1：搜尋及種類篩選在地圖上方，下方面板只放附近清單。
+    // 手機搜尋及種類篩選收回 sheet，地圖上方不再被控制列遮住。
     const toolbar = (await page.locator(".mx-home-toolbar").boundingBox())!;
     const picker = (await page
       .getByRole("group", { name: "垃圾種類" })
@@ -673,7 +676,8 @@ test("a fresh half drawer shows at least one whole row at 360 and 390 wide", asy
     const search = (await page.getByRole("searchbox").boundingBox())!;
     expect(search.height).toBeGreaterThanOrEqual(44);
     expect(search.y).toBeLessThan(picker.y);
-    expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(panel.y);
+    expect(toolbar.y).toBeGreaterThanOrEqual(panel.y);
+    expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(row.y);
     // 清單列改用滿度條後，列高明顯低於 139px。
     expect(row.height).toBeLessThan(120);
     expect(

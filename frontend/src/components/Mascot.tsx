@@ -12,7 +12,9 @@ export function Mascot({
   // 桶用最新的垃圾桶機器人（靜態表情；動態只在地圖標記 hover／選中時播放），
   // 場所代表點仍是 Bin友。
   const svg =
-    kind === "bin" ? binBotSvg(state ?? "hungry") : mascotSvg(kind, state);
+    kind === "bin"
+      ? binBotSvg(state ?? "hungry", false)
+      : mascotSvg(kind, state);
   return (
     <span
       className="mascot"

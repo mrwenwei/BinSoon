@@ -416,12 +416,18 @@ function compose(frame: Frame, colors: Record<string, string>) {
     .join("");
 }
 
-const cache = new Map<BinState, string>();
+const cache = new Map<string, string>();
 
-export function binBotSvg(state: BinState) {
-  const hit = cache.get(state);
+export function binBotSvg(state: BinState, animated = true) {
+  const key = `${state}/${animated}`;
+  const hit = cache.get(key);
   if (hit) return hit;
   const colors = { ...COMMON, ...SKINS[state] };
+  if (!animated) {
+    const svg = `<svg class="bin-bot bot-${state}" viewBox="${BOX}" shape-rendering="crispEdges" aria-hidden="true"><g class="bot-idle">${compose(IDLE[state], colors)}</g></svg>`;
+    cache.set(key, svg);
+    return svg;
+  }
   const { frameMs, frames } = ANIMS[state];
   const anim = frames
     .map(
@@ -429,7 +435,7 @@ export function binBotSvg(state: BinState) {
     )
     .join("");
   const svg = `<svg class="bin-bot bot-${state}" style="--bot-frame:${frameMs}ms;--bot-cycle:${frameMs * frames.length}ms;--bot-kf:bot-f${frames.length}" viewBox="${BOX}" shape-rendering="crispEdges" aria-hidden="true"><g class="bot-idle">${compose(IDLE[state], colors)}</g><g class="bot-anim">${anim}</g></svg>`;
-  cache.set(state, svg);
+  cache.set(key, svg);
   return svg;
 }
 

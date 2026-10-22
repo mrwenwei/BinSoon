@@ -8291,3 +8291,32 @@ input[type="file"]::file-selector-button {
 .m-app .gnav {
   height: calc(100dvh - var(--topbar-h) - var(--m-tabs-h));
 }
+
+/* 手機 M1 的控制列回到底部 sheet，地圖上方保留視野。 */
+@media (max-width: 760px) {
+  .mx-panel-body .mx-home-toolbar {
+    position: static;
+    max-width: none;
+    margin-bottom: var(--space-1);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .mx-panel-body .mx-home-controls {
+    gap: var(--space-1);
+    padding: 0 0 var(--space-1);
+  }
+  .mx-home .mx-panel-head {
+    min-height: 44px;
+    padding-block: 0 var(--space-2);
+  }
+  .mx-panel-body .mx-home-controls .search-field input {
+    padding-block: var(--space-2);
+  }
+  .mx-panel-body .map-notice {
+    padding-inline: 0;
+  }
+  .mx-home .mx-legend {
+    top: var(--space-3);
+  }
+}

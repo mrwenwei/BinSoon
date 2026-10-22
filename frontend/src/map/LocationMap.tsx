@@ -2,7 +2,8 @@ import type { OperationalState } from "../data/workOrders";
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
-import { setWorkerUrl } from "maplibre-gl";
+import { setWorkerUrl, setWorkerCount } from "maplibre-gl";
+import { observeMapSize } from "./observeMapSize";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -29,6 +30,10 @@ import {
   type LatLng,
 } from "../data/routeGeometry";
 setWorkerUrl(workerUrl);
+const compactMap = window.matchMedia(
+  "(max-width: 760px), (pointer: coarse)",
+).matches;
+if (compactMap) setWorkerCount(1);
 
 interface Props {
   operations?: OperationalState;
@@ -136,6 +141,20 @@ export function LocationMap({
     const instance = map.current;
     if (!instance || !markers.current || !clusters.current) return;
     const zoom = instance.getZoom();
+    const visibleBounds = instance.getBounds().pad(0.2);
+    const focusedRecord = markerRecords.current.find(
+      (record) => record.marker.getElement() === document.activeElement,
+    );
+    const visibleRecords = markerRecords.current.filter(
+      (record) =>
+        !browse ||
+        record === focusedRecord ||
+        record.location.id === selectedId.current ||
+        visibleBounds.contains(record.marker.getLatLng()),
+    );
+    const visibleSet = new Set(visibleRecords);
+    for (const record of markerRecords.current)
+      if (!visibleSet.has(record)) markers.current.removeLayer(record.marker);
     container.current?.classList.toggle(
       "bot-small",
       zoom <= BOT_SMALL_MAX_ZOOM,
@@ -149,13 +168,14 @@ export function LocationMap({
       zoom >= BOT_BARS_MIN_ZOOM,
     );
     clusters.current.clearLayers();
-    const items = markerRecords.current.flatMap((record) => {
+    const items = visibleRecords.flatMap((record) => {
       const className = record.marker.options.icon?.options.className;
       const state = stateFromIconClass(className);
       if (
         !className?.includes("bot-marker") ||
         className.includes("removed") ||
         !state ||
+        record === focusedRecord ||
         record.location.id === selectedId.current
       )
         return [];
@@ -167,18 +187,21 @@ export function LocationMap({
         },
       ];
     });
-    const show = (marker: L.Marker) => {
+    const show = (record: (typeof markerRecords.current)[number]) => {
+      const marker = record.marker;
       if (markers.current!.hasLayer(marker)) return;
       markers.current!.addLayer(marker);
       const element = marker.getElement();
       if (marker.options.title)
         element?.setAttribute("aria-label", marker.options.title);
+      const description = markerDescription?.(record.location);
+      if (description) element?.setAttribute("aria-description", description);
     };
-    for (const record of markerRecords.current)
-      if (!items.some((item) => item.record === record)) show(record.marker);
+    for (const record of visibleRecords)
+      if (!items.some((item) => item.record === record)) show(record);
     for (const group of groupOverlapping(items, zoom)) {
       if (group.items.length === 1) {
-        show(group.items[0].record.marker);
+        show(group.items[0].record);
         continue;
       }
       for (const item of group.items)
@@ -212,6 +235,7 @@ export function LocationMap({
     }
   };
   const [basemapFailed, setBasemapFailed] = useState(false);
+  const [rasterFallback, setRasterFallback] = useState(false);
   useEffect(() => {
     const instance = L.map(container.current!, {
       zoomControl: false,
@@ -227,14 +251,54 @@ export function LocationMap({
       '<a href="https://openfreemap.org/" target="_blank" rel="noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a>',
     );
     let basemap: L.MaplibreGL | undefined;
-    const failure = () => setBasemapFailed(true);
-    const timeout = window.setTimeout(failure, 15000);
+    let raster: L.TileLayer | undefined;
+    let switchedToRaster = false;
+    let disposed = false;
+    const failure = () => {
+      if (!disposed) setBasemapFailed(true);
+    };
+    const useRaster = () => {
+      if (disposed || switchedToRaster) return;
+      switchedToRaster = true;
+      if (basemap && instance.hasLayer(basemap)) instance.removeLayer(basemap);
+      raster = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        className: "map-raster-fallback",
+        maxZoom: 19,
+        keepBuffer: 1,
+        updateWhenIdle: true,
+        detectRetina: false,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(instance);
+      setRasterFallback(true);
+    };
+    const timeout = window.setTimeout(() => {
+      failure();
+      useRaster();
+    }, 15000);
     try {
       basemap = maplibreGL({
         // 自訂灰綠底圖：OpenFreeMap openmaptiles 圖磚＋色票 token。
         style: binsoonBasemapStyle(),
         attributionControl: false,
-      }).addTo(instance);
+        pixelRatio: compactMap
+          ? Math.min(window.devicePixelRatio || 1, 1.5)
+          : undefined,
+        maxTileCacheSize: compactMap ? 32 : undefined,
+        maxTileCacheZoomLevels: compactMap ? 2 : undefined,
+        canvasContextAttributes: compactMap
+          ? { powerPreference: "low-power" }
+          : undefined,
+      });
+      const layer = basemap;
+      const removeLayer = layer.onRemove.bind(layer);
+      layer.onRemove = (map) => {
+        if (layer.getMaplibreMap()) return removeLayer(map);
+        // A failed WebGL constructor leaves the adapter without a GL map.
+        layer.getContainer()?.remove();
+        return layer;
+      };
+      basemap.addTo(instance);
       const gl = basemap.getMaplibreMap();
       registerBasemapImages(gl);
       // 樣式是內嵌的，所以「載入成功」改以 OpenFreeMap 圖磚來源的 TileJSON
@@ -253,21 +317,37 @@ export function LocationMap({
         failed = true;
         failure();
       });
+      gl.on("webglcontextlost", () => {
+        failure();
+        useRaster();
+      });
     } catch {
       failure();
+      useRaster();
     }
     markers.current = L.layerGroup().addTo(instance);
     clusters.current = L.layerGroup().addTo(instance);
-    instance.on("zoomend", () => declutter.current());
-    const observer = new ResizeObserver(() => instance.invalidateSize());
-    observer.observe(container.current!);
-    return () => {
+    instance.on("zoomend moveend", () => declutter.current());
+    const stopObserving = observeMapSize(container.current!, () =>
+      instance.invalidateSize({ pan: false }),
+    );
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true;
       window.clearTimeout(timeout);
-      observer.disconnect();
+      stopObserving();
       instance.remove();
       map.current = null;
       markerRecords.current = [];
       markerPositions.current = "";
+    };
+    const pageHide = (event: PageTransitionEvent) => {
+      if (!event.persisted) dispose();
+    };
+    window.addEventListener("pagehide", pageHide);
+    return () => {
+      window.removeEventListener("pagehide", pageHide);
+      dispose();
     };
   }, []);
   // 標記依 kind/id 增量更新：背景輪詢不重建標記，位置、圖示、名稱沒變就不動，
@@ -304,9 +384,7 @@ export function LocationMap({
           location,
           iconSignature,
         };
-        created.marker
-          .on("click", () => onSelectRef.current(created.location))
-          .addTo(markers.current!);
+        created.marker.on("click", () => onSelectRef.current(created.location));
         record = created;
       } else {
         if (
@@ -588,14 +666,15 @@ export function LocationMap({
     element?.addEventListener("pointerdown", touched);
     element?.addEventListener("wheel", touched, { passive: true });
     fit();
-    const observer = new ResizeObserver(() => {
-      if (moved) return;
-      instance.invalidateSize();
-      fit();
-    });
-    if (element) observer.observe(element);
+    const stopObserving = element
+      ? observeMapSize(element, () => {
+          if (moved) return;
+          instance.invalidateSize();
+          fit();
+        })
+      : () => {};
     return () => {
-      observer.disconnect();
+      stopObserving();
       element?.removeEventListener("pointerdown", touched);
       element?.removeEventListener("wheel", touched);
       for (const layer of [
@@ -733,7 +812,9 @@ export function LocationMap({
       />
       {basemapFailed && (
         <p className="map-warning" role="status">
-          底圖暫時無法完整載入，請確認網路後重新整理。位置標記與清單仍可查看。
+          {rasterFallback
+            ? "已切換輕量底圖。位置標記、搜尋與清單仍可使用。"
+            : "底圖暫時無法完整載入。位置標記與清單仍可查看。"}
         </p>
       )}
       {!browse && (

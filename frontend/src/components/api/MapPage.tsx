@@ -340,19 +340,34 @@ export function MapPage({
     onHandle: boolean;
   } | null>(null);
   useLayoutEffect(() => {
-    const measure = () =>
-      setDims({
+    const measure = () => {
+      const next = {
         layout: layoutRef.current?.clientHeight ?? 0,
-        toolbar: toolbarRef.current?.offsetHeight ?? 0,
+        toolbar: mobile ? 0 : (toolbarRef.current?.offsetHeight ?? 0),
         head:
           (handleRef.current?.offsetHeight ?? 0) +
           (headRef.current?.offsetHeight ?? 0),
-      });
+      };
+      setDims((previous) =>
+        previous.layout === next.layout &&
+        previous.head === next.head &&
+        previous.toolbar === next.toolbar
+          ? previous
+          : next,
+      );
+    };
     measure();
-    const observer = new ResizeObserver(measure);
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    });
     for (const ref of [layoutRef, handleRef, headRef, toolbarRef])
       if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, [mobile, voting, binId, placeId]);
   const showingBallot = !!binId && !!selected && isProposed(selected);
   const heights = useMemo(() => {
@@ -465,6 +480,51 @@ export function MapPage({
   const view = binId ? "bin" : place ? "place" : "list";
   const listHref = wasteHref(voting ? "vote" : "map", wasteType);
 
+  const controls =
+    view === "list" && !voting ? (
+      <div
+        ref={toolbarRef}
+        className="mx-home-toolbar"
+        aria-label="地圖搜尋與篩選"
+      >
+        <div className="mx-home-controls">
+          <label className="search-field">
+            <span className="visually-hidden">搜尋地點</span>
+            <input
+              type="search"
+              aria-label="搜尋地點"
+              placeholder="搜尋路名、地點⋯"
+              maxLength={200}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </label>
+          {!voting && (
+            <WastePicker
+              name="map-waste"
+              legend="垃圾種類"
+              iconOnly
+              value={wasteType}
+              onChange={replaceWaste}
+            />
+          )}
+          <div className="filter-chips" role="group" aria-label="篩選">
+            {(voting ? [] : filters).map(([value, label]) => (
+              <button
+                type="button"
+                key={value}
+                aria-pressed={filter === value}
+                onClick={() => setFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <MapNotice />
+      </div>
+    ) : null;
+
   return (
     <main
       className={`mx-layout ${view === "list" && !voting ? "mx-home" : ""}`}
@@ -472,49 +532,7 @@ export function MapPage({
       style={style}
       data-drawer={mobile ? drawer : undefined}
     >
-      {view === "list" && !voting && (
-        <div
-          ref={toolbarRef}
-          className="mx-home-toolbar"
-          aria-label="地圖搜尋與篩選"
-        >
-          <div className="mx-home-controls">
-            <label className="search-field">
-              <span className="visually-hidden">搜尋地點</span>
-              <input
-                type="search"
-                aria-label="搜尋地點"
-                placeholder="搜尋路名、地點⋯"
-                maxLength={200}
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
-            </label>
-            {!voting && (
-              <WastePicker
-                name="map-waste"
-                legend="垃圾種類"
-                iconOnly
-                value={wasteType}
-                onChange={replaceWaste}
-              />
-            )}
-            <div className="filter-chips" role="group" aria-label="篩選">
-              {(voting ? [] : filters).map(([value, label]) => (
-                <button
-                  type="button"
-                  key={value}
-                  aria-pressed={filter === value}
-                  onClick={() => setFilter(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <MapNotice />
-        </div>
-      )}
+      {!mobile && controls}
       <section
         className={`mx-panel${dragPx !== null ? " dragging" : ""}`}
         aria-label="資訊面板"
@@ -559,6 +577,7 @@ export function MapPage({
           )}
         </div>
         <div className="mx-panel-body" inert={collapsed}>
+          {mobile && controls}
           {view === "bin" ? (
             <BinPanel
               key={`${binId}/${wasteType}`}
@@ -679,9 +698,6 @@ export function MapPage({
           markerDescription={browseMarkerDescription}
           origin={originMarker}
           focusOffsetY={focusOffsetY}
-          browseTopInset={
-            mobile && view === "list" && !voting ? dims.toolbar + 12 : 0
-          }
           focusKey={focusKey}
         />
         <LegendPopover
