@@ -1,7 +1,7 @@
 import { useDemoData, isDemoToken } from "./demoMode";
 import { apiBaseForHost } from "./apiConfig";
 import { decorateCitizenView, demoRequest } from "./demoCitizen";
-import { demoBinPayload, demoCityLoaded } from "./demoBins";
+import { demoBinPayload } from "./demoBins";
 import { type WasteMetadata, type WasteType } from "./waste";
 export type Role = "citizen" | "staff" | "admin";
 export type User = {
@@ -386,21 +386,6 @@ export async function request<T>(
 ): Promise<Result<T>> {
   options.signal?.throwIfAborted();
   if (useDemoData(options.token)) {
-    if (path.startsWith("/map/nearest-usable?") && !demoCityLoaded()) {
-      const waste =
-        new URL(path, "http://local").searchParams.get("waste_type") ||
-        "general";
-      await allPages<ApiLocation>(
-        query("/map/locations", {
-          district: "all",
-          kind: "bin",
-          filter: "all",
-          waste_type: waste,
-          include_proposed: true,
-        }),
-        { signal: options.signal, token: options.token },
-      );
-    }
     const local = await demoRequest(path, options);
     options.signal?.throwIfAborted();
     if (local)

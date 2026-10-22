@@ -9433,3 +9433,12 @@ input[type="file"]::file-selector-button {
     display: contents;
   }
 }
+
+.crew-ranking .api-form select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+}
