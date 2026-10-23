@@ -306,7 +306,7 @@ function VanBrowse({ stopId, editId }: { stopId?: string; editId?: string }) {
     );
     // 詳情半開 65%：標題、幾列時段與底部固定的確認按鈕都看得到。
     const half = detail
-      ? Math.round(dims.layout * 0.65)
+      ? Math.round(dims.layout * 0.7)
       : Math.min(300, Math.round(dims.layout * 0.42));
     return {
       collapsed: dims.head,
@@ -553,6 +553,19 @@ function StopDetail({
   );
   const [shift, setShift] = useState<Shift | null>(editing?.shift ?? null);
   const [error, setError] = useState("");
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const scrolled = useRef(false);
+  // 選中的日期自動捲到可見（置中）；第一次直接到位，之後平滑捲動。
+  useEffect(() => {
+    const box = chipsRef.current;
+    const chip = box?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!box || !chip) return;
+    box.scrollTo({
+      left: chip.offsetLeft - (box.clientWidth - chip.offsetWidth) / 2,
+      behavior: scrolled.current ? "smooth" : "auto",
+    });
+    scrolled.current = true;
+  }, [date]);
   const seeded = useRef(!!editing);
   useEffect(() => {
     // 重新整理後 bookings 才讀到：把原本的日期與時段預選一次。
@@ -615,59 +628,79 @@ function StopDetail({
             {editing ? "回到預約詳情" : "回到清單"}
           </button>
           {error && <p role="alert">{error}</p>}
-          <h2>日期與時段</h2>
-          <div className="van-datechips" role="group" aria-label="選日期">
-            {dates.map((d) => {
-              const need = dayNeed(d);
-              const hint =
-                need === 0 ? "✓開站" : need <= 3 ? `差${need}人` : "";
-              const weekday = "日一二三四五六"[
-                new Date(`${d}T12:00:00+08:00`).getUTCDay()
-              ];
-              return (
-                <button
-                  type="button"
-                  key={d}
-                  className="van-datechip"
-                  aria-pressed={d === date}
-                  aria-label={`${shortDate(d)} 週${weekday}${hint ? `，${hint}` : ""}`}
-                  onClick={() => chooseDate(d)}
-                >
-                  <span>週{weekday}</span>
-                  <strong>{shortDate(d)}</strong>
-                  <em aria-hidden="true">{hint}</em>
-                </button>
-              );
-            })}
-          </div>
-          <div className="van-shifts" role="group" aria-label="選時段">
-            {(Object.keys(shifts) as Shift[]).map((s) => {
-              const mine = taken(date, s);
-              return (
-                <button
-                  type="button"
-                  key={s}
-                  className={`van-slot${needAt(others, date, s, stop.id) === 0 ? " open" : ""}`}
-                  aria-pressed={mine ? undefined : shift === s}
-                  disabled={mine}
-                  onClick={() => {
-                    setShift(s);
-                    setError("");
-                  }}
-                >
-                  <span>
-                    {shifts[s].name}
-                    <small>{shifts[s].time}</small>
-                  </span>
-                  <strong>
-                    {mine
-                      ? "你已預約"
-                      : slotNeedText(needAt(others, date, s, stop.id))}
-                  </strong>
-                </button>
-              );
-            })}
-          </div>
+          <section className="van-section" aria-labelledby="van-pick-date">
+            <h2 id="van-pick-date">選日期</h2>
+            <div
+              className="van-datechips"
+              role="group"
+              aria-label="選日期"
+              ref={chipsRef}
+            >
+              {dates.map((d, i) => {
+                const need = dayNeed(d);
+                const hint =
+                  need === 0 ? "✓開站" : need <= 3 ? `差${need}人` : "";
+                const weekday = "日一二三四五六"[
+                  new Date(`${d}T12:00:00+08:00`).getUTCDay()
+                ];
+                return (
+                  <button
+                    type="button"
+                    key={d}
+                    className="van-datechip"
+                    aria-pressed={d === date}
+                    aria-label={`${shortDate(d)} 週${weekday}${hint ? `，${hint}` : ""}`}
+                    onClick={() => chooseDate(d)}
+                    onKeyDown={(e) => {
+                      const to =
+                        e.key === "ArrowRight"
+                          ? i + 1
+                          : e.key === "ArrowLeft"
+                            ? i - 1
+                            : -1;
+                      const list =
+                        chipsRef.current?.querySelectorAll<HTMLElement>(
+                          ".van-datechip",
+                        );
+                      if (to < 0 || !list?.[to]) return;
+                      e.preventDefault();
+                      list[to].focus();
+                    }}
+                  >
+                    <span>週{weekday}</span>
+                    <strong>{shortDate(d)}</strong>
+                    <em aria-hidden="true">{hint}</em>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+          <section className="van-section" aria-labelledby="van-pick-shift">
+            <h2 id="van-pick-shift">選時段</h2>
+            <div className="van-shifts" role="group" aria-label="選時段">
+              {(Object.keys(shifts) as Shift[]).map((s) => {
+                const mine = taken(date, s);
+                const need = needAt(others, date, s, stop.id);
+                return (
+                  <button
+                    type="button"
+                    key={s}
+                    className={`van-slot${need === 0 ? " open" : need <= 3 ? " soon" : ""}`}
+                    aria-pressed={mine ? undefined : shift === s}
+                    disabled={mine}
+                    onClick={() => {
+                      setShift(s);
+                      setError("");
+                    }}
+                  >
+                    <b>{shifts[s].name}</b>
+                    <span>{shifts[s].time}</span>
+                    <strong>{mine ? "你已預約" : slotNeedText(need)}</strong>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         </div>
       </div>
       {!collapsed && (

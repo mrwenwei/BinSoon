@@ -104,6 +104,16 @@ export function writeBookings(bookings: Booking[]) {
   localStorage.setItem(VAN_KEY, JSON.stringify(bookings));
   window.dispatchEvent(new Event("van-updated"));
 }
+// 示範用的預設人數：以站點的 count 為基準，依日期與時段固定地上下浮動（不隨機），
+// 讓各站各日各時段有「差 1–3 人」「已開站」「差很多」的變化。CrewVan 也讀這個數字。
+const BASE_DELTA = [0, -3, 1, -4, 2, -2, 3, -1, 1, -5, 0, 2, -2];
+export function baseCount(stop: string, date: string, shift: Shift) {
+  const index = stops.findIndex((s) => s.id === stop);
+  if (index < 0) return 0;
+  const day = Number(date.slice(8, 10)) || 0;
+  const h = day * 5 + (shift === "evening" ? 3 : 0) + index * 7;
+  return Math.max(0, stops[index].count + BASE_DELTA[h % BASE_DELTA.length]);
+}
 export function countAt(
   bookings: Booking[],
   date: string,
@@ -111,7 +121,7 @@ export function countAt(
   stop: string,
 ) {
   return (
-    (stops.find((s) => s.id === stop)?.count || 0) +
+    baseCount(stop, date, shift) +
     bookings.filter(
       (b) => b.date === date && b.shift === shift && b.stop === stop,
     ).length

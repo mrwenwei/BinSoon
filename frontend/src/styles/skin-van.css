@@ -98,18 +98,43 @@
   margin: 0;
   color: var(--px-full-ink);
 }
-.van-datechips {
+.van-section {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--space-1);
+  gap: var(--space-2);
+}
+.van-section + .van-section {
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--px-line-control);
+}
+.van-sheet-content .van-section h2 {
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--px-ink);
+}
+/* 日期列：每顆 68px，橫向滑動；左右留邊讓第一／最後一顆可滑到中間 */
+.van-datechips {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  margin-inline: calc(var(--space-4) * -1);
+  padding: 2px var(--space-4) 6px;
+  scroll-padding-inline: var(--space-4);
+}
+.van-datechips::-webkit-scrollbar {
+  display: none;
 }
 .van-datechip {
+  flex: 0 0 68px;
+  scroll-snap-align: center;
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 0;
-  min-width: 0;
-  padding: var(--space-2) 0 var(--space-1);
+  gap: 2px;
+  padding: var(--space-2) 0 var(--space-2);
   background: var(--px-card);
   color: var(--px-ink);
   border: 1px solid var(--px-line-control);
@@ -117,20 +142,20 @@
   box-shadow: 0 2px 0 var(--px-shadow);
 }
 .van-datechip span {
-  font-size: 11px;
-  line-height: 16px;
+  font-size: 12px;
+  line-height: 18px;
   color: var(--px-ink-body);
 }
 .van-datechip strong {
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 16px;
+  line-height: 22px;
   white-space: nowrap;
 }
 .van-datechip em {
   font-style: normal;
-  font-size: 10px;
-  line-height: 16px;
-  min-height: 16px;
+  font-size: 12px;
+  line-height: 18px;
+  min-height: 18px;
   white-space: nowrap;
   color: var(--px-purple-deep);
   font-weight: 700;
@@ -155,12 +180,12 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
+/* 時段按鈕層級：時段名稱（16px 粗）＞ 時間（13px）＞ 人數提示（13px 粗、有顏色） */
 .van-slot {
   display: grid;
-  gap: var(--space-1);
-  align-content: center;
-  min-height: 64px;
-  padding: var(--space-2) var(--space-3);
+  justify-items: start;
+  gap: 2px;
+  padding: var(--space-3);
   text-align: left;
   background: var(--px-card);
   color: var(--px-ink);
@@ -168,13 +193,24 @@
   border-radius: var(--px-radius-small);
   box-shadow: 0 2px 0 var(--px-shadow);
 }
-.van-slot small {
-  display: block;
+.van-slot b {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 900;
+}
+.van-slot span {
+  font-size: 13px;
+  line-height: 20px;
   color: var(--px-ink-body);
 }
 .van-slot strong {
+  margin-top: 2px;
   font-size: 13px;
+  line-height: 20px;
   color: var(--px-ink-body);
+}
+.van-slot.soon strong {
+  color: var(--px-purple-deep);
 }
 .van-slot.open strong {
   color: var(--px-hungry-ink);
@@ -184,8 +220,7 @@
   border: 2px solid var(--px-purple);
   box-shadow: 0 2px 0 var(--px-purple-deep);
 }
-.van-slot[aria-pressed="true"] strong,
-.van-slot[aria-pressed="true"] small {
+.van-slot[aria-pressed="true"] strong {
   color: var(--px-purple-deep);
 }
 .van-slot:disabled {
