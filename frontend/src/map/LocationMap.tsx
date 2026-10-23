@@ -27,6 +27,7 @@ import {
   pixelBasemapStyle,
   registerPixelBasemapImages,
 } from "./pixelBasemapStyle";
+import { useTheme } from "../theme";
 import type { Point } from "../data/participation";
 import {
   cumulativeMeters,
@@ -86,7 +87,7 @@ interface Props {
   markerIcon?: (location: LocationRecord, selected: boolean) => L.DivIcon;
   markerLabel?: (location: LocationRecord) => string;
   markerDescription?: (location: LocationRecord) => string | undefined;
-  /** 底圖樣式（只在建立地圖時讀一次；預設 "pixel"）："pixel" 為像素插畫底圖，顏色讀容器上的 --px-* 變數。 */
+  /** 底圖樣式；不給時跟著主題（day＝"pixel" 像素插畫、night＝"default" 原版），切換主題時會即時換底圖。 */
   basemap?: "default" | "pixel";
   /** 固定起點標記（不可點、不影響視野）。 */
   origin?: { latitude: number; longitude: number; label: string };
@@ -148,7 +149,7 @@ export function LocationMap({
   markerIcon,
   markerLabel,
   markerDescription,
-  basemap: basemapKind = "pixel",
+  basemap: basemapProp,
   origin,
   focusOffsetY,
   browseTopInset = 0,
@@ -400,6 +401,10 @@ export function LocationMap({
     if (browse && element && !reducedMotion())
       playOnce(element, "mx-pick", "mx-base-pick");
   };
+  const theme = useTheme();
+  const basemapKind = basemapProp ?? (theme === "day" ? "pixel" : "default");
+  const basemapKindRef = useRef(basemapKind);
+  const basemapLayer = useRef<L.MaplibreGL | undefined>(undefined);
   const [basemapFailed, setBasemapFailed] = useState(false);
   const [rasterFallback, setRasterFallback] = useState(false);
   useEffect(() => {
@@ -503,6 +508,7 @@ export function LocationMap({
       useRaster();
     }, 15000);
     try {
+      const basemapKind = basemapKindRef.current;
       basemap = maplibreGL({
         // 自訂灰綠底圖：OpenFreeMap openmaptiles 圖磚＋色票 token。
         // pixel：同一組圖磚的像素插畫樣式，顏色讀容器上的 --px-* 變數。
@@ -529,6 +535,7 @@ export function LocationMap({
         return layer;
       };
       basemap.addTo(instance);
+      basemapLayer.current = basemap;
       const gl = basemap.getMaplibreMap();
       if (basemapKind === "pixel")
         registerPixelBasemapImages(gl, container.current!);
@@ -586,6 +593,27 @@ export function LocationMap({
       dispose();
     };
   }, []);
+  // 主題切換：就地換底圖樣式（地圖、標記、選取、視野都不動）。
+  const appliedKind = useRef(basemapKind);
+  useEffect(() => {
+    basemapKindRef.current = basemapKind;
+    if (appliedKind.current === basemapKind) return;
+    appliedKind.current = basemapKind;
+    const gl = basemapLayer.current?.getMaplibreMap();
+    const scope = container.current;
+    if (!gl || !scope) return;
+    // 讀的是 <html data-theme> 已生效的 token，所以要在屬性改完之後才建樣式。
+    const register = () => {
+      if (basemapKind === "pixel") registerPixelBasemapImages(gl, scope);
+      else registerBasemapImages(gl);
+    };
+    gl.once("style.load", register);
+    gl.setStyle(
+      basemapKind === "pixel"
+        ? pixelBasemapStyle(scope)
+        : binsoonBasemapStyle(),
+    );
+  }, [basemapKind]);
   // 標記依 kind/id 增量更新：背景輪詢不重建標記，位置、圖示、名稱沒變就不動，
   // 停在標記上的鍵盤焦點、選取高亮與使用者目前的平移縮放都不會因為輪詢而遺失。
   // 瀏覽模式（MapPage）與其他頁共用這一套，只有自動框選的時機不同。

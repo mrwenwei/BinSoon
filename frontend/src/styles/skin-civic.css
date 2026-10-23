@@ -1,17 +1,17 @@
 /* Pixel skin：公民參與頁（提案、投票、參與、認養）。只寫純視覺屬性，規則見 docs/PIXEL_SKIN.md。 */
 
 /* 米色頁面底上的紫色連結：#6f63d9 對比僅 3.7:1，提案導覽列改用深紫（≥ 4.5:1）。 */
-.api-pagination[aria-label="提案導覽"] a {
+:where(:root[data-theme="day"]) .api-pagination[aria-label="提案導覽"] a {
   color: var(--px-purple-deep);
 }
 
 /* 地圖上選中的提案點：淺紫外框在米色底太淡，選取＝互動紫。 */
-.proposal-marker.active span {
+:where(:root[data-theme="day"]) .proposal-marker.active span {
   border-color: var(--px-select);
   background: var(--px-purple-soft);
 }
 
 /* 提案頁的錯誤／提示列：卡片型圓角（原本直角）。 */
-.page:has(> nav[aria-label="提案導覽"]) > [role="alert"] {
+:where(:root[data-theme="day"]) .page:has(> nav[aria-label="提案導覽"]) > [role="alert"] {
   border-radius: var(--px-radius-small);
 }

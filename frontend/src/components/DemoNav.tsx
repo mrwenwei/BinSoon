@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { Mascot } from "./Mascot";
+import { setTheme, useTheme } from "../theme";
 import type { NavLink } from "./AppNav";
 
 // M flow 共用導覽：同一組連結在桌面頂部、手機底部呈現。
@@ -15,6 +16,8 @@ export function DemoNav({
   right: ReactNode;
   account?: ReactNode;
 }) {
+  const theme = useTheme();
+  const night = theme === "night";
   return (
     <>
       <header className="topbar m-topbar">
@@ -26,8 +29,7 @@ export function DemoNav({
             BinSoon<span className="brand-sub">台北丟垃圾變順</span>
           </span>
         </a>
-        <nav className="demo-identity" aria-label="身份切換">
-          <span className="label">身份</span>
+        <nav className="demo-identity" aria-label="身份">
           <a href="#login?next=map" aria-current={!crew ? "page" : undefined}>
             市民
           </a>
@@ -35,6 +37,16 @@ export function DemoNav({
             清潔隊
           </a>
         </nav>
+        <button
+          type="button"
+          className="theme-toggle"
+          aria-pressed={night}
+          aria-label="切換日間／夜間配色"
+          title={night ? "目前夜間配色，點一下換日間" : "目前日間配色，點一下換夜間"}
+          onClick={() => setTheme(night ? "day" : "night")}
+        >
+          <Icon name={night ? "sun" : "moon"} />
+        </button>
         <div className="topbar-right">
           {right}
           {account && <div className="topbar-account">{account}</div>}

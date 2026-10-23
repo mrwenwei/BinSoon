@@ -745,7 +745,6 @@ export function MapPage({
       </section>
       <div className="mx-map">
         <LocationMap
-          basemap="pixel"
           locations={mapItems}
           selected={selected}
           onSelect={select}

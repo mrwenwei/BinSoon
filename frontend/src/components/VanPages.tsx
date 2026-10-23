@@ -495,7 +495,6 @@ function VanBrowse({ stopId, editId }: { stopId?: string; editId?: string }) {
       </section>
       <div className="mx-map van-browse-map">
         <LocationMap
-          basemap="pixel"
           locations={mapItems}
           selected={selected ? stopRecord(selected) : null}
           onSelect={select}

@@ -1,4 +1,6 @@
-# Pixel Skin 規則（本機實驗，branch try/pixel-skin）
+# Pixel Skin 規則（本機實驗，branch try/pixel-skin；日夜切換見 branch try/theme-toggle）
+
+> 像素皮膚現在只是「日間（day）」主題；「夜間（night）」是原版設計系統。見最後一節「主題切換」。
 
 目標：整站「只換皮」。功能、DOM 結構、class 名稱、文字、資料邏輯、事件、
 既有圖標（binBot、marker、像素愛心、mascot 等）的圖形／尺寸／動畫與 main 完全相同。
@@ -150,3 +152,19 @@
 - 淺色 icon 修正：`.claim-situations .icon`、`.row-state.place` 用 `--px-ink-muted`。若發現別處也用 `--mint`／`--place`／`--mascot-eye` 當前景色而看不見，請在自己的 skin 檔覆蓋成 `--px-ink-muted` 或 `--px-purple`。
 - 紫底元素上的文字原本用 `--text-on-light`（現在是深墨色），已全域改成白（`--px-on-purple`）的清單見 styles.css「互動」段；新增紫底元素記得自己設白字。
 - 所有 LocationMap 預設使用像素底圖（`basemap` 預設 `"pixel"`）。
+
+## 7. 主題切換（day／night）
+
+- `<html data-theme="day|night">`。**day＝像素皮膚（本文件其餘各節）**，**night＝原版設計系統**（深炭灰＋teal＋橘色選取、原版圓角／字體／底圖，外觀與 main 一致）。預設 day。
+- `frontend/index.html` 的 inline script 在 render 前設好屬性（避免閃爍）：先看網址參數 `?theme=night|day`（覆寫並寫入 localStorage），否則讀 localStorage key `binsoon-theme`，都沒有就 day。讀寫都包 try/catch。
+- 執行期讀寫與訂閱在 `src/theme.ts`（`getTheme`／`setTheme`／`useTheme`）。切換鈕在 `DemoNav.tsx`（header「市民／清潔隊」右邊，`aria-pressed`、`aria-label="切換日間／夜間配色"`，day 顯示月亮、night 顯示太陽）。切換即時生效、不重新整理。
+- 地圖底圖跟著主題：`LocationMap` 的 `basemap` 不給時，day＝`pixelBasemapStyle`、night＝原版 `binsoonBasemapStyle`；主題改變時就地 `setStyle`（標記、選取、視野不動）。底圖樣式在建立時讀 CSS token，所以 night 讀到的是原版 token。
+- binBot 狀態色是 `var(--bot-…, 原色)`：`--bot-*` 只在 day 定義，night 自動回到原色。
+
+### 寫新樣式的規則
+
+1. **像素皮膚的覆蓋（改原版元素的顏色、圓角、陰影、字體）一律加 day 前綴**：`:where(:root[data-theme="day"]) .xxx { … }`。用 `:where()` 是讓前綴不增加權重，層疊順序跟沒有前綴時完全一樣；要定義 token 的 `:root` 區塊則直接寫 `:root[data-theme="day"] { … }`。skin-citizen／civic／crew 與 styles.css 的像素段都已加好。
+2. **原版（night）不需要任何覆蓋**，不要在不帶前綴的規則裡寫死像素色或 `--px-*` 以外的像素值。
+3. **新結構**（main 沒有的元素：小車流程、兌換彈窗、點數卡金幣、地圖署名 i 鈕、主題切換鈕…）寫不帶前綴的基礎規則，顏色只用 `--px-*` token。night 下 `--px-*` 由 `src/styles/skin-night.css` 對映到原版 token（`--px-purple`→`--teal`、`--px-select`→`--signal`、`--px-card`→`--chrome`、圓角→原版 `--radius-*`、`--px-font-round`→`--font-sans` 等），兩個主題共用同一份規則。需要 night 專屬樣式時寫在 skin-night.css（`:root[data-theme="night"] …`）。
+4. 新增 `--px-*` token 時，同步在 skin-night.css 補 night 對映，否則 night 下該變數是空的。
+5. 小車 icon 色：day 淺紫（`--px-van*`，skin-van.css）、night teal 系（skin-night.css）。

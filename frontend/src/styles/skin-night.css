@@ -1,0 +1,110 @@
+/* Night 主題（<html data-theme="night">）＝原版設計系統（深炭灰＋teal＋橘色選取）。
+   原版元素不需要任何覆蓋（像素皮膚只在 data-theme="day" 生效）；這裡只做兩件事：
+   1. 把 --px-* 語意 token 對映到原版 token，讓「新結構」（小車流程、兌換彈窗、地圖署名鈕、
+      主題切換鈕…）的不帶前綴規則在 night 下也有合理配色；
+   2. 少數新結構在 night 的專屬樣式。
+   規則見 docs/PIXEL_SKIN.md「主題切換」。 */
+:root[data-theme="night"] {
+  --px-ground: var(--map);
+  --px-ink: var(--text);
+  --px-ink-soft: var(--text-muted);
+  --px-ink-muted: var(--text-muted);
+  --px-ink-body: var(--text-body);
+  --px-card: var(--chrome);
+  --px-card-alt: var(--field);
+  --px-line: var(--line);
+  --px-line-control: var(--line-control);
+  --px-line-input: var(--line-input);
+  --px-shadow: transparent;
+  --px-shadow-ink: rgba(0, 0, 0, 0.45);
+  --px-dot-off: var(--line);
+  --px-card-glass: color-mix(in srgb, var(--chrome) 82%, transparent);
+  --px-divider: var(--divider);
+  --px-hairline: var(--hairline);
+  /* 互動＝teal；選取／你在哪＝橘（原版規則）；teal 底上的字＝深色 text-on-light */
+  --px-purple: var(--teal);
+  --px-purple-hover: color-mix(in srgb, var(--teal) 82%, #fff);
+  --px-purple-deep: var(--teal);
+  --px-purple-soft: color-mix(in srgb, var(--teal) 16%, var(--chrome));
+  --px-on-purple: var(--text-on-light);
+  --px-select: var(--signal);
+  --px-hungry: var(--status-hungry);
+  --px-hungry-edge: var(--status-hungry);
+  --px-hungry-ink: var(--teal);
+  --px-full: var(--status-full);
+  --px-full-ink: var(--signal);
+  --px-offline: var(--status-offline);
+  --px-offline-ink: var(--text-muted);
+  --px-radius-card: var(--radius-md);
+  --px-radius-row: var(--radius-md);
+  --px-radius-small: var(--radius-sm);
+  --px-radius-pill: var(--radius-pill);
+  --px-radius-xs: var(--radius-xs);
+  --px-font-round: var(--font-sans);
+  /* 像素小車 icon：teal 系（和原版「可以丟」同色相）；day 的淺紫在 skin-van.css */
+  --px-van: var(--teal);
+  --px-van-light: color-mix(in srgb, var(--teal) 55%, #fff);
+  --px-van-shade: color-mix(in srgb, var(--teal) 62%, #000);
+}
+
+/* BinU 卡右上「更多動作」：原版是透明框＋細點，深色底上幾乎看不到，給淺 teal 底與 teal 圖示 */
+:root[data-theme="night"] .binu-card-head .icon-button {
+  background: var(--px-purple-soft);
+  border-color: transparent;
+  border-radius: var(--radius-pill);
+  color: var(--teal);
+}
+:root[data-theme="night"] .binu-card-head .icon-button:hover,
+:root[data-theme="night"] .binu-card-head .icon-button[aria-expanded="true"] {
+  background: var(--teal);
+  color: var(--text-on-light);
+}
+:root[data-theme="night"] .binu-card-head .icon-button svg {
+  stroke-width: 3;
+}
+
+/* 兌換彈窗：原版 claim-dialog 的卡片外觀；補一圈細線讓它從遮罩上浮起來 */
+:root[data-theme="night"] .reward-dialog {
+  border: 1px solid var(--line-control);
+}
+:root[data-theme="night"] .reward-dialog-scrim {
+  background: rgba(8, 11, 10, 0.64);
+}
+
+/* ── Header 日夜切換鈕（兩個主題共用；顏色走 --px-*） ─────────────────────── */
+.theme-toggle {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  margin-left: var(--space-2);
+  border: 1px solid var(--px-line-control);
+  border-radius: var(--px-radius-pill);
+  background: var(--px-card-alt);
+  color: var(--px-ink-body);
+  cursor: pointer;
+}
+.theme-toggle .icon {
+  width: 22px;
+  height: 22px;
+}
+.theme-toggle:hover {
+  background: var(--px-purple-soft);
+  color: var(--px-purple-deep);
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+:where(:root[data-theme="day"]) .theme-toggle {
+  box-shadow: 0 2px 0 var(--px-line-control);
+}
+@media (max-width: 760px) {
+  .theme-toggle {
+    margin-left: 0;
+    width: 40px;
+    height: 40px;
+  }
+}

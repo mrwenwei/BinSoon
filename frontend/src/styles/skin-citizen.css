@@ -3,25 +3,25 @@
 /* ── 對比修正：米色底（#F4E1CB）上的次要文字與紫字 ───────────────────────
    --px-ink-soft 對米色只有 4.17:1、--px-purple 對米色只有 3.69:1，皆低於 4.5:1。
    市民頁的次要字改 --px-ink-body、紫字改 --px-purple-deep；白底卡片內不受影響。 */
-.page-heading > .demo-tag,
-.compact-page-head > div > p,
-.binu-count .numeral-md {
+:where(:root[data-theme="day"]) .page-heading > .demo-tag,
+:where(:root[data-theme="day"]) .compact-page-head > div > p,
+:where(:root[data-theme="day"]) .binu-count .numeral-md {
   color: var(--px-ink-body);
 }
-.citizen-bins > .text-button,
-.api-action-link,
-.report-success-status {
+:where(:root[data-theme="day"]) .citizen-bins > .text-button,
+:where(:root[data-theme="day"]) .api-action-link,
+:where(:root[data-theme="day"]) .report-success-status {
   color: var(--px-purple-deep);
 }
 /* 選中底（淺紫）上的紫字 */
-.report-compose .segmented label:has(input:checked) {
+:where(:root[data-theme="day"]) .report-compose .segmented label:has(input:checked) {
   color: var(--px-purple-deep);
 }
 
 /* ── 第 3 輪（使用者明確授權的版面／DOM 調整）──────────────────────────── */
 
 /* 會員中心「集章與等級」：徽章文字平均換行（獨當／一面），圓內放得下、不截斷 */
-.member-badge {
+:where(:root[data-theme="day"]) .member-badge {
   text-wrap: balance;
   overflow-wrap: anywhere;
   line-height: 1.25;
@@ -30,7 +30,7 @@
 }
 
 /* 「我的」可用點數卡：白底＋深墨 2px 像素邊＋硬邊陰影，和米色頁面底分開 */
-.citizen-home > .member-hero {
+:where(:root[data-theme="day"]) .citizen-home > .member-hero {
   background: var(--px-card);
   border: 1px solid var(--px-ink);
   box-shadow:
@@ -49,12 +49,14 @@
 }
 
 /* 兌換確認彈窗：像素風（深墨邊＋硬邊陰影），遮罩用米色半透明 */
-.reward-dialog-scrim {
+:where(:root[data-theme="day"]) .reward-dialog-scrim {
   background: color-mix(in srgb, var(--px-ink) 38%, transparent);
 }
 .reward-dialog {
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
+}
+:where(:root[data-theme="day"]) .reward-dialog {
   background: var(--px-card);
   border: 1px solid var(--px-ink);
   border-radius: var(--px-radius-card);
@@ -64,18 +66,18 @@
 }
 
 /* BinU 卡右上「更多動作」：原本透明框＋細點幾乎看不到，給淺底與紫色圖示 */
-.binu-card-head .icon-button {
+:where(:root[data-theme="day"]) .binu-card-head .icon-button {
   background: var(--px-purple-soft);
   border-color: transparent;
   border-radius: var(--px-radius-pill);
   color: var(--px-purple-deep);
 }
-.binu-card-head .icon-button:hover,
-.binu-card-head .icon-button[aria-expanded="true"] {
+:where(:root[data-theme="day"]) .binu-card-head .icon-button:hover,
+:where(:root[data-theme="day"]) .binu-card-head .icon-button[aria-expanded="true"] {
   background: var(--px-purple);
   color: var(--px-on-purple);
 }
-.binu-card-head .icon-button svg {
+:where(:root[data-theme="day"]) .binu-card-head .icon-button svg {
   stroke-width: 3;
 }
 
