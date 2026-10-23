@@ -62,16 +62,27 @@
   overflow: hidden;
 }
 
+/* 小車清單選中列：只有底色變化，沒有左側紫線（桶地圖清單不受影響） */
+.van-browse .mx-list .location-row.active {
+  box-shadow: none;
+  background: color-mix(in srgb, var(--px-purple-soft) 60%, var(--px-card));
+}
+
 /* 停靠點詳情（抽屜／側欄內） */
 .van-detail-head {
   flex-wrap: nowrap;
   justify-content: flex-start;
+  gap: var(--space-3);
 }
-.van-detail-head .van-back {
-  flex: none;
-  min-width: 44px;
-  min-height: 44px;
-  color: var(--px-purple-deep);
+.van-head-text {
+  min-width: 0;
+  display: grid;
+}
+.van-head-text .mx-title {
+  white-space: normal;
+}
+.van-head-text small {
+  color: var(--px-ink-body);
 }
 .van-sheet-content {
   display: grid;
@@ -87,61 +98,62 @@
   margin: 0;
   color: var(--px-full-ink);
 }
-.van-panel-foot {
-  flex: none;
+.van-datechips {
   display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: var(--space-1);
-  padding: var(--space-3) var(--space-4) var(--space-3);
-  background: var(--px-card);
-  border-top: 2px solid var(--px-divider);
 }
-.van-panel-foot .button {
-  width: 100%;
-  justify-content: center;
-  min-height: 48px;
-}
-.van-panel-foot small {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  color: var(--px-ink-body);
-}
-.van-stop-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--px-card);
-  border: 1px solid var(--px-line);
-  border-radius: var(--px-radius-card);
-  box-shadow: 0 3px 0 var(--px-shadow);
-}
-.van-stop-info small {
-  display: block;
-  color: var(--px-ink-body);
-}
-.van-slotgrid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.van-datechip {
   display: grid;
-  gap: var(--space-2);
-}
-.van-slot-row {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-2);
-  align-items: stretch;
-}
-.van-slot-date {
-  display: grid;
-  align-content: center;
   justify-items: center;
+  align-content: start;
+  gap: 0;
+  min-width: 0;
+  padding: var(--space-2) 0 var(--space-1);
+  background: var(--px-card);
   color: var(--px-ink);
+  border: 1px solid var(--px-line-control);
+  border-radius: var(--px-radius-small);
+  box-shadow: 0 2px 0 var(--px-shadow);
 }
-.van-slot-date small {
+.van-datechip span {
+  font-size: 11px;
+  line-height: 16px;
   color: var(--px-ink-body);
+}
+.van-datechip strong {
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.van-datechip em {
+  font-style: normal;
+  font-size: 10px;
+  line-height: 16px;
+  min-height: 16px;
+  white-space: nowrap;
+  color: var(--px-purple-deep);
+  font-weight: 700;
+}
+.van-datechip[aria-pressed="true"] {
+  background: var(--px-purple);
+  border-color: var(--px-purple);
+  box-shadow: 0 2px 0 var(--px-purple-deep);
+}
+.van-datechip[aria-pressed="true"] span,
+.van-datechip[aria-pressed="true"] strong,
+.van-datechip[aria-pressed="true"] em {
+  color: var(--px-on-purple);
+}
+.van-datechip:focus-visible,
+.van-slot:focus-visible {
+  outline: 3px solid var(--px-purple);
+  outline-offset: 1px;
+}
+.van-shifts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
 }
 .van-slot {
   display: grid;
@@ -185,8 +197,25 @@
 .van-slot:disabled strong {
   color: var(--px-purple-deep);
 }
-.van-slot:focus-visible {
-  outline: 3px solid var(--px-purple);
+.van-panel-foot {
+  flex: none;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-3);
+  background: var(--px-card);
+  border-top: 2px solid var(--px-divider);
+}
+.van-panel-foot .button {
+  width: 100%;
+  justify-content: center;
+  min-height: 48px;
+}
+.van-panel-foot small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--px-ink-body);
 }
 
 /* 我的預約列表 */

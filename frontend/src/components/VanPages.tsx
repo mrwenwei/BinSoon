@@ -539,33 +539,50 @@ function StopDetail({
 }) {
   const bookings = useBookings();
   const editing = editId ? bookings.find((b) => b.id === editId) : undefined;
-  const [pick, setPick] = useState<{ date: string; shift: Shift } | null>(
-    editing ? { date: editing.date, shift: editing.shift } : null,
+  const others = bookings.filter((b) => b.id !== editing?.id);
+  const dates = availableDates();
+  const dayNeed = (d: string) =>
+    Math.min(
+      ...(Object.keys(shifts) as Shift[]).map((s) =>
+        needAt(others, d, s, stop.id),
+      ),
+    );
+  // 預設日期：最早有「快開站／已開站」時段的日期，否則明天；修改模式用原預約。
+  const [date, setDate] = useState(
+    editing?.date ?? dates.find((d) => dayNeed(d) <= 3) ?? dates[0],
   );
+  const [shift, setShift] = useState<Shift | null>(editing?.shift ?? null);
   const [error, setError] = useState("");
   const seeded = useRef(!!editing);
   useEffect(() => {
-    // 重新整理後 bookings 才讀到：把原本的格子預選一次。
+    // 重新整理後 bookings 才讀到：把原本的日期與時段預選一次。
     if (editing && !seeded.current) {
       seeded.current = true;
-      setPick({ date: editing.date, shift: editing.shift });
+      setDate(editing.date);
+      setShift(editing.shift);
     }
   }, [editing]);
-  const others = bookings.filter((b) => b.id !== editing?.id);
+  const taken = (d: string, s: Shift) =>
+    others.some((b) => b.date === d && b.shift === s);
+  const chooseDate = (d: string) => {
+    setDate(d);
+    if (shift && taken(d, shift)) setShift(null);
+    setError("");
+  };
   const submit = () => {
-    if (!pick) return;
-    if (!availableDates().includes(pick.date)) {
+    if (!shift) return;
+    if (!dates.includes(date)) {
       setError("請選擇未來七天的日期");
       return;
     }
-    if (others.some((b) => b.date === pick.date && b.shift === pick.shift)) {
+    if (taken(date, shift)) {
       setError("此日期與時段已有預約");
       return;
     }
     const next: Booking = {
       id: editing?.id ?? crypto.randomUUID(),
-      date: pick.date,
-      shift: pick.shift,
+      date,
+      shift,
       stop: stop.id,
     };
     try {
@@ -579,80 +596,86 @@ function StopDetail({
   return (
     <>
       <div className="mx-panel-head van-detail-head" ref={headRef}>
-        <button
-          type="button"
-          className="text-button van-back"
-          aria-label={editing ? "返回預約詳情" : "返回清單"}
-          onClick={onBack}
-        >
-          <Icon name="back" />
-        </button>
-        <h1 className="mx-title">{stop.name}</h1>
+        <span className="row-buddy vanstop">
+          <VanStop />
+        </span>
+        <div className="van-head-text">
+          <h1 className="mx-title">{stop.name}</h1>
+          <small>離你 {distanceText(distanceM(stop))}</small>
+        </div>
       </div>
       <div className="mx-panel-body" ref={bodyRef} inert={collapsed}>
         <div className="mx-panel-content van-sheet-content">
-          <section className="van-stop-info">
-            <span className="row-buddy vanstop">
-              <VanStop />
-            </span>
-            <span>
-              <strong>{stop.address}</strong>
-              <small>離你 {distanceText(distanceM(stop))}</small>
-            </span>
-          </section>
+          {/* 平常視覺隱藏、鍵盤聚焦才出現（同桶地圖），讀屏與鍵盤用。 */}
+          <button
+            type="button"
+            className="text-button mx-close-detail"
+            onClick={onBack}
+          >
+            {editing ? "回到預約詳情" : "回到清單"}
+          </button>
           {error && <p role="alert">{error}</p>}
-          <h2>選日期與時段</h2>
-          <ul className="van-slotgrid" aria-label="日期與時段">
-            {availableDates().map((d) => (
-              <li className="van-slot-row" key={d}>
-                <span className="van-slot-date">
-                  <b>{shortDate(d)}</b>
-                  <small>
-                    週
-                    {
-                      "日一二三四五六"[
-                        new Date(`${d}T12:00:00+08:00`).getUTCDay()
-                      ]
-                    }
-                  </small>
-                </span>
-                {(Object.keys(shifts) as Shift[]).map((s) => {
-                  const mine = others.find(
-                    (b) => b.date === d && b.shift === s,
-                  );
-                  const need = needAt(others, d, s, stop.id);
-                  const on = pick?.date === d && pick.shift === s;
-                  return (
-                    <button
-                      type="button"
-                      key={s}
-                      className={`van-slot${need === 0 ? " open" : ""}`}
-                      aria-pressed={mine ? undefined : on}
-                      disabled={!!mine}
-                      onClick={() => {
-                        setPick({ date: d, shift: s });
-                        setError("");
-                      }}
-                    >
-                      <span>
-                        {shifts[s].name}
-                        <small>{shifts[s].time}</small>
-                      </span>
-                      <strong>{mine ? "你已預約" : slotNeedText(need)}</strong>
-                    </button>
-                  );
-                })}
-              </li>
-            ))}
-          </ul>
+          <h2>日期與時段</h2>
+          <div className="van-datechips" role="group" aria-label="選日期">
+            {dates.map((d) => {
+              const need = dayNeed(d);
+              const hint =
+                need === 0 ? "✓開站" : need <= 3 ? `差${need}人` : "";
+              const weekday = "日一二三四五六"[
+                new Date(`${d}T12:00:00+08:00`).getUTCDay()
+              ];
+              return (
+                <button
+                  type="button"
+                  key={d}
+                  className="van-datechip"
+                  aria-pressed={d === date}
+                  aria-label={`${shortDate(d)} 週${weekday}${hint ? `，${hint}` : ""}`}
+                  onClick={() => chooseDate(d)}
+                >
+                  <span>週{weekday}</span>
+                  <strong>{shortDate(d)}</strong>
+                  <em aria-hidden="true">{hint}</em>
+                </button>
+              );
+            })}
+          </div>
+          <div className="van-shifts" role="group" aria-label="選時段">
+            {(Object.keys(shifts) as Shift[]).map((s) => {
+              const mine = taken(date, s);
+              return (
+                <button
+                  type="button"
+                  key={s}
+                  className={`van-slot${needAt(others, date, s, stop.id) === 0 ? " open" : ""}`}
+                  aria-pressed={mine ? undefined : shift === s}
+                  disabled={mine}
+                  onClick={() => {
+                    setShift(s);
+                    setError("");
+                  }}
+                >
+                  <span>
+                    {shifts[s].name}
+                    <small>{shifts[s].time}</small>
+                  </span>
+                  <strong>
+                    {mine
+                      ? "你已預約"
+                      : slotNeedText(needAt(others, date, s, stop.id))}
+                  </strong>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
       {!collapsed && (
         <div className="van-panel-foot">
-          <button className="button primary" disabled={!pick} onClick={submit}>
-            {pick
-              ? `${editing ? "更新預約" : "預約"} ${shortDate(pick.date)} ${shifts[pick.shift].name} · ${stop.name}`
-              : "請先選一個日期與時段"}
+          <button className="button primary" disabled={!shift} onClick={submit}>
+            {shift
+              ? `${editing ? "更新預約" : "預約"} ${shortDate(date)} ${shifts[shift].name} · ${stop.name}`
+              : "請先選一個時段"}
           </button>
           <small>
             <Icon name="clock" /> 前一天 20:00 公布路線
