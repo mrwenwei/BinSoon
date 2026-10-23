@@ -1271,7 +1271,7 @@ input[type="file"]::file-selector-button {
     drop-shadow(0 1px 0 var(--text)) drop-shadow(0 -1px 0 var(--text));
 }
 /* 選中底盤（配色 v4，底盤 ③ 像素風實心底座，map/marker.ts 的 selectedBaseHtml）：
-   角色腳下的扁橢圓，2px 一格；外圈 --route-casing、內部 --signal、中間一圈白、下半疊 --marker-shadow。
+   角色腳下的扁橢圓，2px 一格；外圈 --route-casing、內部 --signal、下半疊 --marker-shadow。
    底盤與十字定位線不在選中標記裡，而是 LocationMap 另外加的不可點標記（Leaflet shadowPane，
    .mx-selected-base），在所有標記下面：鄰居角色會壓在底盤上。中心＝選中標記的腳底。
    --base-w＝底盤寬（1 倍為角色寬 1.75 倍，其他 1.5 倍）、--base-foot＝腳底中心離 .marker-body 底邊、
@@ -1324,9 +1324,6 @@ input[type="file"]::file-selector-button {
 }
 .marker-base .base-shade {
   fill: var(--marker-shadow);
-}
-.marker-base .base-ring {
-  fill: var(--mascot-eye);
 }
 .marker-base .base-edge {
   fill: var(--route-casing);
@@ -9800,11 +9797,13 @@ input[type="file"]::file-selector-button {
     .band-numeral {
     font: var(--text-numeral-md);
   }
-  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .compartment-status {
+  /* 「我的 BinU」卡片的桶況格同一規則：窄格裡「● 吃飽了 · 96%」會換行、跟大數字重複。 */
+  :is(.mx-panel[data-view="bin"]:not([data-ballot="true"]), .citizen-bin-card)
+    .compartment-status {
     display: none;
   }
   /* 吃飽了那一槽保留「吃飽了」字樣＋像素小 z（不只靠橘色）。 */
-  .mx-panel[data-view="bin"]:not([data-ballot="true"])
+  :is(.mx-panel[data-view="bin"]:not([data-ballot="true"]), .citizen-bin-card)
     .compartment.state-full
     .compartment-full-tag {
     display: inline-flex;
@@ -10482,8 +10481,7 @@ input[type="file"]::file-selector-button {
   text-decoration: none;
   cursor: pointer;
 }
-.claim-cta:focus-visible,
-.claim-link:focus-visible {
+.claim-cta:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
@@ -10517,12 +10515,6 @@ input[type="file"]::file-selector-button {
 .claim-limit small {
   font: var(--text-caption);
   color: var(--text-muted);
-}
-.claim-link {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  min-height: 44px;
 }
 /* 取名步驟：哪一隻 → 拿多少 → 什麼時候拿 → 取名 → 底部確認。群組間 16px，群內 4–8px。 */
 .claim-step > * + * {
@@ -10758,7 +10750,7 @@ input[type="file"]::file-selector-button {
 }
 .binu-tiles {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.3fr;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
   margin: var(--space-3) 0 0;
 }
@@ -10782,16 +10774,11 @@ input[type="file"]::file-selector-button {
   margin: 0;
   font: 700 14px/22px var(--font-sans);
 }
-.binu-tiles > .binu-tile-points {
-  border-color: var(--mint);
-  background: var(--mint);
-  color: var(--text-on-light);
-}
-.binu-tile-points dt {
-  color: var(--text-on-light-muted);
-}
-.binu-tile-points dd {
-  align-items: center;
+/* 桶況格貼齊卡片左右邊（跟桶詳情同寬），窄螢幕上兩槽才排得下一行，不會把種類名擠到圖示下面。 */
+.citizen-bin-card .station-card {
+  margin-inline: calc(var(--space-5) * -1);
+  border-inline: 0;
+  border-radius: 0;
 }
 .binu-card-actions {
   display: flex;
@@ -10803,9 +10790,6 @@ input[type="file"]::file-selector-button {
 .binu-card-actions .button {
   flex: 1;
   justify-content: center;
-}
-.citizen-bins > .claim-link {
-  margin-top: var(--space-3);
 }
 /* 結束認領確認框（卡片照 .redeem-dialog、遮罩照 .mx-share-scrim）。 */
 .claim-dialog-scrim {

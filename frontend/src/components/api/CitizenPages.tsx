@@ -298,7 +298,7 @@ export function CitizenBins({ wasteType }: { wasteType: WasteType }) {
           </a>
         </section>
       )}
-      <a className="text-button claim-link" href="#adopt?manage=1">
+      <a className="text-button" href="#adopt?manage=1">
         已結束的認領
       </a>
       {ending && (
@@ -426,12 +426,6 @@ function CitizenBin({
             <span className="numeral-md">{completed}</span>次
           </dd>
         </div>
-        <div className="binu-tile-points">
-          <dt>第一個回報可拿</dt>
-          <dd>
-            <Points value={CLAIM_POINTS} small />
-          </dd>
-        </div>
       </dl>
       <div className="binu-card-actions">
         {bin.data?.can_report ? (
@@ -445,7 +439,7 @@ function CitizenBin({
           <p className="tiny">此桶目前無法回報，請查看桶詳情。</p>
         )}
         <a
-          className="text-button claim-link"
+          className="text-button"
           href={wasteHref(`bin/${item.bin_id}`, wasteType)}
         >
           在地圖上看

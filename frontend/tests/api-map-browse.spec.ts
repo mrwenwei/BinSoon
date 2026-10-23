@@ -1108,14 +1108,14 @@ test("picking a bin flies the map to it above the sheet, enlarges its marker and
     expect(Math.abs(spot.y)).toBeLessThan(12);
     expect(spot.centre).toBeGreaterThan(spot.top + 40);
     expect(spot.centre).toBeLessThan(spot.bottom - 10);
-    // 選中標記放大（約 1.3 倍）；選中底盤（中間一圈白）與十字定位線在所有標記下面（shadowPane）。
+    // 選中標記放大（約 1.3 倍）；選中底盤（只有橘色，沒有白環）與十字定位線在所有標記下面（shadowPane）。
     expect(await selectedScale(page)).toBeGreaterThan(1.2);
     await expect(
       page.locator(".leaflet-shadow-pane .mx-selected-base .marker-base"),
     ).toHaveCount(1);
     await expect(
       page.locator(".mx-selected-base .marker-base .base-ring"),
-    ).toHaveCount(1);
+    ).toHaveCount(0);
     await expect(
       page.locator(".mx-selected-base .marker-crosshair"),
     ).toHaveCount(1);

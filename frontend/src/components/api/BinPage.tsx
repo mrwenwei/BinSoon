@@ -247,7 +247,7 @@ export function BinPanel({
               <small>審核通過後，這隻就是你的 BinU</small>
             </p>
             <a
-              className="text-button claim-link"
+              className="text-button"
               href={`#adopt/${view.data.my_adoption_id}`}
             >
               查看

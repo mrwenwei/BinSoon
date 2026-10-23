@@ -677,7 +677,9 @@ export function LocationMap({
     const point = following.current;
     if (!browse || !instance || !point) return;
     // 縮放取整數：飛行中途被打斷（桶換桶、抽屜開合）時 getZoom() 可能是小數。
-    const zoom = Math.max(Math.round(instance.getZoom()), 16);
+    // 選桶一次放大到看得到詳細資訊的級距（18：頭上血條、完整名牌、全部展開）；
+    // 已經在 18 以上就維持，不拉遠。
+    const zoom = Math.max(Math.round(instance.getZoom()), BOT_BARS_MIN_ZOOM);
     const target = centreFor(instance, point, zoom, offsetRef.current);
     if (mode === "jump" || reducedMotion()) {
       instance.setView(target, zoom, { animate: false });

@@ -74,7 +74,7 @@ export function ClaimLimitRow() {
         </strong>
         <small>想認領這隻，先到「我的 BinU」結束一隻</small>
       </p>
-      <a className="text-button claim-link" href="#adopt">
+      <a className="text-button" href="#adopt">
         管理
       </a>
     </div>
@@ -251,7 +251,7 @@ export function ClaimStep({
               : "這個名字會公開顯示，送出後要等審核"}
         </p>
         {!demo && (
-          <a className="text-button claim-link" href={`#adopt/apply/${binId}`}>
+          <a className="text-button" href={`#adopt/apply/${binId}`}>
             用店家、學校或社區團體身份申請
           </a>
         )}
