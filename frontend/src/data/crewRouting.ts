@@ -228,6 +228,22 @@ export async function requestCrewRoute(
     )
   )
     throw new Error("沒有可規劃的有效桶位。");
+  return requestRoadRoute(vehicle, stops, signal, origin);
+}
+
+// Coordinate-only road routing, also used by local van stops (which are not Bins).
+export async function requestRoadRoute(
+  vehicle: TravelMode,
+  stops: Pick<LocationRecord, "latitude" | "longitude">[],
+  signal: AbortSignal,
+  origin: readonly [number, number],
+): Promise<CrewRoute> {
+  if (
+    !validCoordinate(origin[0], origin[1]) ||
+    !stops.length ||
+    stops.some((s) => !validCoordinate(s.latitude, s.longitude))
+  )
+    throw new Error("沒有可規劃的有效站點。");
   const costing =
     vehicle === "walk"
       ? "pedestrian"

@@ -1,0 +1,253 @@
+.van-page {
+  max-width: 640px;
+  margin: auto;
+  padding-bottom: var(--space-6);
+}
+.van-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.van-heading h1 {
+  font: var(--text-card-title);
+  margin: 0;
+  flex: 1;
+}
+.van-content {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+.van-content h2 {
+  font: var(--text-heading);
+  margin: 0;
+}
+.van-content p {
+  margin: 0;
+  color: var(--text-muted);
+}
+.van-content .card {
+  padding: var(--space-5);
+}
+.van-content .button,
+.van-submit .button {
+  width: 100%;
+  justify-content: center;
+  min-height: 52px;
+}
+.van-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.van-choice {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-4);
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-md);
+  background: var(--chrome);
+  color: var(--text);
+  min-width: 0;
+}
+.van-choice[aria-pressed="true"],
+.van-dates button[aria-pressed="true"] {
+  background: var(--mint);
+  color: var(--text-on-light);
+  border: 2px solid var(--teal);
+}
+.van-choice[aria-pressed="true"] p {
+  color: var(--text-on-light-muted);
+}
+.van-time {
+  display: block;
+  font: var(--text-numeral-md);
+  margin: var(--space-2) 0;
+}
+.van-dates {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+.van-dates button {
+  flex: 0 0 70px;
+  min-height: 84px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-md);
+  background: var(--chrome);
+  color: var(--text);
+}
+.van-dates strong,
+.van-dates span {
+  display: block;
+  margin: var(--space-1);
+}
+.van-dates strong {
+  font: var(--text-numeral-sm);
+}
+.van-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.van-choice progress,
+.van-detail progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--teal);
+  margin: var(--space-3) 0;
+}
+.van-pill {
+  display: inline-block;
+  border-radius: var(--radius-pill);
+  background: var(--mint);
+  color: var(--text-on-light);
+  padding: var(--space-1) var(--space-2);
+  font: var(--text-caption);
+  white-space: nowrap;
+}
+.van-booking {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  color: var(--text);
+  background: var(--chrome);
+  width: 100%;
+}
+.van-booking span {
+  flex: 1;
+  min-width: 0;
+}
+.van-booking small,
+.van-stop-row small {
+  display: block;
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+.van-detail hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--space-6) 0;
+}
+.van-submit {
+  position: sticky;
+  bottom: var(--m-tabs-h);
+  padding: var(--space-3) var(--space-4);
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+.van-submit small {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+.van-map {
+  position: relative;
+  height: 280px;
+  overflow: hidden;
+  background: var(--map);
+}
+.van-map-navigation {
+  height: 400px;
+}
+.van-map .map-wrap,
+.van-map .map-canvas {
+  height: 100%;
+  min-height: 0;
+}
+.van-stop-icon {
+  display: grid;
+  place-items: center;
+  background: var(--map-road);
+  color: var(--teal-on-mint);
+  border: 2px solid var(--teal-on-mint);
+  border-radius: var(--radius-md);
+}
+.van-stop-icon.selected {
+  background: var(--teal-on-mint);
+  color: var(--text);
+  border-color: var(--map-road);
+}
+.van-stop-icon svg {
+  width: 26px;
+  height: 26px;
+}
+.van-stop-icon span {
+  font: var(--text-numeral-sm);
+}
+.van-stop-icon small {
+  position: absolute;
+  left: calc(100% + var(--space-1));
+  background: var(--map-road);
+  color: var(--teal-on-mint);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-2);
+  white-space: nowrap;
+  font: var(--text-caption);
+}
+.van-route-sheet {
+  position: relative;
+  background: var(--panel);
+  border-radius: var(--radius-md);
+}
+.van-route-sheet .card strong {
+  display: block;
+  font: var(--text-numeral-sm);
+}
+.van-stop-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+.van-stop-row > span:nth-child(2) {
+  flex: 1;
+}
+.van-number {
+  border-radius: var(--radius-pill);
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: var(--mint);
+  color: var(--text-on-light);
+}
+.van-collect {
+  padding: var(--space-5);
+  background: var(--teal-on-mint);
+  border-radius: var(--radius-md);
+}
+.van-collect p {
+  color: var(--text);
+}
+.m-tabs a {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 360px) {
+  .van-time {
+    font: var(--text-numeral-sm);
+  }
+  .van-stop-row {
+    flex-wrap: wrap;
+  }
+  .van-heading {
+    flex-wrap: wrap;
+  }
+}
+.van-two .van-time {
+  font-size: clamp(18px, 5vw, 26px);
+  white-space: nowrap;
+}
+.van-stop-icon small { pointer-events:none; }

@@ -36,6 +36,8 @@ const compactMap = window.matchMedia(
 if (compactMap) setWorkerCount(1);
 
 interface Props {
+  /** Keep a compact multi-stop map framed while highlighting a selection. */
+  focusSelected?: boolean;
   operations?: OperationalState;
   binMarkerLabel?: string;
   locations: LocationRecord[];
@@ -45,6 +47,7 @@ interface Props {
   roadRoute?: [number, number][];
   routeOrigin?: [number, number];
   routeLabel?: string;
+  routeOriginLabel?: string;
   /** 市民步行導航路線：橘色粗線＋深色外框，walkedMeters 之前的路段變淡。畫在標記之下。 */
   navRoute?: {
     geometry: [number, number][];
@@ -85,6 +88,7 @@ interface Props {
   focusKey?: number;
 }
 export function LocationMap({
+  focusSelected = true,
   locations,
   selected,
   onSelect,
@@ -92,6 +96,7 @@ export function LocationMap({
   roadRoute,
   routeOrigin,
   routeLabel,
+  routeOriginLabel = "大安森林公園起點",
   navRoute,
   point,
   onPointChange,
@@ -485,7 +490,7 @@ export function LocationMap({
   // 只在選取對象換了（或瀏覽模式的 focusKey 變了）才置中，輪詢更新不會把地圖拉回來。
   // 瀏覽模式在手機上再把選取點往上移，避開半開的抽屜。
   useEffect(() => {
-    if (!selected || !map.current) return;
+    if (!focusSelected || !selected || !map.current) return;
     const instance = map.current;
     instance.setView(
       [selected.latitude, selected.longitude],
@@ -494,7 +499,14 @@ export function LocationMap({
     );
     if (browse && offsetRef.current)
       instance.panBy([0, offsetRef.current], { animate: false });
-  }, [browse, selected?.id, selected?.latitude, selected?.longitude, focusKey]);
+  }, [
+    browse,
+    selected?.id,
+    selected?.latitude,
+    selected?.longitude,
+    focusKey,
+    focusSelected,
+  ]);
   // 瀏覽模式第一次量到抽屜高度時，把初始中心移到抽屜上方的可見區（只做一次）。
   const initialOffsetDone = useRef(false);
   const previousTopInset = useRef(browseTopInset);
@@ -555,7 +567,7 @@ export function LocationMap({
         html: "<span>起</span>",
         iconSize: [44, 44],
       }),
-      title: "大安森林公園起點",
+      title: routeOriginLabel,
     }).addTo(instance);
     const bounds =
       line?.getBounds() ||
@@ -572,7 +584,7 @@ export function LocationMap({
       line?.remove();
       origin.remove();
     };
-  }, [demoRoute, roadRoute, routeOrigin, locations]);
+  }, [demoRoute, roadRoute, routeOrigin, routeOriginLabel, locations]);
   // 市民步行導航路線（圖層在標記之下：Leaflet 向量線在 overlayPane，標記在 markerPane）。
   // 先畫兩條外框、再畫兩條主線：每段（走過／剩下）的外框與主線同步變淡。
   const navLayers = useRef<{

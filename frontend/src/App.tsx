@@ -1,3 +1,4 @@
+import { CitizenVan, CrewVan } from "./components/VanPages";
 import {
   CitizenHome,
   CitizenReports,
@@ -155,6 +156,7 @@ function AppContent() {
                   current: !id || id === "task" || id === "login",
                 },
                 { href: "#crew/route", label: "路線", current: id === "route" },
+                { href: "#crew/van", label: "小車班表", current: id === "van" },
                 {
                   href: "#crew/ranking",
                   label: "榮譽榜",
@@ -183,6 +185,11 @@ function AppContent() {
                     params.get("tab") === "vote",
                 },
                 {
+                  href: "#van",
+                  label: "預約小車",
+                  current: page === "van",
+                },
+                {
                   href: "#member",
                   label: "我的",
                   current: [
@@ -203,7 +210,9 @@ function AppContent() {
         right={
           page === "crew" ? (
             <span className="role-chip">清潔員模式</span>
-          ) : session?.user.roles.includes("citizen") ? (
+          ) : page === "van" ? null : session?.user.roles.includes(
+              "citizen",
+            ) ? (
             <PointsButton />
           ) : session ? (
             <span className="role-chip">
@@ -223,7 +232,11 @@ function AppContent() {
         </p>
       )}
       <div ref={main}>
-        {page === "crew" ? (
+        {page === "van" ? (
+          <CitizenVan />
+        ) : page === "crew" && id === "van" ? (
+          <CrewVan />
+        ) : page === "crew" ? (
           <CrewDemo section={id} id={workId} />
         ) : isLogin ? (
           <Login
@@ -388,7 +401,8 @@ function AppContent() {
           "vote",
           "proposals",
         ].includes(page) &&
-        page !== "crew" && (
+        page !== "crew" &&
+        page !== "van" && (
           <footer className="api-footer">
             <a href="#vote">提案</a> · <a href="#adopt">認養</a> ·{" "}
             <a href="#rewards">兌換</a>
