@@ -160,7 +160,7 @@ test("place precision and proposed lifecycle are preserved with API filters", as
   // 建議點只在選「建議點」篩選時列入清單。
   await page
     .getByRole("navigation", { name: "主要分頁" })
-    .getByRole("link", { name: "要桶投票", exact: true })
+    .getByRole("link", { name: "設桶投票", exact: true })
     .click();
   await expect(page.locator(".location-row")).toHaveCount(1);
   await expect(page.locator(".location-row")).toContainText("尚未設置");
@@ -176,12 +176,10 @@ test("place precision and proposed lifecycle are preserved with API filters", as
   });
   await landmark.focus();
   await landmark.press("Enter");
-  await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
-    "並非個別清潔箱位置",
-  );
-  await expect(page.getByRole("region", { name: "位置詳情" })).toContainText(
-    "周邊 12 處",
-  );
+  // 場所詳情（PlacePanel）：周邊清潔箱統計＋不是桶實際位置的說明。
+  const summary = page.getByRole("region", { name: "周邊清潔箱" });
+  await expect(summary).toContainText("這是場所代表點，不是桶的實際位置");
+  await expect(summary.locator(".band-numeral")).toHaveText("12處");
   await expect(
     page.getByRole("link", { name: "回報問題", exact: true }),
   ).toHaveCount(0);

@@ -411,7 +411,7 @@ test("a rejected first report never promotes later reporters and suspension only
     window.location.hash = "vote";
   });
   await expect(
-    page.getByRole("heading", { name: "要桶投票", exact: true }),
+    page.getByRole("heading", { name: "設桶投票", exact: true }),
   ).toBeVisible();
   // Reporting suspension does not block adoption management.
   await page.evaluate(() => {

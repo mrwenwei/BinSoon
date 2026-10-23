@@ -55,6 +55,45 @@ export const location = {
 export function envelope(items: unknown[], offset = 0, total = items.length) {
   return { items, page: { limit: 100, offset, total } };
 }
+// 地圖瀏覽：在看得到的地圖區（手機為抽屜上方）找一個離標記與控制項都遠的空白點。
+export async function emptyMapPoint(page: Page) {
+  const point = await page.evaluate(() => {
+    const map = document
+      .querySelector(".mx-map .leaflet-container")!
+      .getBoundingClientRect();
+    const panel = document.querySelector(".mx-panel")!.getBoundingClientRect();
+    // 手機抽屜蓋在地圖下半部；桌面面板在地圖左邊，不重疊。
+    const bottom = panel.right > map.left + 1 ? panel.top : map.bottom;
+    const busy = [
+      ...document.querySelectorAll(
+        ".leaflet-marker-icon, .leaflet-control, .mx-home-toolbar",
+      ),
+    ].map((el) => el.getBoundingClientRect());
+    for (let y = map.top + 40; y < bottom - 40; y += 24)
+      for (let x = map.left + 40; x < map.right - 40; x += 24) {
+        const near = busy.some(
+          (r) =>
+            x > r.left - 40 &&
+            x < r.right + 40 &&
+            y > r.top - 40 &&
+            y < r.bottom + 40,
+        );
+        const hit = document.elementFromPoint(x, y);
+        if (!near && hit?.closest(".leaflet-container")) return { x, y };
+      }
+    return null;
+  });
+  expect(point, "找不到可點的地圖空白處").not.toBeNull();
+  return point!;
+}
+// 點地圖空白處關閉桶／地標詳情（取代原本的「← 返回清單」連結）；有觸控就用觸控點擊。
+export async function tapEmptyMap(page: Page) {
+  const { x, y } = await emptyMapPoint(page);
+  if (await page.evaluate(() => "ontouchstart" in window))
+    await page.touchscreen.tap(x, y);
+  else await page.mouse.click(x, y);
+  await expect(page.locator(".mx-panel")).toHaveAttribute("data-view", "list");
+}
 export function user(role = "citizen") {
   return {
     id: `${role}-uuid`,
@@ -183,12 +222,10 @@ export async function expectSignedIn(page: Page) {
   ).toBeVisible();
 }
 export async function navLink(page: Page, name: string) {
-  return page
-    .getByRole("navigation", { name: "主要分頁" })
-    .getByRole("link", {
-      name: name === "會員中心" ? "我的" : name === "找垃圾桶" ? "地圖" : name,
-      exact: true,
-    });
+  return page.getByRole("navigation", { name: "主要分頁" }).getByRole("link", {
+    name: name === "會員中心" ? "我的" : name === "找垃圾桶" ? "地圖" : name,
+    exact: true,
+  });
 }
 export async function logoutButton(page: Page) {
   return page.getByRole("button", { name: "登出", exact: true });

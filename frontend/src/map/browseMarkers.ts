@@ -5,9 +5,11 @@ import { apiBinState, apiCompartments } from "../data/api";
 import type { BinState } from "../data/binState";
 import { markerIcon } from "./marker";
 import { botBars, botBarsLabel } from "./botBars";
+import { proposedBinSvg } from "./binBot";
+import { voteMarkerLabel } from "../data/voteTally";
 
 // 地圖瀏覽模式的標記：桶的顏色看「所選種類」那一槽（不是整個點位），
-// 場所代表點改成地標旗子，建議點是虛線方框＋。
+// 場所代表點改成地標旗子，建議點是垃圾桶機器人同形狀的虛線外框＋（M3）。
 
 export function isProposed(location: LocationRecord) {
   return (
@@ -43,18 +45,29 @@ export const landmarkSvg =
 export function landmarkIcon(selected: boolean) {
   return L.divIcon({
     className: `pixel-marker mx-landmark ${selected ? "selected" : ""}`,
-    html: `${selected ? '<span class="marker-crosshair" aria-hidden="true"></span>' : ""}<span class="marker-body">${landmarkSvg}</span>`,
+    // 底盤對齊錨點（實際位置），不對齊偏左的旗杆。
+    html: `<span class="marker-body">${landmarkSvg}</span>`,
     iconSize: [44, 44],
     iconAnchor: [22, 40],
   });
 }
 
-export function proposedIcon(selected: boolean, support?: number) {
+// 建議點（M3）：機器人同形狀的深青綠虛線外框、框內淡底、中間「＋」，
+// 下方小牌寫支持率（「支持 95%」／「還沒人投」／關票後的結果）。框 52×52、腳底中心對準位置。
+export type ProposalTally = {
+  support: number;
+  oppose: number;
+  status?: string;
+};
+export function proposedIcon(selected: boolean, tally?: ProposalTally) {
+  const label = tally
+    ? voteMarkerLabel(tally.support, tally.oppose, tally.status)
+    : null;
   return L.divIcon({
-    className: `mx-proposed ${selected ? "selected" : ""}`,
-    html: `<span aria-hidden="true">＋</span>${support != null && Number.isFinite(support) && support >= 0 ? `<small class="proposal-marker-votes" aria-hidden="true">支持 ${Math.floor(support)}</small>` : ""}`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
+    className: `pixel-marker mx-proposed ${selected ? "selected" : ""}`,
+    html: `<span class="marker-body">${proposedBinSvg()}<span class="mx-proposed-plus" aria-hidden="true">＋</span></span>${label ? `<small class="proposal-marker-votes" aria-hidden="true">${label}</small>` : ""}`,
+    iconSize: [52, 52],
+    iconAnchor: [26, 50],
   });
 }
 
@@ -62,10 +75,10 @@ export function browseMarkerIcon(
   location: LocationRecord,
   selected: boolean,
   wasteType: WasteType,
-  support?: number,
+  tally?: ProposalTally,
 ) {
   if (location.kind === "place") return landmarkIcon(selected);
-  if (isProposed(location)) return proposedIcon(selected, support);
+  if (isProposed(location)) return proposedIcon(selected, tally);
   const status = location.bin_status;
   return markerIcon(
     "bin",
@@ -87,6 +100,12 @@ export function browseMarkerLabel(location: LocationRecord) {
 // 兩槽滿度文字（「一般垃圾 18%、資源回收 66%」，無讀值寫「無讀值」）：放在標記的
 // aria-description 與 title，不動 aria-label（名稱維持穩定）。
 export function browseMarkerDescription(location: LocationRecord) {
-  const bars = isProposed(location) ? undefined : botBars(location);
+  if (isProposed(location)) {
+    const tally = (location as { proposalTally?: ProposalTally }).proposalTally;
+    return tally
+      ? voteMarkerLabel(tally.support, tally.oppose, tally.status)
+      : undefined;
+  }
+  const bars = botBars(location);
   return bars ? botBarsLabel(bars) : undefined;
 }

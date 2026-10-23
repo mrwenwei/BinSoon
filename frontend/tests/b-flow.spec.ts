@@ -246,7 +246,7 @@ test("P11 creates a proposal with its first vote, warns about nearby points and 
     ).toContainText("總投票人數 1 / 60");
     await page
       .getByRole("navigation", { name: "市民參與選單", exact: true })
-      .getByRole("link", { name: "要桶投票", exact: true })
+      .getByRole("link", { name: "設桶投票", exact: true })
       .click();
   }
   await expect(

@@ -174,13 +174,13 @@ test("map and voting are separate tabs with no proposed bins leaking into the bi
     path: info.outputPath("m1-map.png"),
     fullPage: true,
   });
-  await tabs.getByRole("link", { name: "要桶投票", exact: true }).click();
+  await tabs.getByRole("link", { name: "設桶投票", exact: true }).click();
   await expect(page.locator(".location-row")).toHaveCount(3);
   await expect(
     page.locator(".location-row").filter({ hasText: proposed.label }),
   ).toContainText(proposed.label);
   await expect(
-    tabs.getByRole("link", { name: "要桶投票", exact: true }),
+    tabs.getByRole("link", { name: "設桶投票", exact: true }),
   ).toHaveAttribute("aria-current", "page");
   await page.screenshot({
     path: info.outputPath("v1-vote.png"),

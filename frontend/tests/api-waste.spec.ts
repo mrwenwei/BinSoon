@@ -1,13 +1,13 @@
 import { asPhone, captureReport } from "./phone-report-fixture";
 import { test, expect } from "@playwright/test";
-import { binId, reportId, workId, login } from "./api-fixtures";
+import { binId, reportId, workId, login, tapEmptyMap } from "./api-fixtures";
 import { wasteFixture, wasteCompletion } from "./api-waste-fixture";
 import { photoFile } from "./api-completion-fixture";
 import type { Page } from "@playwright/test";
 
-// 桶面板不再有種類選單：回清單，在地圖篩選列換種類，再點回同一個桶。
+// 桶面板不再有種類選單：點地圖空白處回清單，在地圖篩選列換種類，再點回同一個桶。
 async function switchWaste(page: Page, value: "general" | "recycling") {
-  await page.getByRole("link", { name: "← 返回清單", exact: true }).click();
+  await tapEmptyMap(page);
   await page
     .getByRole("radio", {
       name: value === "general" ? "一般垃圾" : "資源回收",
@@ -140,9 +140,7 @@ test("work lists filter by waste and administrator clearing follows the work str
   await login(admin, "admin", `admin/work-orders/${workId}`);
   await expect(admin.getByText(/資源回收 · 分類依據/).first()).toBeVisible();
   await admin.getByLabel("確認送出清空回傳").check();
-  await admin
-    .getByRole("button", { name: "送出清空", exact: true })
-    .click();
+  await admin.getByRole("button", { name: "送出清空", exact: true }).click();
   await expect(
     admin
       .getByRole("region", { name: "各類桶槽" })
@@ -262,7 +260,9 @@ test("report list filtering and waste choice stay usable on desktop and 320px sc
   await expect(compartment(page, "資源回收")).toContainText("20%");
   // 桶面板的槽只顯示、不能點；種類從地圖篩選列切換（鍵盤也能操作）。
   await expect(page.locator(".mx-panel .compartment-select")).toHaveCount(0);
-  await page.getByRole("link", { name: "← 返回清單", exact: true }).click();
+  // 鍵盤：Esc 關閉桶面板回清單。
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".mx-panel")).toHaveAttribute("data-view", "list");
   await page.getByRole("radio", { name: "資源回收", exact: true }).focus();
   await page.keyboard.press("ArrowLeft");
   await expect(

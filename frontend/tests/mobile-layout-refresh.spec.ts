@@ -38,11 +38,12 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("compact M1 toolbar, two nearby rows and full M2 detail", async ({
+test("compact M1 toolbar, two nearby rows and the M2 detail in the bottom sheet", async ({
   page,
 }) => {
   await page.goto("/#map");
-  await expect(page.locator(".location-row")).toHaveCount(8);
+  // 示意模式改讀本機 681 筆桶位置（a897ffe），不再是上面 fixture 的 8 筆。
+  await expect(page.locator(".location-row").nth(7)).toBeVisible();
   const toolbar = await page.locator(".mx-home-toolbar").boundingBox();
   const panel = await page.locator(".mx-panel").boundingBox();
   expect(toolbar!.y + toolbar!.height).toBeLessThan(panel!.y);
@@ -64,9 +65,27 @@ test("compact M1 toolbar, two nearby rows and full M2 detail", async ({
   ).toBeVisible();
   await page.locator(".location-row").first().click();
   await expect(page.locator(".mx-panel[data-view=bin]")).toBeVisible();
-  const detail = await page.locator(".mx-panel").boundingBox();
-  const layout = await page.locator(".mx-layout").boundingBox();
-  expect(Math.abs(detail!.height - layout!.height)).toBeLessThan(2);
+  // M2 詳情留在底部 sheet（半開）：地圖在上方仍看得到，把手可用，
+  // 沒有「← 返回清單」連結與大張角色圖（點地圖空白處或 Esc 回清單）。
+  await expect(page.locator(".mx-layout")).toHaveAttribute(
+    "data-drawer",
+    "half",
+  );
+  const layout = (await page.locator(".mx-layout").boundingBox())!;
+  const detail = (await page.locator(".mx-panel").boundingBox())!;
+  // 桶詳情半開為版面高度的一半（清單是 42%）。
+  expect(detail.height).toBeLessThanOrEqual(layout.height * 0.5 + 1);
+  expect(detail.y).toBeGreaterThanOrEqual(layout.y + layout.height * 0.5 - 1);
+  expect(
+    await page.evaluate(
+      ({ x, y }) =>
+        Boolean(document.elementFromPoint(x, y)?.closest(".leaflet-container")),
+      { x: layout.x + layout.width / 2, y: layout.y + 40 },
+    ),
+  ).toBe(true);
+  await expect(page.locator(".mx-handle")).toBeVisible();
+  await expect(page.getByRole("link", { name: /返回清單/ })).toHaveCount(0);
+  await expect(page.locator(".bin-detail-buddy")).toHaveCount(0);
   await expect(page.locator(".bin-community")).toHaveCount(0);
   await page.screenshot({ path: "/tmp/binsoon-m2.png" });
 });

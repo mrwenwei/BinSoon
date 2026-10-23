@@ -300,7 +300,7 @@ export default function App() {
             label: "地圖",
             current: page === "map" || page === "bin",
           },
-          { href: "#vote", label: "要桶投票", current: page === "vote" },
+          { href: "#vote", label: "設桶投票", current: page === "vote" },
         ]}
         desktopLinks={[
           {
@@ -317,7 +317,7 @@ export default function App() {
             title: "CITIZEN · 市民",
             links: [
               { href: "#map", label: "找垃圾桶" },
-              { href: "#vote", label: "要桶投票" },
+              { href: "#vote", label: "設桶投票" },
               { href: "#adopt", label: "認養BinU" },
               { href: "#member", label: "會員中心" },
               { href: "#stamps", label: "集章與等級" },

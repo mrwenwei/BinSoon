@@ -24,7 +24,7 @@ import { useCommand, CommandFeedback } from "./Commands";
 import { ProposalNaming } from "./ProposalNaming";
 import { useProposalDraft } from "./ProposalDraft";
 
-const labels: Record<Proposal["status"], string> = {
+export const proposalStatusLabels: Record<Proposal["status"], string> = {
   collecting: "投票中",
   village: "里辦評議",
   evaluation: "評估中",
@@ -32,7 +32,7 @@ const labels: Record<Proposal["status"], string> = {
   installed: "已設桶",
   declined: "未通過",
 };
-const voteOptions = [
+export const voteOptions = [
   { vote: "support", label: "支持", commandLabel: "支持提案" },
   { vote: "oppose", label: "反對", commandLabel: "反對提案" },
   { vote: null, label: "撤票", commandLabel: "撤回投票" },
@@ -57,7 +57,7 @@ export function ProposalSummary({ item }: { item: Proposal }) {
     <>
       <h2>{item.approved_name || item.name}</h2>
       <p>
-        {labels[item.status]} ·{item.district}
+        {proposalStatusLabels[item.status]} ·{item.district}
       </p>
       <p>{item.reason}</p>
       <p>
@@ -138,7 +138,9 @@ export function ProposalList({
               <a href={`#proposals/${item.id}`}>
                 <div className="crew-between">
                   <h2>{item.approved_name || item.name}</h2>
-                  <span className="status-pill">{labels[item.status]}</span>
+                  <span className="status-pill">
+                    {proposalStatusLabels[item.status]}
+                  </span>
                 </div>
                 <ProposalProgress item={item} compact />
               </a>
@@ -154,7 +156,7 @@ export function ProposalList({
     <main className="page api-narrow">
       <h1>
         {mode === "all"
-          ? "要桶投票"
+          ? "設桶投票"
           : mode === "mine"
             ? "我的提案"
             : "投票紀錄"}
@@ -191,7 +193,7 @@ export function ProposalList({
               }}
             >
               <option value="">全部狀態</option>
-              {Object.entries(labels).map(([key, label]) => (
+              {Object.entries(proposalStatusLabels).map(([key, label]) => (
                 <option value={key} key={key}>
                   {label}
                 </option>
@@ -228,15 +230,8 @@ export function ProposalList({
     </main>
   );
 }
-export function ProposalDetail({
-  id,
-  embedded = false,
-  binId,
-}: {
-  id: string;
-  embedded?: boolean;
-  binId?: string;
-}) {
+// 提案詳情頁（#proposals/<id>）。地圖抽屜裡的建議點投票改由 VotePanel.tsx 負責。
+export function ProposalDetail({ id }: { id: string }) {
   const { session } = useSession();
   const citizen = !!session?.user.roles.includes("citizen");
   const path = `/proposals/${id}`;
@@ -283,75 +278,9 @@ export function ProposalDetail({
     ready: open && !detail.loading && !detail.error,
     reconfirm: false,
     refresh: detail.reload,
-    onSuccess: (result) => {
-      const proposal = result.data as Proposal;
-      setUpdated(proposal);
-      if (proposal.my_vote === "support") {
-        const search = new URLSearchParams(window.location.hash.split("?")[1]);
-        search.set("from", embedded ? "map" : "proposal");
-        window.location.hash = `vote-done/${encodeURIComponent(id)}?${search}`;
-      }
-    },
+    // 投完留在原頁，不再跳到 vote-done（該路由與頁面保留給其他入口）。
+    onSuccess: (result) => setUpdated(result.data as Proposal),
   });
-  if (embedded)
-    return (
-      <div className="proposal-ballot">
-        <LoadState {...detail} />
-        {item && (
-          <>
-            <div className="proposal-tally" aria-live="polite">
-              <span>
-                支持 {item.support} · 不支持 {item.oppose}
-              </span>
-              <span className="status-pill">{labels[item.status]}</span>
-            </div>
-            <progress
-              className="proposal-vote-progress"
-              aria-label={item.is_demo ? "投票參與進度" : "支持率"}
-              value={
-                item.is_demo
-                  ? Math.min(item.total_votes, 60)
-                  : Math.round((item.support_ratio || 0) * 100)
-              }
-              max={item.is_demo ? 60 : 100}
-            />
-            {open ? (
-              citizen ? (
-                <div className="proposal-ballot-actions">
-                  {voteOptions.slice(0, 2).map(({ vote, commandLabel }) => (
-                    <button
-                      key={vote}
-                      className={`button ${vote === "support" ? "primary" : "secondary"}`}
-                      aria-pressed={item.my_vote === vote}
-                      disabled={action.blocked || item.my_vote === vote}
-                      onClick={() =>
-                        void action.run({
-                          path: `${path}/vote`,
-                          body: { vote },
-                          label: commandLabel,
-                        })
-                      }
-                    >
-                      {vote === "support" ? "支持" : "不支持"}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <a
-                  className="button primary"
-                  href={`#login?next=${encodeURIComponent(`bin/${binId || item.bin_id}`)}`}
-                >
-                  登入參與投票
-                </a>
-              )
-            ) : (
-              <p role="status">投票已關閉 · {labels[item.status]}</p>
-            )}
-          </>
-        )}
-        <CommandFeedback action={action} />
-      </div>
-    );
   return (
     <main className="page api-narrow">
       <h1>提案詳情</h1>
@@ -687,7 +616,7 @@ export function ProposalForm() {
                     <a className="api-action-link" href={`#proposals/${p.id}`}>
                       {p.name}
                     </a>{" "}
-                    · {labels[p.status]}
+                    · {proposalStatusLabels[p.status]}
                   </li>
                 ))}
               </ul>

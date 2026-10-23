@@ -440,22 +440,36 @@ export function binBotSvg(state: BinState, animated = true) {
 }
 
 // 撤除：現場已經沒有桶，只畫角色外圍的虛線（2 格實、2 格空），「撤」字由 marker.ts 放在中間。
-let removedSvg = "";
-export function removedBinSvg() {
-  if (removedSvg) return removedSvg;
+// 機器人外框的虛線（每隔兩格一段）與整個剪影，撤除標記與建議點標記（M3）共用。
+let outlinePaths: { dash: string; silhouette: string } | null = null;
+function botOutline() {
+  if (outlinePaths) return outlinePaths;
   const filled = (r: number, c: number) => (SPRITE[r]?.[c] ?? ".") !== ".";
-  let d = "";
+  let dash = "";
+  let silhouette = "";
   SPRITE.forEach((row, r) =>
     [...row].forEach((_, c) => {
       if (!filled(r, c)) return;
+      silhouette += `M${c} ${r}h1v1h-1z`;
       const edge =
         !filled(r - 1, c) ||
         !filled(r + 1, c) ||
         !filled(r, c - 1) ||
         !filled(r, c + 1);
-      if (edge && (r + c) % 4 < 2) d += `M${c} ${r}h1v1h-1z`;
+      if (edge && (r + c) % 4 < 2) dash += `M${c} ${r}h1v1h-1z`;
     }),
   );
-  removedSvg = `<svg class="bin-bot-removed" viewBox="${BOX}" shape-rendering="crispEdges" aria-hidden="true"><path fill="var(--text-on-light-muted)" d="${d}"/></svg>`;
-  return removedSvg;
+  outlinePaths = { dash, silhouette };
+  return outlinePaths;
+}
+// 撤除：只剩同形狀的虛線外框。顏色用 currentColor，由 CSS（.pixel-marker.removed）給
+// --text-on-light-muted，外觀與原本寫死的 fill 相同。
+export function removedBinSvg() {
+  return `<svg class="bin-bot-removed" viewBox="${BOX}" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="${botOutline().dash}"/></svg>`;
+}
+// 建議點（M3）：同形狀的虛線外框＋框內淡底（--mascot-eye 70%），外框色 currentColor
+// （CSS 給 --teal-on-mint）；「＋」由外層 HTML 疊在中間。地圖標記與清單列共用。
+export function proposedBinSvg() {
+  const { dash, silhouette } = botOutline();
+  return `<svg class="bin-bot-proposed" viewBox="${BOX}" shape-rendering="crispEdges" aria-hidden="true"><path class="bot-ghost" d="${silhouette}"/><path fill="currentColor" d="${dash}"/></svg>`;
 }

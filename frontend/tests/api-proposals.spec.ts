@@ -147,13 +147,10 @@ test("votes support, change, withdraw and use server closure at 60 without a loc
     }
   });
   await login(page, "citizen", `proposals/${proposalId}`);
+  // 投完留在原頁，不再跳到 vote-done。
   await page.getByRole("button", { name: "支持", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "你支持了這個點" }),
-  ).toBeVisible();
-  await expect(page).toHaveURL(/#vote-done\//);
-  await page.getByRole("link", { name: "返回提案", exact: true }).click();
   await expect(page.getByText("我的票：支持", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`#proposals/${proposalId}$`));
   await page.getByRole("button", { name: "反對", exact: true }).click();
   await expect(page.getByText("我的票：反對", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "撤票", exact: true }).click();

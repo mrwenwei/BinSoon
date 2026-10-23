@@ -5,12 +5,21 @@ import {
   type PageData,
   type Proposal,
 } from "../../data/api";
+import type { ProposalTally } from "../../map/browseMarkers";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
 import { LoadState } from "./LoadState";
-import { ProposalDetail } from "./ProposalPages";
+import { VoteBallot, VoteHeader, useProposalShare } from "./VotePanel";
 
-export function BinProposal({ location }: { location: ApiLocation }) {
+// 地圖抽屜裡的建議點（proposed）：標題列（問句＋地點名＋分享）＋投票面板。
+// 以 Bin ID 找到對應提案後才顯示儀表與投票鈕；找不到提案時說明仍須現勘。
+export function BinProposal({
+  location,
+  onTally,
+}: {
+  location: ApiLocation;
+  onTally?: (tally: ProposalTally) => void;
+}) {
   const { session } = useSession();
   const lookup = useApi(`bin-proposal/${location.id}`, async (signal) => {
     // Match by Bin ID across all pages; nearby coordinates are not identity.
@@ -31,19 +40,24 @@ export function BinProposal({ location }: { location: ApiLocation }) {
         return { ...result, data: null };
     }
   });
+  const name = lookup.data?.approved_name || location.label;
+  const { share, sheet } = useProposalShare(location.id, name);
   return (
-    <section className="api-bin-detail mx-bin" aria-label="設置點投票">
-      <h1>{location.label}</h1>
+    <section
+      className="api-bin-detail mx-bin mx-vote-panel"
+      aria-label="設置點投票"
+    >
+      <VoteHeader name={name} onShare={() => void share()} />
       {lookup.data ? (
-        <ProposalDetail
+        <VoteBallot
           key={lookup.data.id}
           id={lookup.data.id}
-          embedded
           binId={location.id}
+          onShare={() => void share()}
+          onTally={onTally}
         />
       ) : (
         <>
-          <p>{location.district} · 建議設置點／待現勘</p>
           <LoadState {...lookup} />
           {!lookup.loading && !lookup.error && (
             <p>此建議點尚無可投票提案，仍須現勘。</p>
@@ -55,6 +69,7 @@ export function BinProposal({ location }: { location: ApiLocation }) {
           管理桶生命週期
         </a>
       )}
+      {sheet}
     </section>
   );
 }

@@ -65,7 +65,7 @@ export function AdoptionPage({
       </div>
       <nav className="action-row" aria-label="市民參與選單">
         <a className="button secondary" href="#vote">
-          要桶投票
+          設桶投票
         </a>
         <a className="button secondary" href="#vote-progress">
           我的投票進度

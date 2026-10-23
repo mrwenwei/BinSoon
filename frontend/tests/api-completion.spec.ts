@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { binId, workId, reportId, login } from "./api-fixtures";
+import { binId, workId, reportId, login, tapEmptyMap } from "./api-fixtures";
 import {
   completionFixture,
   completionId,
@@ -34,9 +34,7 @@ test("staff attaches completion evidence before finishing and waits for administ
   await fixture.setup(admin);
   await login(admin, "admin", `admin/work-orders/${workId}`);
   await admin.getByLabel("確認送出清空回傳").check();
-  await admin
-    .getByRole("button", { name: "送出清空", exact: true })
-    .click();
+  await admin.getByRole("button", { name: "送出清空", exact: true }).click();
   await expect(
     admin.getByText("工單狀態：已完成", { exact: true }),
   ).toBeVisible();
@@ -120,7 +118,7 @@ test("clearing before evidence changes capacity but never implies completion", a
     citizen.getByRole("button", { name: "謝謝清潔隊", exact: true }),
   ).toHaveCount(0);
   await expect(citizen.locator(".api-history")).toHaveCount(0);
-  await citizen.getByRole("link", { name: "← 返回清單", exact: true }).click();
+  await tapEmptyMap(citizen);
   await expect(
     citizen
       .locator(".location-row")

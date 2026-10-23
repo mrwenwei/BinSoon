@@ -40,7 +40,7 @@ test("suggested Bin opens a shared local ballot with persistent change and withd
   await page.goto("/");
   await page
     .getByRole("navigation", { name: "主要分頁" })
-    .getByRole("link", { name: "要桶投票", exact: true })
+    .getByRole("link", { name: "設桶投票", exact: true })
     .click();
   await page
     .locator(".location-row")

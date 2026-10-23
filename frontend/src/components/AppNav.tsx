@@ -5,7 +5,7 @@ export type NavLink = { href: string; label: string; current?: boolean };
 export type NavSection = { title: string; links: NavLink[] };
 
 // 頂欄＋左側漢堡選單（手機與桌面共用）。
-// 手機：漢堡｜地圖｜要桶投票分頁｜右上點數按鈕（會員中心）；不放 Logo、沒有底部導覽列。
+// 手機：漢堡｜地圖｜設桶投票分頁｜右上點數按鈕（會員中心）；不放 Logo、沒有底部導覽列。
 // 桌面：漢堡＋Logo＋原有主選單＋點數按鈕＋帳號；其他入口都在側邊欄。
 export function AppNav({
   tabs,

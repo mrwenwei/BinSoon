@@ -128,8 +128,9 @@ test("admin reviews only legal proposal stages with current ETags and the citize
     page.getByRole("button", { name: "拒絕提案", exact: true }),
   ).toHaveCount(0);
   await page.getByRole("link", { name: "查看關聯 Bin", exact: true }).click();
+  // 桶詳情不再顯示「行政區 · 來源」；市民投票新放的桶改在桶名旁標「新設」。
   await expect(
-    page.getByText("大安區 · 示範設置", { exact: true }),
+    page.locator(".bin-title-row .status-pill", { hasText: "新設" }),
   ).toBeVisible();
   await page.evaluate(() => {
     window.location.hash = "map";

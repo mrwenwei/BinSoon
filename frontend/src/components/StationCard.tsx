@@ -155,6 +155,12 @@ export function StationCard({
                   <WasteIcon type={c.wasteType} />
                   {wasteLabels[c.wasteType]}
                   <span className="compartment-status">{c.statusText}</span>
+                  {/* 手機桶詳情藏了狀態字，吃飽了那一槽仍要寫出「吃飽了」（CSS 控制顯示）。 */}
+                  {c.state === "full" && (
+                    <span className="compartment-full-tag" aria-hidden="true">
+                      吃飽了
+                    </span>
+                  )}
                 </span>
                 <span className="compartment-pct">
                   {c.pct ?? "—"}
