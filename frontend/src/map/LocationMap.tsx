@@ -8,7 +8,7 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { kindLabel, type LocationRecord } from "../data/locations";
-import { locationMarkerIcon } from "./marker";
+import { locationMarkerIcon, selectedBaseLayerHtml } from "./marker";
 import { BOT_BARS_MIN_ZOOM } from "./botBars";
 import {
   BOT_MID_MAX_ZOOM,
@@ -52,6 +52,8 @@ interface Props {
     startLabel: string;
     /** 地圖上方被浮動指示條蓋住的像素，框住路線時多留這麼多。 */
     topInset?: number;
+    /** 地圖下方被手機底部抽屜蓋住的像素（抽屜停點高度，不是拖曳中的每一格）。 */
+    bottomInset?: number;
   };
   removedIds?: string[];
   point?: Point;
@@ -83,6 +85,31 @@ interface Props {
   browseTopInset?: number;
   /** 瀏覽模式：數字變了就把目前選取重新置中（例如抽屜從全開回到半開）。 */
   focusKey?: number;
+  /** 瀏覽模式：點地圖空白處（不是標記、控制項，也不是拖曳、雙擊或雙指縮放）時呼叫。 */
+  onBackgroundTap?: () => void;
+  /** 瀏覽模式：目前看得到的地圖區（扣掉頂部工具列與目前停點的抽屜）中心相對於地圖中心的位移；
+   *  點聚合桶放大時以這裡為中心。沒給時用 focusOffsetY。 */
+  viewOffsetY?: number;
+}
+// 減少動態效果：地圖改成直接跳到定位，不做平移／飛行動畫。
+const reducedMotion = () =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+// 選取飛行：同縮放、距離不到一個畫面時只平移；否則用 flyTo（縮放與平移一起）。
+const PAN_SECONDS = 0.5;
+const FLY_SECONDS = 0.7;
+// 點地圖後等這麼久確認不是雙擊縮放的第一下，才當成「點空白處」：觸控 250ms；
+// 滑鼠（pointer: fine）的系統雙擊間隔較長，等 350ms。
+const tapConfirmMs = () =>
+  window.matchMedia("(pointer: fine)").matches ? 350 : 250;
+// 標記播完一次 CSS 動畫就拿掉 class（className 之後換圖示也會被 Leaflet 重設）。
+function playOnce(element: HTMLElement, className: string, animation: string) {
+  element.classList.add(className);
+  const done = (event: AnimationEvent) => {
+    if (event.animationName !== animation) return;
+    element.classList.remove(className);
+    element.removeEventListener("animationend", done);
+  };
+  element.addEventListener("animationend", done);
 }
 export function LocationMap({
   locations,
@@ -112,11 +139,23 @@ export function LocationMap({
   browseTopInset = 0,
   focusKey,
   fitKey,
+  onBackgroundTap,
+  viewOffsetY,
 }: Props) {
   const fittedKey = useRef<string | undefined>(undefined);
   const browse = focusOffsetY !== undefined;
   const offsetRef = useRef(focusOffsetY ?? 0);
   offsetRef.current = focusOffsetY ?? 0;
+  const viewOffsetRef = useRef(viewOffsetY ?? focusOffsetY ?? 0);
+  viewOffsetRef.current = viewOffsetY ?? focusOffsetY ?? 0;
+  // 某一點在 zoom 時要放在「看得到的地圖區」正中間，地圖中心應該在哪（像素座標一次算好）。
+  const centreFor = (
+    instance: L.Map,
+    point: L.LatLngExpression,
+    zoom: number,
+    offsetY: number,
+  ) =>
+    instance.unproject(instance.project(point, zoom).add([0, offsetY]), zoom);
   const topInsetRef = useRef(browseTopInset);
   topInsetRef.current = browseTopInset;
   const iconFor = (location: LocationRecord, active: boolean) =>
@@ -127,12 +166,28 @@ export function LocationMap({
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
   const markerRecords = useRef<
-    { marker: L.Marker; location: LocationRecord; iconSignature: string }[]
+    {
+      marker: L.Marker;
+      location: LocationRecord;
+      iconSignature: string;
+      active: boolean;
+    }[]
   >([]);
   const markerPositions = useRef("");
   const clusters = useRef<L.LayerGroup | null>(null);
   const selectedId = useRef<string | undefined>(undefined);
   selectedId.current = selected?.id;
+  // 瀏覽模式：剛選中的桶播一次放大（.mx-pick）；記下播過的 id，同一個桶之後換圖示
+  // （例如輪詢更新桶況）不重播。標記還沒放上地圖時，等 declutter 放上去再播。
+  const pickedId = useRef<string | undefined>(undefined);
+  const playPick = (record: { marker: L.Marker; location: LocationRecord }) => {
+    const id = record.location.id;
+    if (!browse || id !== selectedId.current || pickedId.current === id) return;
+    const element = record.marker.getElement();
+    if (!element || reducedMotion()) return;
+    pickedId.current = id;
+    playOnce(element, "mx-pick", "mx-bot-pick");
+  };
   // 垃圾桶機器人會疊在一起時合成一隻代表桶（右上角數字＝桶數），點它放大兩級。
   // 只處理一般的桶標記：選中的桶、撤除、地標、建議點都照常單獨顯示。
   // 資料更新後與每次縮放結束時重算；被合併的桶先從圖層移開，展開時再加回來。
@@ -191,6 +246,7 @@ export function LocationMap({
       const marker = record.marker;
       if (markers.current!.hasLayer(marker)) return;
       markers.current!.addLayer(marker);
+      playPick(record);
       const element = marker.getElement();
       if (marker.options.title)
         element?.setAttribute("aria-label", marker.options.title);
@@ -208,8 +264,16 @@ export function LocationMap({
         markers.current.removeLayer(item.record.marker);
       const center = instance.unproject([group.x, group.y], zoom);
       const label = `${group.items.length} 個桶，放大查看`;
-      const zoomIn = () =>
-        instance.setView(center, Math.min(zoom + 2, instance.getMaxZoom()));
+      // 放大兩級，並把這群桶放在看得到的地圖區正中間（手機上扣掉抽屜與頂部工具列）。
+      const zoomIn = () => {
+        const next = Math.min(zoom + 2, instance.getMaxZoom());
+        instance.setView(
+          browse
+            ? centreFor(instance, center, next, viewOffsetRef.current)
+            : center,
+          next,
+        );
+      };
       L.marker(center, {
         icon: clusterIcon(
           bestState(group.items.map((item) => item.state)),
@@ -233,6 +297,89 @@ export function LocationMap({
         })
         .addTo(clusters.current);
     }
+    syncSelectedBase();
+  };
+  // 選中底盤與十字定位線：另一個不可點的標記，放在 shadowPane（所有標記下面），鄰居角色會壓在
+  // 底盤上；選中角色本身仍在最上層。位置＝選中標記的經緯度（腳底），格數依縮放級距
+  // （底盤寬÷2）。每次標記更新、縮放、平移、聚合重算後同步；取消選取或換桶時播縮回再移除。
+  const selectedBase = useRef<{
+    id: string;
+    marker: L.Marker;
+    signature: string;
+  } | null>(null);
+  const retireSelectedBase = () => {
+    const current = selectedBase.current;
+    if (!current) return;
+    selectedBase.current = null;
+    const element = current.marker.getElement();
+    if (browse && element && !reducedMotion()) {
+      element.classList.add("mx-unpick");
+      window.setTimeout(() => current.marker.remove(), 220);
+    } else current.marker.remove();
+  };
+  const syncSelectedBase = () => {
+    const instance = map.current;
+    if (!instance || !markers.current) return;
+    const record = markerRecords.current.find(
+      (r) => r.active && r.location.id === selectedId.current,
+    );
+    const className = record?.marker.options.icon?.options.className ?? "";
+    const kind =
+      !record || !markers.current.hasLayer(record.marker)
+        ? null
+        : className.includes("bot-marker")
+          ? "bot"
+          : className.includes("mx-proposed")
+            ? "proposed"
+            : className.includes("pixel-marker")
+              ? "landmark"
+              : null;
+    if (!record || !kind) {
+      retireSelectedBase();
+      return;
+    }
+    const zoom = Math.round(instance.getZoom());
+    const cells =
+      kind !== "bot"
+        ? kind === "landmark"
+          ? 21
+          : 36
+        : zoom <= BOT_SMALL_MAX_ZOOM
+          ? 21
+          : zoom <= BOT_MID_MAX_ZOOM
+            ? 28
+            : 36;
+    const signature = `${kind}/${cells}`;
+    const icon = () =>
+      L.divIcon({
+        className: `mx-selected-base kind-${kind}`,
+        html: selectedBaseLayerHtml(cells),
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+      });
+    const latlng = record.marker.getLatLng();
+    const current = selectedBase.current;
+    if (current?.id === record.location.id) {
+      if (!current.marker.getLatLng().equals(latlng))
+        current.marker.setLatLng(latlng);
+      if (current.signature !== signature) {
+        current.marker.setIcon(icon());
+        current.signature = signature;
+      }
+      return;
+    }
+    retireSelectedBase();
+    const marker = L.marker(latlng, {
+      icon: icon(),
+      pane: "shadowPane",
+      interactive: false,
+      keyboard: false,
+    }).addTo(instance);
+    selectedBase.current = { id: record.location.id, marker, signature };
+    const element = marker.getElement();
+    // 跟選中角色的放大同步播一次（減少動態效果時不播）。
+    if (browse && element && !reducedMotion())
+      playOnce(element, "mx-pick", "mx-base-pick");
   };
   const [basemapFailed, setBasemapFailed] = useState(false);
   const [rasterFallback, setRasterFallback] = useState(false);
@@ -243,7 +390,23 @@ export function LocationMap({
       maxZoom: 19,
     }).setView(initialCenter || [25.04, 121.54], initialCenter ? 15 : 13);
     map.current = instance;
-    L.control.zoom({ position: "bottomright" }).addTo(instance);
+    const zoomControl = L.control.zoom({ position: "bottomright" });
+    if (browse) {
+      // 瀏覽模式：＋／－以「看得到的地圖區」中心為基準縮放（手機抽屜蓋住地圖下半部，
+      // 地圖幾何中心常在抽屜邊上）；選了桶時那裡就是桶，縮放後桶仍在正中間。
+      const zoomBy = (delta: number) => (event: MouseEvent) => {
+        const next = instance.getZoom() + delta * (event?.shiftKey ? 3 : 1);
+        if (next > instance.getMaxZoom() || next < instance.getMinZoom())
+          return;
+        const size = instance.getSize();
+        instance.setZoomAround(
+          L.point(size.x / 2, size.y / 2 - viewOffsetRef.current),
+          next,
+        );
+      };
+      Object.assign(zoomControl, { _zoomIn: zoomBy(1), _zoomOut: zoomBy(-1) });
+    }
+    zoomControl.addTo(instance);
     L.control
       .scale({ imperial: false, position: "bottomleft" })
       .addTo(instance);
@@ -328,9 +491,12 @@ export function LocationMap({
     markers.current = L.layerGroup().addTo(instance);
     clusters.current = L.layerGroup().addTo(instance);
     instance.on("zoomend moveend", () => declutter.current());
-    const stopObserving = observeMapSize(container.current!, () =>
-      instance.invalidateSize({ pan: false }),
-    );
+    // 地圖大小變了（例如手機網址列收合、改變視窗）：保持左上角不動；如果正跟著選取的桶，
+    // 再把它放回看得到的地圖區正中間。
+    const stopObserving = observeMapSize(container.current!, () => {
+      instance.invalidateSize({ pan: false });
+      followSelection.current("jump");
+    });
     const dispose = () => {
       if (disposed) return;
       disposed = true;
@@ -339,6 +505,7 @@ export function LocationMap({
       instance.remove();
       map.current = null;
       markerRecords.current = [];
+      selectedBase.current = null;
       markerPositions.current = "";
     };
     const pageHide = (event: PageTransitionEvent) => {
@@ -357,6 +524,8 @@ export function LocationMap({
   onSelectRef.current = onSelect;
   useEffect(() => {
     const instance = map.current!;
+    // 沒有選取時清掉「播過」的紀錄，之後再選同一個桶仍會播放大。
+    if (!selected) pickedId.current = undefined;
     const previous = new Map(
       markerRecords.current.map((record) => [
         `${record.location.kind}/${record.location.id}`,
@@ -383,10 +552,12 @@ export function LocationMap({
           }),
           location,
           iconSignature,
+          active,
         };
         created.marker.on("click", () => onSelectRef.current(created.location));
         record = created;
       } else {
+        const wasActive = record.active;
         if (
           !record.marker
             .getLatLng()
@@ -397,6 +568,13 @@ export function LocationMap({
         record.marker.options.title = label;
         record.location = location;
         record.iconSignature = iconSignature;
+        record.active = active;
+        // 換圖示會重建標記內容，CSS transition 不會觸發：剛選中的桶加 .mx-pick、
+        // 剛取消選取的桶加 .mx-unpick，各播一次就拿掉（只在瀏覽模式、沒有減少動態效果時）。
+        const element = record.marker.getElement();
+        if (browse && wasActive && !active && element && !reducedMotion())
+          playOnce(element, "mx-unpick", "mx-bot-unpick");
+        if (active) playPick(record);
       }
       const element = record.marker.getElement();
       element?.setAttribute("aria-label", label);
@@ -483,18 +661,132 @@ export function LocationMap({
     return () => element.removeEventListener("keydown", keydown);
   }, [browse]);
   // 只在選取對象換了（或瀏覽模式的 focusKey 變了）才置中，輪詢更新不會把地圖拉回來。
-  // 瀏覽模式在手機上再把選取點往上移，避開半開的抽屜。
-  useEffect(() => {
-    if (!selected || !map.current) return;
+  // 瀏覽模式：目標中心在像素座標一次算好（選取點往上移 focusOffsetY＝最終半開抽屜高度的
+  // 一半，落在抽屜上方可見區的正中間），再平滑飛過去；同縮放且距離不到一個畫面時只平移。
+  // 減少動態效果時直接跳過去。之後只要使用者還沒動過地圖，地圖大小或抽屜高度改變時
+  // 也會把桶放回正中間（followSelection）。
+  const following = useRef<L.LatLng | null>(null);
+  const offsetAtSelection = useRef<number | null>(null);
+  const followSelection = useRef((_mode: "fly" | "pan" | "jump") => {});
+  followSelection.current = (mode) => {
     const instance = map.current;
-    instance.setView(
-      [selected.latitude, selected.longitude],
-      Math.max(instance.getZoom(), 16),
-      { animate: false },
-    );
-    if (browse && offsetRef.current)
-      instance.panBy([0, offsetRef.current], { animate: false });
+    const point = following.current;
+    if (!browse || !instance || !point) return;
+    // 縮放取整數：飛行中途被打斷（桶換桶、抽屜開合）時 getZoom() 可能是小數。
+    const zoom = Math.max(Math.round(instance.getZoom()), 16);
+    const target = centreFor(instance, point, zoom, offsetRef.current);
+    if (mode === "jump" || reducedMotion()) {
+      instance.setView(target, zoom, { animate: false });
+      return;
+    }
+    // 先停掉還在跑的飛行或平移：panTo 不會停掉 flyTo，兩個動畫疊在一起會讓桶停偏。
+    instance.stop();
+    const size = instance.getSize();
+    const shift = instance
+      .project(target, zoom)
+      .subtract(instance.project(instance.getCenter(), zoom));
+    if (
+      zoom === instance.getZoom() &&
+      (mode === "pan" ||
+        (Math.abs(shift.x) < size.x && Math.abs(shift.y) < size.y))
+    )
+      instance.panTo(target, {
+        animate: true,
+        duration: PAN_SECONDS,
+        easeLinearity: 0.25,
+      });
+    else instance.flyTo(target, zoom, { duration: FLY_SECONDS });
+  };
+  useEffect(() => {
+    if (!selected || !map.current) {
+      following.current = null;
+      return;
+    }
+    const instance = map.current;
+    const point = L.latLng(selected.latitude, selected.longitude);
+    if (!browse) {
+      instance.setView(point, Math.max(instance.getZoom(), 16), {
+        animate: false,
+      });
+      return;
+    }
+    following.current = point;
+    offsetAtSelection.current = offsetRef.current;
+    followSelection.current("fly");
   }, [browse, selected?.id, selected?.latitude, selected?.longitude, focusKey]);
+  // 使用者自己拖、縮放或用鍵盤移動地圖後，就不再自動把選取的桶拉回中間。
+  useEffect(() => {
+    const element = container.current;
+    if (!browse || !element) return;
+    const stop = (event: Event) => {
+      if (
+        event instanceof KeyboardEvent &&
+        ![
+          "ArrowUp",
+          "ArrowDown",
+          "ArrowLeft",
+          "ArrowRight",
+          "+",
+          "-",
+          "=",
+        ].includes(event.key)
+      )
+        return;
+      // 點標記（另選）或縮放鈕（以桶為中心縮放）不算「自己移動地圖」。
+      if (
+        (event.target as HTMLElement).closest?.(
+          ".leaflet-marker-icon, .leaflet-control",
+        )
+      )
+        return;
+      following.current = null;
+    };
+    element.addEventListener("pointerdown", stop);
+    element.addEventListener("wheel", stop, { passive: true });
+    element.addEventListener("keydown", stop);
+    return () => {
+      element.removeEventListener("pointerdown", stop);
+      element.removeEventListener("wheel", stop);
+      element.removeEventListener("keydown", stop);
+    };
+  }, [browse]);
+  // 抽屜的最終高度變了（例如畫面高度改變、投票面板確認後才知道要 55%）：平滑補正一次。
+  useEffect(() => {
+    // 跟選取同一次更新（清單 0.42 → 詳情 0.5）時，飛行已經用新高度算好，不再補。
+    if (offsetAtSelection.current === focusOffsetY) return;
+    offsetAtSelection.current = focusOffsetY ?? null;
+    followSelection.current("pan");
+  }, [focusOffsetY]);
+  // 瀏覽模式：點地圖空白處。Leaflet 的 click 在拖曳後不會觸發，標記與縮放鈕的點擊
+  // 也不會傳到地圖；再等 tapConfirmMs() 排除雙擊縮放的第一下（雙擊或開始縮放就取消）。
+  // 等待期間選了別的桶（標記的 click 不會冒泡到地圖）：選取一變就取消，觸發時也再
+  // 比對一次選取 id，不同就不關閉，避免把剛開的桶關掉。
+  const backgroundTapRef = useRef(onBackgroundTap);
+  backgroundTapRef.current = onBackgroundTap;
+  const tapTimer = useRef(0);
+  useEffect(() => {
+    if (!browse || !map.current) return;
+    const instance = map.current;
+    const cancel = () => window.clearTimeout(tapTimer.current);
+    const click = () => {
+      cancel();
+      if (!backgroundTapRef.current) return;
+      const tappedOn = selectedId.current;
+      tapTimer.current = window.setTimeout(() => {
+        if (selectedId.current === tappedOn) backgroundTapRef.current?.();
+      }, tapConfirmMs());
+    };
+    instance.on("click", click);
+    instance.on("dblclick zoomstart", cancel);
+    return () => {
+      cancel();
+      instance.off("click", click);
+      instance.off("dblclick zoomstart", cancel);
+    };
+  }, [browse]);
+  useEffect(() => {
+    window.clearTimeout(tapTimer.current);
+  }, [selected?.id]);
   // 瀏覽模式第一次量到抽屜高度時，把初始中心移到抽屜上方的可見區（只做一次）。
   const initialOffsetDone = useRef(false);
   const previousTopInset = useRef(browseTopInset);
@@ -587,6 +879,8 @@ export function LocationMap({
   } | null>(null);
   const navInset = useRef(0);
   navInset.current = navRoute?.topInset ?? 0;
+  const navBottom = useRef(0);
+  navBottom.current = navRoute?.bottomInset ?? 0;
   const navGeometry = navRoute?.geometry;
   const navStartLabel = navRoute?.startLabel;
   useEffect(() => {
@@ -647,16 +941,17 @@ export function LocationMap({
       remainLine,
       here,
       refit: () => {
-        if (!moved) fit();
+        if (!moved) fit(!reducedMotion());
       },
     };
     // 畫面（含底部資訊卡展開縮小地圖）改變時重新框住整條路線；使用者自己動過地圖就不再框。
-    const fit = () =>
+    // 手機抽屜蓋住的高度算進下方留白；抽屜換停點時平滑重框（減少動態效果時直接跳）。
+    const fit = (animate = false) =>
       instance.fitBounds(L.latLngBounds(navGeometry), {
         paddingTopLeft: [40, 40 + navInset.current],
-        paddingBottomRight: [40, 40],
+        paddingBottomRight: [40, 40 + navBottom.current],
         maxZoom: 17,
-        animate: false,
+        animate,
       });
     let moved = false;
     const touched = () => {
@@ -690,9 +985,10 @@ export function LocationMap({
     };
   }, [navGeometry, navStartLabel]);
   const navTopInset = navRoute?.topInset ?? 0;
+  const navBottomInset = navRoute?.bottomInset ?? 0;
   useEffect(() => {
     if (navLayers.current?.geometry === navGeometry) navLayers.current?.refit();
-  }, [navGeometry, navTopInset]);
+  }, [navGeometry, navTopInset, navBottomInset]);
   const navWalked = navRoute?.walkedMeters ?? 0;
   useEffect(() => {
     const layers = navLayers.current;

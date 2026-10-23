@@ -13,8 +13,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type KeyboardEvent,
-  type PointerEvent,
 } from "react";
 import {
   allPages,
@@ -29,7 +27,9 @@ import { stateLabels, usableCount } from "../../data/binState";
 import { stateVisual } from "../binVisual";
 import type { LocationRecord } from "../../data/locations";
 import { LocationMap } from "../../map/LocationMap";
+import { proposedBinSvg } from "../../map/binBot";
 import {
+  type ProposalTally,
   browseMarkerDescription,
   browseMarkerIcon,
   browseMarkerLabel,
@@ -41,17 +41,25 @@ import {
 import { Mascot } from "../Mascot";
 import { WasteIcon, WastePicker } from "../WasteType";
 import { FillBar } from "../StationCard";
-import { LocationDetails } from "../LocationDetails";
 import { LoadState } from "./LoadState";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
 import { ORIGIN, Status } from "./mapShared";
 import { BinPanel } from "./BinPage";
+import { PlacePanel } from "./PlacePanel";
+import {
+  MOBILE_QUERY,
+  SheetHandle,
+  useBottomSheet,
+  useMediaQuery,
+  type SheetStop,
+} from "../useBottomSheet";
 
 // ── 地圖瀏覽模式 ─────────────────────────────────────────────────────
 // 手機：地圖滿版＋下方抽屜（收起／半開／全開）；桌面：左側面板＋右側地圖。
 // 面板未選桶時是「附近的桶」清單；選桶（#bin/<id>）或地標（#map?place=<id>）
-// 時原地顯示資訊。資料流照原本：/map/locations 全部分頁讀完、?waste_type=
+// 時原地顯示資訊（手機仍是底部抽屜，地圖留在上方），地圖飛到選取點；
+// 點地圖空白處或按 Esc 回清單。資料流照原本：/map/locations 全部分頁讀完、?waste_type=
 // 決定看哪一槽。清單列、篩選膠囊、狀態膠囊、圖例都沿用既有元件。
 
 type Filter = "all" | "usable" | "new";
@@ -60,31 +68,10 @@ const filters: [Filter, string][] = [
   ["usable", "還能丟"],
   ["new", "新設"],
 ];
-type Drawer = "collapsed" | "half" | "full";
-const drawerOrder: Drawer[] = ["collapsed", "half", "full"];
-const drawerNames: Record<Drawer, string> = {
-  collapsed: "收起",
-  half: "半開",
-  full: "全開",
-};
-const MOBILE_QUERY = "(max-width: 760px)";
 const SEARCH_DELAY_MS = 300;
 const originMarker = { ...ORIGIN, label: "起點" };
 const initialCenter: [number, number] = [ORIGIN.latitude, ORIGIN.longitude];
 
-function useMediaQuery(media: string) {
-  const [matches, setMatches] = useState(
-    () => window.matchMedia(media).matches,
-  );
-  useEffect(() => {
-    const list = window.matchMedia(media);
-    const change = () => setMatches(list.matches);
-    change();
-    list.addEventListener("change", change);
-    return () => list.removeEventListener("change", change);
-  }, [media]);
-  return matches;
-}
 function distanceText(item: ApiLocation) {
   if (item.distance_m == null) return "距離未知";
   return item.distance_m < 1000
@@ -96,8 +83,10 @@ function walkText(item: ApiLocation) {
     ? null
     : `步行 ${Math.max(1, Math.round(item.walking_estimate_seconds / 60))} 分鐘`;
 }
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value));
+// 建議點標記與清單列用的票數（status 讓關票後的標記改寫結果）。
+function tallyOf(item: Proposal): ProposalTally {
+  return { support: item.support, oppose: item.oppose, status: item.status };
+}
 // 換種類只換網址參數，不多一筆瀏覽紀錄（返回鍵直接回上一個畫面）。
 function replaceWaste(value: WasteType) {
   window.location.replace(
@@ -173,7 +162,7 @@ export function MapPage({
           if (["installed", "declined"].includes(item.status)) continue;
           const existing = bins.find((b) => b.id === item.bin_id);
           if (existing) {
-            Object.assign(existing, { proposalSupport: item.support });
+            Object.assign(existing, { proposalTally: tallyOf(item) });
             continue;
           }
           bins.push(
@@ -199,7 +188,7 @@ export function MapPage({
                 bin_status: null,
                 compartments: [],
               } as ApiLocation,
-              { proposalSupport: item.support },
+              { proposalTally: tallyOf(item) },
             ),
           );
         }
@@ -235,16 +224,30 @@ export function MapPage({
   // 開著桶面板時清單暫停輪詢；面板的 view 每次更新都帶最新桶況，
   // 拿它蓋過清單裡那一筆，地圖上這個桶的標記才會跟面板一致。
   const fresh = binId && binLocation?.id === binId ? binLocation : null;
+  // 投票面板投完票時回報最新票數，建議點標記的「支持 N%」跟著更新（清單輪詢暫停中）。
+  const [liveTally, setLiveTally] = useState<{
+    id: string;
+    tally: ProposalTally;
+  } | null>(null);
+  const onTally = useCallback(
+    (tally: ProposalTally) => binId && setLiveTally({ id: binId, tally }),
+    [binId],
+  );
   const withFresh = useCallback(
-    (item: ApiLocation) =>
-      fresh && item.id === fresh.id
-        ? {
-            ...item,
-            bin_status: fresh.bin_status,
-            compartments: fresh.compartments,
-          }
-        : item,
-    [fresh],
+    (item: ApiLocation) => {
+      const next =
+        fresh && item.id === fresh.id
+          ? {
+              ...item,
+              bin_status: fresh.bin_status,
+              compartments: fresh.compartments,
+            }
+          : item;
+      return liveTally?.id === item.id
+        ? { ...next, proposalTally: liveTally.tally }
+        : next;
+    },
+    [fresh, liveTally],
   );
   const listed = binId ? items?.find((item) => item.id === binId) : undefined;
   const selected: ApiLocation | null = binId
@@ -283,6 +286,7 @@ export function MapPage({
       // 再點一次已選取的桶／地標不做任何事（焦點只在選取對象改變時移動一次）。
       if (item.id === (item.kind === "bin" ? binId : placeId)) return;
       pendingFocus.current = item.id;
+      const fromList = !binId && !placeId;
       window.location.hash = (
         item.kind === "bin"
           ? wasteHref(
@@ -291,6 +295,8 @@ export function MapPage({
             )
           : wasteHref(`map?place=${encodeURIComponent(item.id)}`, wasteType)
       ).slice(1);
+      // 記在這筆瀏覽紀錄上：上一筆就是清單，關閉詳情時直接回上一頁。
+      if (fromList) history.replaceState({ mxFromList: true }, "");
     },
     [wasteType, binId, placeId, voting],
   );
@@ -315,8 +321,8 @@ export function MapPage({
         location,
         active,
         wasteType,
-        (location as LocationRecord & { proposalSupport?: number })
-          .proposalSupport,
+        (location as LocationRecord & { proposalTally?: ProposalTally })
+          .proposalTally,
       ),
     [wasteType],
   );
@@ -325,17 +331,8 @@ export function MapPage({
   const toolbarRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
-  const [drawer, setDrawer] = useState<Drawer>("half");
   const [dims, setDims] = useState({ layout: 0, head: 0, toolbar: 0 });
-  const [dragPx, setDragPx] = useState<number | null>(null);
   const [focusKey, setFocusKey] = useState(0);
-  const drag = useRef<{
-    id: number;
-    y: number;
-    h: number;
-    moved: boolean;
-    onHandle: boolean;
-  } | null>(null);
   useLayoutEffect(() => {
     const measure = () => {
       const next = {
@@ -367,105 +364,60 @@ export function MapPage({
     };
   }, [mobile, voting, binId, placeId]);
   const showingBallot = !!binId && !!selected && isProposed(selected);
+  // 半開高度：清單 42%（最高 300px）；桶詳情 50%、投票面板 55%，都不設 300px 上限，
+  // 半開時就看得到標題、兩槽卡與底部固定的「導航過去／回報問題」。
+  // 地圖的選取位移（focusOffsetY）由這個實際高度算出，桶落在抽屜上方可見區的正中間。
+  const showingBinDetail = !!binId && !showingBallot;
   const heights = useMemo(() => {
     const full = Math.max(
       dims.head,
       dims.layout - (dims.toolbar ? dims.toolbar + 24 : 12),
     );
+    // 桶詳情半開 50%；投票面板 55%（標題、儀表、說明句與兩顆投票鈕都要在半開時看得到，
+    // 0 票時多一句「還沒有人投票」）；兩者都不設 300px 上限。
+    const half = showingBinDetail
+      ? Math.round(dims.layout * 0.5)
+      : showingBallot
+        ? Math.round(dims.layout * 0.55)
+        : Math.min(300, Math.round(dims.layout * 0.42));
     return {
       collapsed: dims.head,
-      half: Math.min(
-        full,
-        Math.max(
-          dims.head,
-          Math.min(
-            300,
-            Math.round(dims.layout * (showingBallot ? 0.46 : 0.42)),
-          ),
-        ),
-      ),
+      half: Math.min(full, Math.max(dims.head, half)),
       full,
     };
-  }, [dims, showingBallot]);
-  const drawerPx = dragPx ?? heights[drawer];
-  // 全開時點把手回半開；收起只靠往下拖。
-  const cycle = () =>
-    setDrawer((d) =>
-      d === "collapsed" ? "half" : d === "half" ? "full" : "half",
-    );
+  }, [dims, showingBallot, showingBinDetail]);
+  // 拖曳、把手與鍵盤操作共用 useBottomSheet（步行導航頁也用同一套）。
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const sheet = useBottomSheet({
+    enabled: mobile,
+    heights,
+    dragZone: ".mx-panel-head",
+    scrollRef: bodyRef,
+  });
+  const { stop: drawer, setStop: setDrawer, px: drawerPx } = sheet;
   // 選了桶或地標：抽屜一律回半開（全開時地圖幾乎被蓋住，收起時看不到資訊）。
   useEffect(() => {
     if (binId || placeId) setDrawer("half");
   }, [binId, placeId]);
   // 從全開回到半開時，把目前選取重新置中到抽屜上方的可見區。
-  const previousDrawer = useRef<Drawer>(drawer);
+  const previousDrawer = useRef<SheetStop>(drawer);
   useEffect(() => {
     if (previousDrawer.current === "full" && drawer === "half")
       setFocusKey((k) => k + 1);
     previousDrawer.current = drawer;
   }, [drawer]);
-  const pointerDown = (e: PointerEvent<HTMLElement>) => {
-    if (!mobile) return;
-    const target = e.target as HTMLElement;
-    if (!target.closest(".mx-handle-wrap, .mx-panel-head")) return;
-    const control = target.closest("button, a, input, select, label");
-    if (control && !control.classList.contains("mx-handle")) return;
-    drag.current = {
-      id: e.pointerId,
-      y: e.clientY,
-      h: drawerPx,
-      moved: false,
-      onHandle: Boolean(target.closest(".mx-handle-wrap")),
-    };
-  };
-  const pointerMove = (e: PointerEvent<HTMLElement>) => {
-    const d = drag.current;
-    if (!d || e.pointerId !== d.id) return;
-    const dy = e.clientY - d.y;
-    if (!d.moved) {
-      if (Math.abs(dy) < 6) return;
-      d.moved = true;
-      try {
-        e.currentTarget.setPointerCapture(d.id);
-      } catch {
-        /* 有些瀏覽器在指標已放開時會丟例外，拖曳照樣可用。 */
-      }
-    }
-    setDragPx(clamp(d.h - dy, heights.collapsed, heights.full));
-  };
-  const pointerEnd = (e: PointerEvent<HTMLElement>) => {
-    const d = drag.current;
-    if (!d || e.pointerId !== d.id) return;
-    drag.current = null;
-    if (d.moved) {
-      const current = clamp(
-        d.h - (e.clientY - d.y),
-        heights.collapsed,
-        heights.full,
-      );
-      const best = drawerOrder.reduce((a, b) =>
-        Math.abs(heights[b] - current) < Math.abs(heights[a] - current) ? b : a,
-      );
-      setDrawer(best);
-      setDragPx(null);
-    } else if (e.type === "pointerup") {
-      if (d.onHandle) cycle();
-      else if (drawer === "collapsed") setDrawer("half");
-    }
-  };
-  const handleKey = (e: KeyboardEvent<HTMLButtonElement>) => {
-    const i = drawerOrder.indexOf(drawer);
-    if (e.key === "ArrowUp" && i < 2) {
-      e.preventDefault();
-      setDrawer(drawerOrder[i + 1]);
-    } else if (e.key === "ArrowDown" && i > 0) {
-      e.preventDefault();
-      setDrawer(drawerOrder[i - 1]);
-    }
-  };
-  const collapsed = mobile && drawer === "collapsed" && dragPx === null;
+  const collapsed = sheet.collapsed;
   // 選取一律在半開時置中，所以位移固定用半開高度的一半。
   const focusOffsetY = mobile ? Math.round(heights.half / 2) : 0;
+  // 目前看得到的地圖區中心（手機：扣掉目前停點的抽屜，清單畫面再扣掉頂部搜尋工具列；
+  // 工具列離地圖頂 8px）。點聚合桶放大時用。
+  const viewOffsetY = mobile
+    ? Math.round(
+        (heights[drawer] -
+          (binId || placeId || !dims.toolbar ? 0 : dims.toolbar + 8)) /
+          2,
+      )
+    : 0;
   const style = mobile
     ? ({
         "--mx-drawer-h": `${drawerPx}px`,
@@ -479,6 +431,72 @@ export function MapPage({
   };
   const view = binId ? "bin" : place ? "place" : "list";
   const listHref = wasteHref(voting ? "vote" : "map", wasteType);
+  // 關閉桶／地標詳情回清單（取代原本的「← 返回清單」連結）：上一筆瀏覽紀錄是
+  // 清單時回上一頁，不多疊一筆；深連結或桶換桶之後則照原連結改網址（保留 ?waste_type=）。
+  // 返回是非同步的：畫面換掉之前再呼叫一次（例如連按 Esc）不做事，免得連退兩格離開 app。
+  const closing = useRef(false);
+  useEffect(() => {
+    closing.current = false;
+  }, [view, binId, placeId]);
+  const closeDetail = useCallback(() => {
+    if (closing.current) return;
+    closing.current = true;
+    if ((history.state as { mxFromList?: boolean } | null)?.mxFromList)
+      history.back();
+    else window.location.hash = listHref.slice(1);
+  }, [listHref]);
+  // Esc 關閉詳情（側邊選單等自己處理 Esc 的元件會先 preventDefault，所以掛在 window）。
+  // 焦點原本在面板裡時，回清單後把焦點放回原本那一列；焦點在標記上就留在標記。
+  const restoreRow = useRef<string | null>(null);
+  // 剛看過的桶：回到清單時那一列標 active＋aria-current（配色 v4 的清單選中列）。
+  const [lastViewed, setLastViewed] = useState<string | null>(null);
+  useEffect(() => {
+    if (binId) setLastViewed(binId);
+  }, [binId]);
+  useEffect(() => {
+    if (view === "list") return;
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const active = document.activeElement;
+      restoreRow.current =
+        binId &&
+        (!active || active === document.body || active.closest(".mx-panel"))
+          ? binId
+          : null;
+      closeDetail();
+    };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [view, binId, closeDetail]);
+  // 詳情最上面的「回到清單」按鈕（讀屏與鍵盤用）：按了回清單，焦點放回原本那一列。
+  const closeFromPanel = () => {
+    restoreRow.current = binId ?? null;
+    closeDetail();
+  };
+  useEffect(() => {
+    const id = restoreRow.current;
+    if (view !== "list" || !id || !rows) return;
+    restoreRow.current = null;
+    layoutRef.current
+      ?.querySelector<HTMLElement>(`.location-row[data-id="${CSS.escape(id)}"]`)
+      ?.focus();
+  }, [view, rows]);
+  // 面板內容換畫面（清單 ⇄ 詳情、桶換桶）：內容以 key 重建、播淡入；詳情從頂端開始，
+  // 回到清單時捲回原本的位置。
+  const contentKey =
+    view === "bin"
+      ? `bin/${binId}`
+      : view === "place"
+        ? `place/${placeId}`
+        : "list";
+  const listScroll = useRef(0);
+  const shownContent = useRef(contentKey);
+  useLayoutEffect(() => {
+    if (shownContent.current === contentKey) return;
+    shownContent.current = contentKey;
+    if (bodyRef.current)
+      bodyRef.current.scrollTop = view === "list" ? listScroll.current : 0;
+  }, [contentKey, view]);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const controls =
@@ -557,121 +575,112 @@ export function MapPage({
     >
       {controls}
       <section
-        className={`mx-panel${dragPx !== null ? " dragging" : ""}`}
+        className={`mx-panel${sheet.dragging ? " dragging" : ""}`}
         aria-label="資訊面板"
         data-view={view}
         data-ballot={showingBallot || undefined}
-        onPointerDown={pointerDown}
-        onPointerMove={pointerMove}
-        onPointerUp={pointerEnd}
-        onPointerCancel={pointerEnd}
+        ref={sheet.panelRef}
+        {...sheet.panelProps}
       >
-        <div className="mx-handle-wrap" ref={handleRef}>
-          <button
-            type="button"
-            className="mx-handle"
-            aria-label={`面板高度：${drawerNames[drawer]}。按一下切換，或用上下鍵調整`}
-            onClick={(e) => {
-              if (e.detail === 0) cycle();
-            }}
-            onKeyDown={handleKey}
-          >
-            <span aria-hidden="true" />
-          </button>
-        </div>
-        <div className="mx-panel-head" ref={headRef}>
-          {view === "list" ? (
-            <>
-              <div className="mx-head-title">
-                <h1 className="mx-title">{voting ? "要桶投票" : "附近的桶"}</h1>
-                {voting && (
-                  <span className="tiny">
-                    {rows ? `${rows.length} 個建議點 · 待現勘` : "—"}
-                  </span>
-                )}
-              </div>
-            </>
-          ) : (
-            <a className="back-link" href={listHref}>
-              ← 返回清單
-            </a>
-          )}
-        </div>
-        <div className="mx-panel-body" inert={collapsed}>
-          {view === "bin" ? (
-            <BinPanel
-              key={`${binId}/${wasteType}`}
-              id={binId!}
-              wasteType={wasteType}
-              onLocation={binLoaded}
-            />
-          ) : view === "place" ? (
-            <>
-              <p className="mx-note">
-                這是地標，不是垃圾桶，周邊約 {place!.reported_count ?? "—"}{" "}
-                處清潔箱。
-                {walkText(place!) &&
-                  `距起點 ${distanceText(place!)} · ${walkText(place!)}。`}
-              </p>
-              <LocationDetails
-                location={place!}
-                onClose={() => {
-                  window.location.hash = listHref.slice(1);
-                }}
+        <SheetHandle ref={handleRef} {...sheet.handleProps} />
+        {/* 詳情不放「← 返回清單」：點地圖空白處或按 Esc 回清單，標題列只在清單出現。 */}
+        {view === "list" && (
+          <div className="mx-panel-head" ref={headRef}>
+            <div className="mx-head-title">
+              <h1 className="mx-title">{voting ? "設桶投票" : "附近的桶"}</h1>
+              {voting && (
+                <span className="tiny">
+                  {rows ? `${rows.length} 個建議點 · 待現勘` : "—"}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        <div
+          className="mx-panel-body"
+          ref={bodyRef}
+          inert={collapsed}
+          onScroll={(e) => {
+            if (view === "list") listScroll.current = e.currentTarget.scrollTop;
+          }}
+        >
+          <div className="mx-panel-content" key={contentKey}>
+            {/* 桶詳情（含投票面板）與場所詳情都沒有看得到的關閉鈕：放一顆平常隱藏、
+                鍵盤聚焦才出現的「回到清單」，讀屏使用者不必靠瀏覽器返回鍵。 */}
+            {view !== "list" && (
+              <button
+                type="button"
+                className="text-button mx-close-detail"
+                onClick={closeFromPanel}
+              >
+                回到清單
+              </button>
+            )}
+            {view === "bin" ? (
+              <BinPanel
+                key={`${binId}/${wasteType}`}
+                id={binId!}
+                wasteType={wasteType}
+                label={listed?.label}
+                onLocation={binLoaded}
+                onTally={onTally}
               />
-            </>
-          ) : (
-            <>
-              <LoadState {...list} />
-              {voting && voteNotice && <p role="status">{voteNotice}</p>}
-              {rows && rows.length > 0 && (
-                <ul
-                  className="mx-list"
-                  aria-label={voting ? "建議設置點" : "附近的桶"}
-                >
-                  {rows.map((item) => (
-                    <li key={item.id}>
-                      <NearbyRow
-                        item={item}
-                        wasteType={wasteType}
-                        onSelect={select}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {rows?.length === 0 && (
-                <div className="mx-empty">
-                  <p>
-                    {voting ? "目前沒有符合的建議點。" : "找不到符合的桶。"}
-                  </p>
-                  <button
-                    type="button"
-                    className="text-button"
-                    onClick={resetFilters}
+            ) : view === "place" ? (
+              <PlacePanel location={place!} />
+            ) : (
+              <>
+                <LoadState {...list} />
+                {voting && voteNotice && <p role="status">{voteNotice}</p>}
+                {rows && rows.length > 0 && (
+                  <ul
+                    className="mx-list"
+                    aria-label={voting ? "建議設置點" : "附近的桶"}
                   >
-                    清除搜尋與篩選
-                  </button>
-                </div>
-              )}
-              {/* 進階查詢放在清單下方：不佔半開抽屜裡篩選與第一列之間的高度。 */}
-              {!voting && (
-                <div className="mx-removed">
-                  <label className="check-field">
-                    <input
-                      type="checkbox"
-                      checked={includeRemoved}
-                      onChange={(e) => setIncludeRemoved(e.target.checked)}
-                    />
-                    包含所有撤除紀錄
-                  </label>
-                  <p className="tiny">
-                    預設顯示後端保留的近七日撤除標記；勾選後查詢全部撤除紀錄。
-                  </p>
-                </div>
-              )}
-            </>
-          )}
+                    {rows.map((item) => (
+                      <li key={item.id}>
+                        <NearbyRow
+                          item={item}
+                          wasteType={wasteType}
+                          onSelect={select}
+                          active={item.id === lastViewed}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {rows?.length === 0 && (
+                  <div className="mx-empty">
+                    <p>
+                      {voting ? "目前沒有符合的建議點。" : "找不到符合的桶。"}
+                    </p>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={resetFilters}
+                    >
+                      清除搜尋與篩選
+                    </button>
+                  </div>
+                )}
+                {/* 進階查詢放在清單下方：不佔半開抽屜裡篩選與第一列之間的高度。 */}
+                {!voting && (
+                  <div className="mx-removed">
+                    <label className="check-field">
+                      <input
+                        type="checkbox"
+                        checked={includeRemoved}
+                        onChange={(e) => setIncludeRemoved(e.target.checked)}
+                      />
+                      包含所有撤除紀錄
+                    </label>
+                    <p className="tiny">
+                      預設顯示後端保留的近七日撤除標記；勾選後查詢全部撤除紀錄。
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </section>
       <div className="mx-map">
@@ -686,7 +695,9 @@ export function MapPage({
           markerDescription={browseMarkerDescription}
           origin={originMarker}
           focusOffsetY={focusOffsetY}
+          viewOffsetY={viewOffsetY}
           focusKey={focusKey}
+          onBackgroundTap={view === "list" ? undefined : closeDetail}
         />
       </div>
     </main>
@@ -699,26 +710,42 @@ function NearbyRow({
   item,
   wasteType,
   onSelect,
+  active = false,
 }: {
   item: ApiLocation;
   wasteType: WasteType;
   onSelect: (item: LocationRecord) => void;
+  /** 從詳情回清單時，剛看過的那一列（左側橘線、aria-current）。 */
+  active?: boolean;
 }) {
   const proposed = isProposed(item);
   const removed = item.bin_status?.operational_status === "removed";
   const state = proposed ? "offline" : wasteState(item, wasteType);
   const parts = apiCompartments(item.bin_status, item.compartments);
   const usable = usableCount(parts.map((c) => ({ state: apiBinState(c) })));
+  // 全部失聯時「可丟 0/2」不是吃飽了，用中性色。
+  const allOffline =
+    parts.length > 0 && parts.every((c) => apiBinState(c) === "offline");
   const walk = walkText(item);
   return (
     <button
       type="button"
-      className="location-row"
+      className={`location-row${active ? " active" : ""}`}
+      aria-current={active ? "true" : undefined}
+      data-id={item.id}
       onClick={() => onSelect(item)}
     >
-      <span className={`row-buddy ${stateVisual[state].className}`}>
-        <Mascot state={state} />
-      </span>
+      {proposed ? (
+        // 建議點：跟地圖 M3 標記同一個虛線外框＋「＋」。
+        <span className="row-buddy mx-proposed-row" aria-hidden="true">
+          <span dangerouslySetInnerHTML={{ __html: proposedBinSvg() }} />
+          <span className="mx-proposed-plus">＋</span>
+        </span>
+      ) : (
+        <span className={`row-buddy ${stateVisual[state].className}`}>
+          <Mascot state={state} />
+        </span>
+      )}
       <span className="row-copy">
         <span className="mx-row-title">
           <strong>{item.label}</strong>
@@ -747,7 +774,7 @@ function NearbyRow({
       </span>
       {!proposed && !removed && (
         <span
-          className={`mx-usable ${usable === 0 ? "state-full" : "state-hungry"}`}
+          className={`mx-usable ${allOffline ? "state-offline" : usable === 0 ? "state-full" : "state-hungry"}`}
         >
           <small>可丟</small>
           <span className="numeral-sm">

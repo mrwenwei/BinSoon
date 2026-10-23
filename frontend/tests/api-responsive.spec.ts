@@ -58,7 +58,7 @@ test("M navigation has three responsive tabs and identity switches through login
   await expect(page.getByRole("button", { name: "開啟選單" })).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "主要分頁" });
   await expect(nav.getByRole("link")).toHaveCount(3);
-  for (const name of ["地圖", "要桶投票", "我的"])
+  for (const name of ["地圖", "設桶投票", "我的"])
     await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
   const box = await nav.boundingBox();
   if (info.project.name === "mobile")

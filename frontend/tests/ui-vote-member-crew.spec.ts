@@ -83,24 +83,41 @@ test("shorter sheet and focused V1 vote, LINE share and V2 history", async ({
   const tabBox = await page.locator(".m-tabs").boundingBox();
   expect(supportBox!.y + supportBox!.height).toBeLessThanOrEqual(tabBox!.y);
   await page.screenshot({ path: "/tmp/binsoon-v1.png" });
+  // 投完留在面板（不跳 vote-done）：按鈕變成「✓ 你不支持／改投支持」。
   await ballot.getByRole("button", { name: "不支持", exact: true }).click();
   await expect(
-    ballot.getByRole("button", { name: "不支持", exact: true }),
-  ).toBeDisabled();
-  await ballot.getByRole("button", { name: "支持", exact: true }).click();
+    ballot.getByRole("button", { name: "✓ 你不支持", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await ballot.getByRole("button", { name: "改投支持", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "你投了支持票", exact: true }),
+    ballot.getByRole("button", { name: "✓ 你支持", exact: true }),
   ).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`#bin/${proposedId}`));
+  await expect(ballot.getByText("已投下支持，謝謝你！")).toBeVisible();
+  // 分享：沒有系統分享時打開小選單，LINE 連結帶這個建議點。
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, "share", {
+      value: undefined,
+      configurable: true,
+    }),
+  );
+  await ballot
+    .getByRole("button", { name: "邀朋友一起投", exact: true })
+    .click();
   const share = new URL(
     (await page
-      .getByRole("link", { name: "分享到 LINE" })
+      .getByRole("dialog", { name: "分享這個地點" })
+      .getByRole("link", { name: "用 LINE 分享" })
       .getAttribute("href"))!,
   );
   expect(share.hostname).toBe("social-plugins.line.me");
   expect(share.searchParams.get("url")).toContain(`#bin/${proposedId}`);
-  await expect(page.locator(".vote-done-timeline li")).toHaveCount(4);
+  await page.getByRole("button", { name: "取消", exact: true }).click();
+  await expect(ballot.locator(".mx-vote-steps li")).toHaveCount(4);
   await page.screenshot({ path: "/tmp/binsoon-v1-done.png" });
-  await page.getByRole("link", { name: "看投票紀錄", exact: true }).click();
+  await ballot
+    .getByRole("link", { name: "我的投票紀錄 →", exact: true })
+    .click();
   await expect(page.locator(".vote-history-card")).toHaveCount(1);
   await expect(page.locator(".proposal-progress-track > span")).toHaveCount(4);
   await expect(page.getByRole("button", { name: "更新提案" })).toHaveCount(0);

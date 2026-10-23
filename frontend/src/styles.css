@@ -24,6 +24,8 @@
   /* 少量衍生色（仍由 token 混出）。 */
   --tint-teal: color-mix(in srgb, var(--teal) 14%, var(--chrome));
   --tint-signal: color-mix(in srgb, var(--signal) 14%, var(--chrome));
+  /* 像素小 z 的形狀（4×4 格，當 mask 用，顏色取 currentColor），不是顏色。 */
+  --pixel-z: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 4' shape-rendering='crispEdges'><path d='M0 0h4v1H0zM2 1h1v1H2zM1 2h1v1H1zM0 3h4v1H0z'/></svg>");
   --tint-place: color-mix(in srgb, var(--place) 12%, var(--chrome));
   --scrim: color-mix(in srgb, var(--panel) 72%, transparent);
   --marker-shadow: color-mix(in srgb, var(--text-on-light) 35%, transparent);
@@ -317,14 +319,17 @@ a.points-button:not([aria-label]) {
   color: var(--text-muted);
   font-size: 13px;
 }
+/* 文字連結（配色 v4）：白字＋2px --signal 底線。 */
 .text-button {
   min-height: 44px;
   padding: 0 var(--space-2);
   border: 0;
   background: none;
-  color: var(--teal);
+  color: var(--text);
   font-weight: 700;
   text-decoration: underline;
+  text-decoration-color: var(--signal);
+  text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
 .prototype {
@@ -500,10 +505,12 @@ a.points-button:not([aria-label]) {
   color: var(--text-muted);
   font-size: 13px;
 }
+/* 已選（配色 v4）：2px --signal 框（inset，不改尺寸）、不填底、白字。 */
 .tabs button[aria-pressed="true"],
 .tabs button[aria-selected="true"] {
-  background: var(--mint);
-  color: var(--text-on-light);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--signal);
+  color: var(--text);
   font-weight: 700;
 }
 .filter-chips {
@@ -521,9 +528,10 @@ a.points-button:not([aria-label]) {
   font-size: 13px;
 }
 .filter-chips button[aria-pressed="true"] {
-  background: var(--mint);
-  border-color: var(--mint);
-  color: var(--text-on-light);
+  background: transparent;
+  border-color: var(--signal);
+  box-shadow: inset 0 0 0 1px var(--signal);
+  color: var(--text);
   font-weight: 700;
 }
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
@@ -609,18 +617,36 @@ input[type="file"]::file-selector-button {
   border-color: var(--signal);
   color: var(--signal);
 }
+/* 像素小 z（電子雞打瞌睡的 z，4×4 格）：吃飽了的非顏色線索，currentColor。 */
+.status-pill.state-full::before,
+.mx-slot.state-full .mx-slot-value::after,
+.compartment-full-tag::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  -webkit-mask: var(--pixel-z) center / contain no-repeat;
+  mask: var(--pixel-z) center / contain no-repeat;
+  image-rendering: pixelated;
+}
 .status-pill.state-offline {
   border: 1px dashed var(--status-offline);
   color: var(--status-offline);
 }
+/* 警示（配色 v4）：左框中性色、底 --field，前面加 ⚠（橘色只留給吃飽了與「你選的」）。 */
 .storage-warning,
 .toast {
   margin: 0;
   padding: var(--space-3) var(--space-4);
-  background: var(--tint-signal);
-  border-left: 3px solid var(--signal);
+  background: var(--field);
+  border-left: 3px solid var(--text-muted);
   color: var(--text);
   font-size: 13px;
+}
+.storage-warning::before,
+.map-warning::before {
+  content: "⚠ ";
 }
 .storage-warning button,
 .toast button {
@@ -834,6 +860,11 @@ input[type="file"]::file-selector-button {
   box-shadow: none;
   border-left: 3px solid var(--teal);
 }
+/* 市民地圖清單（配色 v4）：剛看過的那一列（active、aria-current）左側 3px --signal 線。 */
+.mx-list .location-row.active {
+  border-left: 0;
+  box-shadow: inset 3px 0 0 var(--signal);
+}
 .row-buddy {
   width: 34px;
   height: 38px;
@@ -998,7 +1029,7 @@ input[type="file"]::file-selector-button {
   z-index: 600;
   margin: 0;
   padding: 10px var(--space-3);
-  border-left: 3px solid var(--signal);
+  border-left: 3px solid var(--text-muted);
   border-radius: var(--radius-sm);
   background: var(--chrome);
   color: var(--text);
@@ -1138,13 +1169,6 @@ input[type="file"]::file-selector-button {
   outline-offset: 3px;
   border-radius: 50%;
 }
-.pixel-marker.selected .marker-body::after {
-  content: "";
-  position: absolute;
-  inset: -9px -7px;
-  border: 2.5px solid var(--signal);
-  border-radius: 50%;
-}
 /* 垃圾桶機器人（map/binBot.ts）：24×23 像素圖放大 2 倍，框 52×52，手機同尺寸
    （像素圖只能整數倍放大）。自帶影子，不用 drop-shadow。 */
 .pixel-marker.bot-marker .marker-body {
@@ -1168,11 +1192,185 @@ input[type="file"]::file-selector-button {
   filter: drop-shadow(1px 0 0 var(--text)) drop-shadow(-1px 0 0 var(--text))
     drop-shadow(0 1px 0 var(--text)) drop-shadow(0 -1px 0 var(--text));
 }
-.pixel-marker.bot-marker .marker-crosshair {
-  bottom: 26px;
+/* 選中底盤（配色 v4，底盤 ③ 像素風實心底座，map/marker.ts 的 selectedBaseHtml）：
+   角色腳下的扁橢圓，2px 一格；外圈 --route-casing、內部 --signal、中間一圈白、下半疊 --marker-shadow。
+   底盤與十字定位線不在選中標記裡，而是 LocationMap 另外加的不可點標記（Leaflet shadowPane，
+   .mx-selected-base），在所有標記下面：鄰居角色會壓在底盤上。中心＝選中標記的腳底。
+   --base-w＝底盤寬（1 倍為角色寬 1.75 倍，其他 1.5 倍）、--base-foot＝腳底中心離 .marker-body 底邊、
+   --foot-shift＝.marker-body 底邊離錨點（只有 1 倍差 1px）。建議點的支持率小牌也用 --base-w 下移。 */
+.pixel-marker,
+.mx-selected-base {
+  --base-w: 72px;
+  --base-foot: 2px;
+}
+.bot-mid :is(.pixel-marker.bot-marker, .mx-selected-base.kind-bot) {
+  --base-w: 56px;
+}
+.bot-small :is(.pixel-marker.bot-marker, .mx-selected-base.kind-bot) {
+  --base-w: 42px;
+  --base-foot: 1px;
+  --foot-shift: 1px;
+}
+/* 地標與場所代表點：框 44×44、.marker-body 底 4px，底盤對齊錨點（不對齊偏左的旗杆）。 */
+:is(.pixel-marker:is(.mx-landmark, .place), .mx-selected-base.kind-landmark) {
+  --base-w: 42px;
+  --base-foot: 3px;
+}
+/* 底盤圖層：寬度直接用選中放大後的值（--pick），中心＝腳底。 */
+.mx-selected-base {
+  --pick: 1;
+  --foot-y: calc(var(--foot-shift, 0px) - var(--base-foot) * var(--pick));
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.mx-map .mx-selected-base:is(.kind-bot, .kind-landmark) {
+  --pick: 1.3;
+}
+.mx-selected-base .marker-base {
+  position: absolute;
+  left: 0;
+  top: var(--foot-y);
+  width: calc(var(--base-w) * var(--pick));
+  height: calc(var(--base-w) * var(--pick) / 3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.marker-base svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.marker-base .base-fill {
+  fill: var(--signal);
+}
+.marker-base .base-shade {
+  fill: var(--marker-shadow);
+}
+.marker-base .base-ring {
+  fill: var(--mascot-eye);
+}
+.marker-base .base-edge {
+  fill: var(--route-casing);
+}
+/* 十字定位線（橘色虛線，--signal-on-light）：跟底盤同一層，交點＝底盤中心＝腳底。 */
+.marker-crosshair {
+  position: absolute;
+  left: 0;
+  top: var(--foot-y);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.marker-crosshair::before,
+.marker-crosshair::after {
+  content: "";
+  position: absolute;
+  opacity: 0.7;
+}
+.marker-crosshair::before {
+  left: -1600px;
+  width: 3200px;
+  top: 0;
+  border-top: 1px dashed var(--signal-on-light);
+}
+.marker-crosshair::after {
+  top: -1600px;
+  height: 3200px;
+  left: 0;
+  border-left: 1px dashed var(--signal-on-light);
+}
+/* 底盤跟著選中角色同步放大／縮回（220ms／200ms，同 .mx-pick／.mx-unpick）。 */
+@media (prefers-reduced-motion: no-preference) {
+  .mx-map .mx-selected-base.mx-pick .marker-base {
+    animation: mx-base-pick 220ms cubic-bezier(0.3, 1.35, 0.6, 1);
+  }
+  .mx-map .mx-selected-base.mx-unpick .marker-base {
+    animation: mx-base-unpick 200ms ease-out forwards;
+  }
+}
+@keyframes mx-base-pick {
+  from {
+    transform: translate(-50%, -50%) scale(calc(1 / var(--pick)));
+  }
+}
+@keyframes mx-base-unpick {
+  to {
+    transform: translate(-50%, -50%) scale(calc(1 / var(--pick)));
+    opacity: 0;
+  }
+}
+/* 角色在底盤上面。 */
+.pixel-marker .marker-body > svg {
+  position: relative;
+  z-index: 1;
+}
+/* 市民地圖瀏覽（MapPage 的 .mx-map）選中的桶與地標放大 1.3 倍；回報、管理、清潔隊等其他頁的
+   地圖不受影響。以腳底中心為基準（位置不飄），選中底盤與血條跟著身體一起放大；
+   「新」小牌移到放大後的右上角。--mx-bot-h 是各縮放級距的角色高度。
+   換圖示時 Leaflet 會重建標記內容，transition 不會觸發：剛選中時 LocationMap 加
+   .mx-pick 播一次放大（同一個桶重建圖示不重播），剛取消選取時加 .mx-unpick 播縮回。
+   減少動態效果時只放大，不加這兩個 class、不播動畫。 */
+.mx-map .pixel-marker.bot-marker {
+  --mx-pick: 1.3;
+  --mx-bot-h: 52px;
+}
+/* 地標旗子（場所代表點）選中時一樣放大：身體 32px、底 4px。 */
+.mx-map .pixel-marker.mx-landmark {
+  --mx-pick: 1.3;
+  --mx-bot-h: 32px;
+}
+.mx-map .bot-mid .pixel-marker.bot-marker {
+  --mx-bot-h: 40px;
+}
+.mx-map .bot-small .pixel-marker.bot-marker {
+  --mx-bot-h: 26px;
+}
+.mx-map .pixel-marker:is(.bot-marker, .mx-landmark) .marker-body {
+  transform-origin: 50% 100%;
+}
+.mx-map .pixel-marker:is(.bot-marker, .mx-landmark).selected .marker-body {
+  transform: translateX(-50%) scale(var(--mx-pick));
+}
+.mx-map .pixel-marker:is(.bot-marker, .mx-landmark).selected .marker-lifecycle {
+  transform: translate(
+    calc(var(--mx-bot-h) / 2 * (var(--mx-pick) - 1)),
+    calc(var(--mx-bot-h) * (1 - var(--mx-pick)))
+  );
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mx-map
+    .pixel-marker:is(.bot-marker, .mx-landmark).selected.mx-pick
+    .marker-body {
+    animation: mx-bot-pick 220ms cubic-bezier(0.3, 1.35, 0.6, 1);
+  }
+  .mx-map
+    .pixel-marker:is(.bot-marker, .mx-landmark).selected.mx-pick
+    .marker-lifecycle {
+    animation: mx-bot-shift 220ms cubic-bezier(0.3, 1.35, 0.6, 1);
+  }
+  .mx-map .pixel-marker:is(.bot-marker, .mx-landmark).mx-unpick .marker-body {
+    animation: mx-bot-unpick 200ms ease-out;
+  }
+}
+@keyframes mx-bot-pick {
+  from {
+    transform: translateX(-50%) scale(1);
+  }
+}
+@keyframes mx-bot-shift {
+  from {
+    transform: none;
+  }
+}
+@keyframes mx-bot-unpick {
+  from {
+    transform: translateX(-50%) scale(var(--mx-pick));
+  }
 }
 .pixel-marker.removed .marker-body {
   outline: 0;
+  color: var(--text-on-light-muted);
 }
 /* 聚合的代表桶（map/botClusters.ts）：右上角數字＝合在一起的桶數 */
 .marker-count {
@@ -1206,9 +1404,6 @@ input[type="file"]::file-selector-button {
   bottom: 1px;
   pointer-events: auto;
 }
-.bot-small .pixel-marker.bot-marker .marker-crosshair {
-  bottom: 14px;
-}
 .bot-small .marker-count {
   top: -9px;
   right: -12px;
@@ -1233,9 +1428,6 @@ input[type="file"]::file-selector-button {
 .bot-mid .pixel-marker.bot-marker .marker-body {
   bottom: 2px;
   pointer-events: auto;
-}
-.bot-mid .pixel-marker.bot-marker .marker-crosshair {
-  bottom: 20px;
 }
 .bot-mid .marker-count {
   top: -8px;
@@ -1361,32 +1553,6 @@ input[type="file"]::file-selector-button {
   .bin-bot .bot-idle {
     animation: none !important;
   }
-}
-.marker-crosshair {
-  position: absolute;
-  left: 50%;
-  bottom: 22px;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-.marker-crosshair::before,
-.marker-crosshair::after {
-  content: "";
-  position: absolute;
-  opacity: 0.7;
-}
-.marker-crosshair::before {
-  left: -1600px;
-  width: 3200px;
-  top: 0;
-  border-top: 1px dashed var(--signal-on-light);
-}
-.marker-crosshair::after {
-  top: -1600px;
-  height: 3200px;
-  left: 0;
-  border-left: 1px dashed var(--signal-on-light);
 }
 .marker-lifecycle {
   position: absolute;
@@ -1612,6 +1778,16 @@ input[type="file"]::file-selector-button {
   display: block;
   width: 20px;
   height: 20px;
+}
+/* StationCard 吃飽了那一槽的「吃飽了」小字：預設不顯示，手機桶詳情才顯示（見下方 media）。 */
+.compartment-full-tag {
+  display: none;
+  flex-basis: 100%;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--signal);
+  font: var(--text-caption);
+  font-weight: 700;
 }
 .compartment-status {
   font: var(--text-label);
@@ -5369,8 +5545,8 @@ input[type="file"]::file-selector-button {
 }
 .page > [role="alert"] {
   padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--signal);
-  background: var(--tint-signal);
+  border-left: 3px solid var(--text-muted);
+  background: var(--field);
   color: var(--text);
 }
 .page [role="status"] {
@@ -6084,8 +6260,16 @@ input[type="file"]::file-selector-button {
 .bin-title h1 {
   margin: 0;
 }
-.bin-title p {
-  margin: 6px 0 0;
+/* 桶名＋「新設」膠囊同一列，膠囊不換行。 */
+.bin-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.bin-title-row .status-pill {
+  flex: none;
 }
 .api-bin-detail .bin-overview {
   padding: 24px;
@@ -6367,9 +6551,6 @@ input[type="file"]::file-selector-button {
   padding: var(--space-4) var(--space-6);
   border-bottom: 2px solid var(--divider);
 }
-.mx-panel-head .back-link {
-  margin: 0;
-}
 .mx-title {
   flex: 1;
   min-width: 0;
@@ -6382,6 +6563,34 @@ input[type="file"]::file-selector-button {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0 var(--space-6) var(--space-6);
+}
+/* 詳情最上面的「回到清單」：平常視覺隱藏（讀屏仍讀得到、可點），鍵盤聚焦時才出現。 */
+.mx-close-detail:not(:focus-visible) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.mx-close-detail:focus-visible {
+  margin-top: var(--space-3);
+}
+/* 面板內容換畫面（清單 ⇄ 桶／地標詳情、桶換桶）：新內容淡入並微微上移，
+   只動 opacity／transform；抽屜高度變化沿用 .mx-panel 的高度過場。 */
+@media (prefers-reduced-motion: no-preference) {
+  .mx-panel-content {
+    animation: mx-sheet-in 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+}
+@keyframes mx-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 .mx-filters {
   display: grid;
@@ -6483,7 +6692,10 @@ input[type="file"]::file-selector-button {
 }
 .mx-slot-value {
   flex: none;
-  width: 3em;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: 3.6em;
   font: var(--text-caption);
   font-weight: 700;
   color: var(--text-body);
@@ -6514,6 +6726,10 @@ input[type="file"]::file-selector-button {
 }
 .mx-usable.state-full .numeral-sm {
   color: var(--signal);
+}
+/* 全部失聯：可丟 0/2 不是「吃飽了」，用中性色。 */
+.mx-usable.state-offline .numeral-sm {
+  color: var(--text-muted);
 }
 .mx-empty {
   padding: var(--space-5) var(--space-1);
@@ -6546,7 +6762,7 @@ input[type="file"]::file-selector-button {
   border: 1px solid var(--line);
 }
 .mx-bin {
-  padding-top: var(--space-4);
+  padding-top: var(--space-2);
 }
 .mx-bin h1 {
   margin: 0;
@@ -6678,29 +6894,43 @@ input[type="file"]::file-selector-button {
   width: 28px;
   height: 32px;
 }
-.mx-proposed {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 0;
+/* 建議點（M3，map/binBot.ts 的 proposedBinSvg）：垃圾桶機器人同形狀的虛線外框，
+   外框與「＋」用深青綠 --teal-on-mint，框內淡底 --mascot-eye 70%；52×52、腳底中心對準位置。 */
+.bin-bot-proposed .bot-ghost {
+  fill: color-mix(in srgb, var(--mascot-eye) 70%, transparent);
 }
-.mx-proposed span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border: 2px dashed var(--text-on-light);
-  border-radius: var(--radius-xs);
-  background: color-mix(in srgb, var(--mascot-eye) 70%, transparent);
-  color: var(--text-on-light);
-  font: var(--text-heading);
-  line-height: 1;
+.pixel-marker.mx-proposed .marker-body {
+  bottom: 2px;
+  color: var(--teal-on-mint);
+  filter: none;
 }
-.mx-proposed.selected span {
-  outline: 2.5px solid var(--signal);
-  outline-offset: var(--space-1);
+.pixel-marker.mx-proposed .marker-body svg.bin-bot-proposed {
+  width: 52px;
+  height: 52px;
+  overflow: visible;
+}
+.mx-proposed-plus {
+  position: absolute;
+  /* Leaflet 給標記裡的 svg 疊層 200，「＋」要高過淡底才不會被蓋淡。 */
+  z-index: 300;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--teal-on-mint);
+  font: 700 20px/1 var(--font-sans);
+}
+/* 清單列的建議點圖示：同一個 SVG，縮在 .row-buddy 裡。 */
+.row-buddy.mx-proposed-row {
+  position: relative;
+  color: var(--teal-on-mint);
+}
+.row-buddy.mx-proposed-row svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.row-buddy.mx-proposed-row .mx-proposed-plus {
+  font-size: 16px;
 }
 .mx-origin {
   display: flex;
@@ -6765,8 +6995,11 @@ input[type="file"]::file-selector-button {
     padding: var(--space-1) var(--space-4) var(--space-3);
     touch-action: none;
   }
+  /* 抽屜內容的觸控捲動由 useBottomSheet 接手（不是全開時先拖整個抽屜、全開才捲內容，
+     同一次手勢內交接）：關掉瀏覽器原生的觸控捲動，避免原生捲動與慣性搶走手勢。 */
   .mx-panel-body {
     padding: 0 var(--space-4) var(--space-6);
+    touch-action: none;
   }
   .mx-list {
     margin-inline: calc(var(--space-4) * -1);
@@ -6785,7 +7018,8 @@ input[type="file"]::file-selector-button {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mx-panel {
+  .mx-panel,
+  .gnav-card {
     transition: none;
   }
 }
@@ -7471,16 +7705,51 @@ input[type="file"]::file-selector-button {
   justify-content: space-between;
   gap: var(--space-3);
 }
-.gnav-title {
-  margin: 0;
-  font: var(--text-label-lg);
-  letter-spacing: 1px;
-  color: var(--text-muted);
+/* 標題列：左邊導航中的下一步，右邊關閉圖示＝結束導航（44×44 觸控區、不搶主按鈕）。 */
+.gnav-head-copy {
+  flex: 1;
+  min-width: 0;
 }
-.gnav-head-links {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
+.gnav-peek {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--text);
+  font: var(--text-caption);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* 44×44 圖示按鈕（導航頁 ✕ 結束導航、投票面板分享鈕共用）：--line-control 細框、--radius-sm。 */
+.icon-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.icon-button:hover {
+  background: var(--field);
+}
+.icon-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.icon-button svg {
+  width: 22px;
+  height: 22px;
+}
+.gnav-end {
+  margin-left: auto;
+}
+.gnav-body {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
 }
 .gnav-foot {
   display: flex;
@@ -7520,6 +7789,7 @@ input[type="file"]::file-selector-button {
   display: grid;
   gap: var(--space-1);
 }
+.gnav-head-copy .navigation-destination,
 .gnav-dest .navigation-destination {
   margin: 0;
   font-size: 18px;
@@ -7770,7 +8040,7 @@ input[type="file"]::file-selector-button {
   }
 }
 .navigation-reroute {
-  border-left: 3px solid var(--signal);
+  border-left: 3px solid var(--text-muted);
 }
 @media (prefers-reduced-motion: reduce) {
   .ai-progress {
@@ -8131,9 +8401,13 @@ input[type="file"]::file-selector-button {
   font: var(--text-caption);
   color: var(--text-muted);
 }
+/* 選中時支持率小牌往下移一個底盤半高，避開腳下底盤。 */
+.mx-proposed.selected .proposal-marker-votes {
+  top: calc(100% + 4px + var(--base-w) / 6);
+}
 .mx-proposed .proposal-marker-votes {
   position: absolute;
-  top: 34px;
+  top: calc(100% + 4px);
   left: 50%;
   transform: translateX(-50%);
   background: var(--chrome);
@@ -8700,41 +8974,54 @@ input[type="file"]::file-selector-button {
     padding-block: var(--space-2);
     min-height: 72px;
   }
-  .mx-panel[data-view="bin"]:not([data-ballot="true"]) {
-    inset: 0;
-    height: 100%;
-    max-height: 100%;
-    border-radius: 0;
-    z-index: 8;
-    transform: translateX(0);
-    transition:
-      transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
-      opacity 180ms ease;
-  }
-  @starting-style {
-    .mx-panel[data-view="bin"]:not([data-ballot="true"]) {
-      transform: translateX(8%);
-      opacity: 0;
-    }
-  }
-  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .mx-handle-wrap {
-    display: none;
-  }
-  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .mx-panel-head {
-    min-height: 44px;
-  }
+  /* 桶詳情在底部抽屜原地顯示（半開、把手可拖），地圖留在上方；不再滿版蓋住地圖。 */
   .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-overview {
     padding: 0;
     border: 0;
     background: transparent;
   }
-  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-action-panel {
-    padding: var(--space-3) 0;
+  /* 「導航過去／回報問題」固定在抽屜底部（半開、全開都看得到，內容從它底下捲過）：
+     桶卡與動作區改成 display: contents，按鈕列成為 .api-bin-detail 的直接子項，
+     sticky 才不會被困在卡片裡；flex order 把它排到最後、margin-top: auto 貼齊底部。
+     認養橫條等其他內容照原順序留在捲動內容裡。桌面版不受影響。 */
+  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .mx-panel-body {
+    padding-bottom: 0;
+  }
+  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .mx-panel-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .api-bin-detail {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .mx-panel[data-view="bin"]:not([data-ballot="true"])
+    :is(.bin-overview, .bin-action-panel) {
+    display: contents;
+  }
+  .mx-panel[data-view="bin"]:not([data-ballot="true"])
+    .bin-compartment-overview {
+    margin-top: 0;
   }
   .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-actions {
+    order: 1;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-2);
+    margin: auto calc(var(--space-4) * -1) 0;
+    padding: var(--space-3) var(--space-4)
+      calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--chrome);
+  }
+  /* 有底部分頁列時，地圖版面已扣掉分頁列（含 safe-area），按鈕列不再重複留白。 */
+  .m-app .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-actions {
+    padding-bottom: var(--space-3);
   }
   .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-actions .button {
     min-height: 48px;
@@ -8744,24 +9031,71 @@ input[type="file"]::file-selector-button {
   .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-title .bin-avatar {
     display: none;
   }
-  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-title h1 {
+  .mx-panel:is([data-view="bin"]:not([data-ballot="true"]), [data-view="place"])
+    .bin-title
+    h1 {
     font: var(--text-heading);
   }
-  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-heading {
+  /* 抽屜標題一律靠左（清單、桶、場所、投票、導航同一規則）。
+     .api-bin-detail .bin-heading 的 align-items:center 在直向排列時會變成水平置中，這裡蓋回靠左。 */
+  .mx-panel:is([data-view="bin"]:not([data-ballot="true"]), [data-view="place"])
+    .bin-heading {
+    align-items: stretch;
     margin-bottom: var(--space-3);
   }
   .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-adopt-cta {
     min-height: 48px;
     margin-block: var(--space-3);
   }
+  /* 手機：地圖滿版，資訊卡是跟地圖頁一樣的底部抽屜（useBottomSheet；收起／半開／全開），
+     高度用 --gnav-drawer-h，過場沿用 .mx-panel 抽屜；地圖控制項移到抽屜上方。 */
   .gnav {
-    grid-template-rows: minmax(0, 1fr) auto;
+    position: relative;
+    display: block;
+  }
+  .gnav-map {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
+  }
+  .gnav-map .leaflet-bottom {
+    bottom: var(--gnav-drawer-h, 50%);
   }
   .gnav-card {
-    max-height: 42dvh;
-    padding: var(--space-3) var(--space-4);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: var(--gnav-drawer-h, 50%);
+    max-height: none;
+    overflow: hidden;
+    padding: 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    transition: height 0.26s ease;
   }
-  .gnav-card > .waste-picker,
+  .gnav-card.dragging {
+    transition: none;
+  }
+  .gnav-card-head {
+    flex: none;
+    min-height: 52px;
+    padding: 0 var(--space-4) var(--space-3);
+    touch-action: none;
+  }
+  .gnav-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 var(--space-4) var(--space-4);
+    /* 同 .mx-panel-body：觸控捲動由 useBottomSheet 接手。 */
+    touch-action: none;
+  }
+  .gnav-body > .waste-picker,
   .gnav-dest > .waste-tag {
     display: none;
   }
@@ -8783,17 +9117,6 @@ input[type="file"]::file-selector-button {
   .report-compose,
   .report-success {
     padding-inline: var(--space-4);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mx-panel[data-view="bin"]:not([data-ballot="true"]) {
-    transition: none;
-  }
-  @starting-style {
-    .mx-panel[data-view="bin"]:not([data-ballot="true"]) {
-      transform: none;
-      opacity: 1;
-    }
   }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -8845,26 +9168,12 @@ input[type="file"]::file-selector-button {
   max-width: 480px;
 }
 @media (max-width: 760px) {
-  .gnav-card-head .gnav-head-links > a:first-child {
-    display: none;
-  }
   .gnav-summary .gnav-minutes {
     font: var(--text-heading);
   }
   .gnav-summary .gnav-minutes small {
     font: var(--text-caption);
   }
-}
-.bin-detail-buddy {
-  display: grid;
-  place-items: center;
-  padding: var(--space-4);
-  background: var(--chrome);
-}
-.bin-detail-buddy .mascot,
-.bin-detail-buddy svg.bin-bot {
-  width: 88px;
-  height: auto;
 }
 .mx-bin .station-band {
   padding-block: var(--space-3);
@@ -8877,6 +9186,539 @@ input[type="file"]::file-selector-button {
 }
 .mx-bin .band-status {
   font: var(--text-heading);
+}
+/* ── 設桶投票面板（components/api/VotePanel.tsx，設計定案稿 vote-panel-v12） ──
+   字級只用四級：20（問句、數字）／16（狀態句）／14（按鈕、副標、小標題）／12（說明、標籤）。
+   標題列靠左；儀表以下置中。投票支持色 --teal、不支持 --text-body、門檻線 --text。 */
+.mx-vote-panel {
+  --vote-support: var(--teal);
+  --vote-oppose: var(--text-body);
+  --vote-threshold: var(--text);
+  --vote-ease: cubic-bezier(0.33, 1, 0.68, 1);
+  --vote-text-14: 700 14px/22px var(--font-sans);
+  display: grid;
+  gap: var(--space-4);
+}
+.mx-vote-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  column-gap: var(--space-2);
+  row-gap: 2px;
+  align-items: start;
+  text-align: left;
+}
+.mx-vote-panel .mx-vote-q {
+  grid-column: 1;
+  margin: 0;
+  color: var(--text);
+  font: var(--text-card-title);
+}
+.mx-vote-sub {
+  grid-column: 1;
+  margin: 0;
+  color: var(--text-body);
+  font: 400 14px/22px var(--font-sans);
+}
+.mx-vote-share {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
+}
+.mx-vote {
+  display: grid;
+  gap: var(--space-4);
+}
+/* 副標到儀表最上面的「60%」標籤，視覺距離收成 8px：
+   面板間距 16px，標籤又凸出 SVG 上緣約 3px，所以再往上拉 5px。 */
+.mx-vote-top + .mx-vote {
+  margin-top: -5px;
+}
+.mx-vote-meter,
+.mx-vote-status,
+.mx-vote-act {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+.mx-vote-meter {
+  gap: 10px;
+}
+.mx-vote-status {
+  gap: 2px;
+}
+.mx-vote-act {
+  gap: 6px;
+}
+.mx-vote-meter p,
+.mx-vote-act p {
+  margin: 0;
+}
+.mx-vote-main {
+  color: var(--text);
+  font: var(--text-heading);
+}
+.mx-vote-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  justify-self: stretch;
+}
+.mx-vote-actions .button {
+  min-height: 48px;
+  justify-content: center;
+  font: var(--vote-text-14);
+}
+.mx-vote-actions .button.chosen-s {
+  border: 2px solid var(--vote-support);
+  background: color-mix(in srgb, var(--vote-support) 14%, transparent);
+}
+.mx-vote-actions .button.chosen-o {
+  border: 2px solid var(--vote-oppose);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.mx-vote-actions .button:disabled {
+  opacity: 0.5;
+}
+.mx-vote-ask {
+  display: grid;
+  gap: var(--space-2);
+  justify-self: stretch;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  font: var(--vote-text-14);
+}
+/* 半圓儀表：240px 寬，viewBox 300×145。 */
+.mx-vote-gauge {
+  --gw: 240px;
+  position: relative;
+  width: var(--gw);
+  margin: 0 auto;
+}
+.mx-gauge {
+  --sd: 0;
+  --od: 0;
+  display: block;
+  width: var(--gw);
+  height: calc(var(--gw) * 145 / 300);
+  overflow: visible;
+}
+.mx-gauge .g-track {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 14;
+}
+.mx-gauge .g-s,
+.mx-gauge .g-o {
+  fill: none;
+  stroke-width: 14;
+}
+.mx-gauge .g-s {
+  stroke: var(--vote-support);
+  stroke-dasharray: var(--sd) 200;
+}
+.mx-gauge .g-o {
+  stroke: var(--vote-oppose);
+  stroke-dasharray: var(--od) 200;
+}
+.mx-gauge .g-cut {
+  stroke: var(--chrome);
+  stroke-width: 4;
+}
+.mx-gauge .g-tick {
+  stroke: var(--vote-threshold);
+  stroke-width: 2;
+}
+.mx-gauge .g-lab {
+  fill: var(--text-body);
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+.mx-vote-gauge .g-center {
+  position: absolute;
+  top: calc(var(--gw) * 145 / 300 * 0.48);
+  left: 0;
+  right: 0;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+.mx-vote-gauge .g-center .cap {
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
+.mx-vote-gauge .g-center b {
+  color: var(--text);
+  font: var(--text-numeral-sm);
+}
+.mx-vote-gauge :is(.g-center b, .g-side .n) small {
+  margin-left: 1px;
+  font: 700 12px/1 var(--font-display);
+}
+.mx-vote-gauge .g-side {
+  position: absolute;
+  bottom: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+.mx-vote-gauge .g-side.s {
+  right: calc(var(--gw) - var(--gw) * 38 / 300 + 6px);
+  justify-content: flex-end;
+}
+.mx-vote-gauge .g-side.o {
+  left: calc(var(--gw) * 262 / 300 + 6px);
+  justify-content: flex-start;
+}
+/* 320 寬一類的窄手機：兩側「支持 95%／5% 不支持」同一行放不下（會切到面板外），
+   儀表縮到 200px，標籤改疊在數字上方。 */
+@media (max-width: 379px) {
+  .mx-vote-gauge {
+    --gw: 200px;
+  }
+  .mx-vote-gauge .g-side {
+    flex-direction: column;
+    gap: 0;
+  }
+  .mx-vote-gauge .g-side.s {
+    align-items: flex-end;
+  }
+  .mx-vote-gauge .g-side.o {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+  }
+}
+.mx-vote-gauge .g-side .lab {
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
+.mx-vote-gauge .g-side .n {
+  display: inline-block;
+  font: var(--text-numeral-sm);
+}
+.mx-vote-gauge .g-side.s .n {
+  color: var(--vote-support);
+}
+.mx-vote-gauge .g-side.o .n {
+  color: var(--vote-oppose);
+}
+.mx-vote-plus1 {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  color: var(--text);
+  font: 700 12px/1 var(--font-display);
+  opacity: 0;
+  pointer-events: none;
+}
+/* 投完後區塊：回饋句＋邀朋友（同一行、16px 粗、基線對齊）→ 1px 分隔線（上下 14px）
+   → 「從投票到設桶」小標題＋我的投票紀錄 → 四步 → 說明小字。只在自己投過票時出現。 */
+.mx-vote-after {
+  display: grid;
+  gap: 14px;
+  justify-self: stretch;
+  margin-top: 2px;
+}
+.mx-vote-group {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  text-align: center;
+}
+.mx-vote-live {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  column-gap: 10px;
+}
+.mx-vote-invite {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--teal);
+  font: var(--text-heading);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.mx-vote-sep {
+  display: block;
+  width: 100%;
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--line);
+}
+.mx-vote-steps-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin-bottom: -4px;
+}
+.mx-vote-steps-title {
+  margin: 0;
+  color: var(--text);
+  font: var(--vote-text-14);
+  text-align: left;
+}
+.mx-vote-history {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 12px 0;
+  color: var(--teal);
+  font: 700 12px/20px var(--font-sans);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.mx-vote-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: 100%;
+  max-width: 340px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mx-vote-steps li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  margin: 0;
+}
+.mx-vote-steps li + li::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--line);
+}
+.mx-vote-steps li.done + li::before {
+  background: var(--teal);
+}
+.mx-vote-steps .dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--line-control);
+  border-radius: 50%;
+  background: var(--chrome);
+  color: var(--text-muted);
+  font: 700 14px/1 var(--font-display);
+}
+.mx-vote-steps .done .dot {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.mx-vote-steps .cur .dot {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: var(--text-on-light);
+}
+.mx-vote-steps .lbl {
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
+.mx-vote-steps .cur .lbl {
+  color: var(--text);
+  font-weight: 700;
+}
+/* 提示條（自動投票、復原、複製連結）與分享選單：掛在 body（portal）。 */
+.mx-vote-toast {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--m-tabs-h, 0px) + 12px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  max-width: 416px;
+  min-height: 52px;
+  margin-inline: auto;
+  padding: 4px 4px 4px 14px;
+  border-radius: var(--radius-md);
+  background: var(--mint);
+  color: var(--text-on-light);
+}
+.mx-vote-toast span {
+  font: var(--text-heading);
+}
+.mx-vote-toast button {
+  min-width: 56px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--teal-on-mint);
+  font: var(--vote-text-14, 700 14px/1 var(--font-sans));
+  text-decoration: underline;
+  cursor: pointer;
+}
+.mx-share-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1190;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+}
+.mx-share-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1191;
+  display: grid;
+  gap: 10px;
+  max-width: 440px;
+  margin-inline: auto;
+  padding: var(--space-4) var(--space-4)
+    calc(20px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  border-radius: 12px 12px 0 0;
+  background: var(--chrome);
+  text-align: center;
+}
+.mx-share-sheet h2 {
+  margin: 0;
+  font: var(--text-heading);
+}
+.mx-share-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.mx-share-sheet .button {
+  min-height: 48px;
+  justify-content: center;
+}
+/* 動態：只在沒有減少動態效果時播（儀表弧 600ms、數字由 JS 跑動、+1、門檻線與結算閃一下）。 */
+@media (prefers-reduced-motion: no-preference) {
+  .mx-gauge .g-s,
+  .mx-gauge .g-o {
+    transition: stroke-dasharray 600ms var(--vote-ease);
+  }
+  .mx-vote-bump {
+    animation: mx-vote-pop 450ms ease-out;
+  }
+  .mx-vote-plus1 {
+    animation: mx-vote-plus 650ms ease-out;
+  }
+  .mx-gauge .g-tick.mx-vote-flash {
+    animation: mx-vote-tick 500ms ease-out;
+  }
+  .mx-gauge.mx-vote-closing {
+    animation: mx-vote-close 520ms ease-out;
+  }
+  .mx-vote-toast,
+  .mx-share-sheet {
+    animation: mx-vote-rise 250ms ease-out;
+  }
+}
+@keyframes mx-vote-pop {
+  40% {
+    transform: scale(1.18);
+  }
+}
+@keyframes mx-vote-plus {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+@keyframes mx-vote-tick {
+  40% {
+    stroke-width: 5;
+  }
+}
+@keyframes mx-vote-close {
+  40% {
+    filter: brightness(1.45);
+  }
+}
+@keyframes mx-vote-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* 場所詳情（PlacePanel）：沿用 StationCard 色帶，但不用桶況三色（場所不是桶），
+   改用場所電子雞的身體色 --place；文字 --text-on-light（對比 12.5:1）。 */
+.mx-place-card .station-band {
+  background: var(--place);
+  color: var(--text-on-light);
+}
+/* 說明文字左緣跟標題、卡片外框對齊（抽屜內容一律同一條左線）。 */
+.mx-place-note {
+  margin: 0;
+  padding: var(--space-3) 0;
+  color: var(--text-body);
+  font: var(--text-caption);
+}
+/* 「資料來源」摺疊：補一個會轉的箭頭，看得出可以展開（瀏覽器預設三角形被全域樣式拿掉了）。 */
+.mx-place-source summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  list-style: none;
+}
+.mx-place-source summary::-webkit-details-marker {
+  display: none;
+}
+.mx-place-source summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 150ms ease;
+}
+.mx-place-source[open] summary::before {
+  transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mx-place-source summary::before {
+    transition: none;
+  }
+}
+.mx-place-source {
+  margin-top: var(--space-3);
+}
+.mx-place-source dl {
+  margin: 0 0 var(--space-3);
+}
+.mx-place-source dt {
+  color: var(--text-muted);
+  font: var(--text-label);
+  letter-spacing: 1px;
+}
+.mx-place-source dd {
+  margin: 2px 0 var(--space-2);
+  color: var(--text-body);
+  overflow-wrap: anywhere;
 }
 .mx-bin .bin-adopt-cta {
   color: var(--text-on-light);
@@ -8891,7 +9733,8 @@ input[type="file"]::file-selector-button {
   padding-top: var(--space-4);
 }
 @media (max-width: 760px) {
-  .mx-panel[data-view="bin"]:not([data-ballot="true"]) .bin-title {
+  .mx-panel:is([data-view="bin"]:not([data-ballot="true"]), [data-view="place"])
+    .bin-title {
     grid-template-columns: 1fr;
   }
   .mx-panel[data-view="bin"]:not([data-ballot="true"])
@@ -8906,6 +9749,12 @@ input[type="file"]::file-selector-button {
   }
   .mx-panel[data-view="bin"]:not([data-ballot="true"]) .compartment-status {
     display: none;
+  }
+  /* 吃飽了那一槽保留「吃飽了」字樣＋像素小 z（不只靠橘色）。 */
+  .mx-panel[data-view="bin"]:not([data-ballot="true"])
+    .compartment.state-full
+    .compartment-full-tag {
+    display: inline-flex;
   }
 }
 
@@ -9253,10 +10102,6 @@ input[type="file"]::file-selector-button {
     height: var(--mx-drawer-h);
     max-height: 100%;
   }
-  .mx-panel[data-ballot="true"] .mx-bin h1 {
-    font: var(--text-heading);
-    margin-bottom: var(--space-2);
-  }
   .mx-panel[data-ballot="true"] .proposal-ballot {
     padding: 0;
   }
@@ -9414,12 +10259,6 @@ input[type="file"]::file-selector-button {
   min-height: 44px;
 }
 @media (max-width: 760px) {
-  .mx-panel[data-ballot="true"] .mx-panel-head {
-    display: none;
-  }
-  .mx-panel[data-ballot="true"] .mx-bin {
-    padding-top: 0;
-  }
   .mx-panel[data-ballot="true"] .mx-panel-body {
     padding-bottom: var(--space-3);
   }

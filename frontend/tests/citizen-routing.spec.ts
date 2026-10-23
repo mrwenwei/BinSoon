@@ -201,3 +201,129 @@ test("changing the waste type cancels the old route request and replaces the rou
   await expect(page.locator(".nav-route-line.remaining")).toHaveCount(1);
   await expect.poll(() => aborted).toBeGreaterThan(0);
 });
+
+// ── 手機：步行導航資訊卡是跟地圖頁一樣的底部抽屜，一顆「結束導航」回到桶詳情 ──
+async function phoneNav(page: Parameters<typeof apiFixture>[0]) {
+  await page.setViewportSize({ width: 412, height: 780 });
+  const parts = ["general", "recycling"].map((waste_type) => ({
+    ...usable,
+    waste_type,
+  }));
+  await apiFixture(page, async (route, path) => {
+    if (path === `/bins/${binId}/view`) {
+      await route.fulfill({
+        json: {
+          location: { ...location, bin_status: usable, compartments: parts },
+          status: usable,
+          compartments: parts,
+          can_report: false,
+          latest_cleanup: null,
+          adopter: null,
+        },
+      });
+      return true;
+    }
+    if (path === "/map/locations") {
+      await route.fulfill({
+        json: {
+          items: [{ ...location, bin_status: usable, compartments: parts }],
+          page: { limit: 100, offset: 0, total: 1 },
+        },
+      });
+      return true;
+    }
+  });
+  await page.route(endpoint, (route) =>
+    route.fulfill({ json: road("pedestrian") }),
+  );
+  await page.goto(`/#nav/${binId}?waste_type=recycling`);
+  await expect(page.getByRole("button", { name: "開始導航" })).toBeVisible();
+}
+const sheetHeight = (page: Parameters<typeof apiFixture>[0]) =>
+  page
+    .locator(".gnav-card")
+    .evaluate((el) => el.getBoundingClientRect().height);
+
+test("phone: the navigation card is a bottom drawer with a handle, half by default and draggable to full and back", async ({
+  page,
+}) => {
+  await phoneNav(page);
+  const layout = page.locator(".gnav");
+  const handle = page.locator(".gnav .mx-handle");
+  await expect(handle).toBeVisible();
+  await expect(layout).toHaveAttribute("data-drawer", "half");
+  const box = (await layout.boundingBox())!;
+  await expect
+    .poll(() => sheetHeight(page))
+    .toBeLessThanOrEqual(box.height * 0.5 + 1);
+  // 地圖滿版，抽屜疊在地圖上。
+  const map = (await page.locator(".gnav-map").boundingBox())!;
+  expect(Math.abs(map.height - box.height)).toBeLessThan(2);
+  // 往上拖到全開，再往下拖回半開。
+  const h = (await handle.boundingBox())!;
+  const x = h.x + h.width / 2;
+  await page.mouse.move(x, h.y + h.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, box.y + 20, { steps: 8 });
+  await page.mouse.up();
+  await expect(layout).toHaveAttribute("data-drawer", "full");
+  await expect.poll(() => sheetHeight(page)).toBeGreaterThan(box.height - 40);
+  const top = (await handle.boundingBox())!;
+  await page.mouse.move(x, top.y + top.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, box.y + box.height * 0.5, { steps: 8 });
+  await page.mouse.up();
+  await expect(layout).toHaveAttribute("data-drawer", "half");
+  // 舊的兩個小字連結已合併成一顆按鈕。
+  await expect(page.getByRole("link", { name: "返回桶詳情" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "結束導航" })).toHaveCount(0);
+});
+
+test("phone: starting navigation collapses the drawer, 結束導航 stays visible and returns to the bin detail", async ({
+  page,
+}) => {
+  // 減少動態效果時每 1.5 秒跳一個轉彎點，收起狀態才量得到（測試路線很短）。
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await phoneNav(page);
+  await page.getByRole("button", { name: "開始導航" }).click();
+  await expect(page.locator(".gnav")).toHaveAttribute(
+    "data-drawer",
+    "collapsed",
+  );
+  await expect(page.getByTestId("nav-banner")).toBeVisible();
+  const end = page.getByRole("button", { name: "結束導航", exact: true });
+  await expect(end).toBeVisible();
+  const box = (await end.boundingBox())!;
+  const tabs = (await page.locator(".m-tabs").boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(tabs.y);
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  // 收起時資訊卡內容不可操作，抽屜只露出標題列。
+  await expect(page.locator(".gnav-body")).toHaveAttribute("inert", "");
+  expect(await sheetHeight(page)).toBeLessThan(140);
+  await end.click();
+  await expect(page).toHaveURL(
+    new RegExp(`#bin/${binId}\\?waste_type=recycling$`),
+  );
+  await expect(page.locator(".mx-panel")).toHaveAttribute("data-view", "bin");
+  await expect(page.locator(".mx-layout")).toHaveAttribute(
+    "data-drawer",
+    "half",
+  );
+  await expect(page.locator(".mx-map .leaflet-container")).toBeVisible();
+  await expect(page.locator(".leaflet-marker-icon.selected")).toHaveCount(1);
+  await expect(page.getByTestId("nav-banner")).toHaveCount(0);
+});
+
+test("phone: Esc ends navigation like the 結束導航 button", async ({
+  page,
+}) => {
+  await phoneNav(page);
+  await page.getByRole("button", { name: "開始導航" }).click();
+  await expect(page.getByTestId("nav-banner")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(
+    new RegExp(`#bin/${binId}\\?waste_type=recycling$`),
+  );
+  await expect(page.locator(".mx-panel")).toHaveAttribute("data-view", "bin");
+  await expect(page.locator(".mx-map .leaflet-container")).toBeVisible();
+});

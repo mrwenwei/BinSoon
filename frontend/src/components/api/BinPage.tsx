@@ -1,6 +1,7 @@
 import { Icon } from "../Icon";
 import { useDemoData } from "../../data/demoMode";
 import { BinProposal } from "./BinProposal";
+import type { ProposalTally } from "../../map/browseMarkers";
 import { wasteHref, type WasteControls } from "../../data/waste";
 import { compartmentCards } from "./Waste";
 import { useEffect } from "react";
@@ -51,14 +52,20 @@ export function useBinView(id: string, wasteType: string) {
   );
 }
 // 地圖瀏覽模式：選桶後在面板內原地顯示的桶資訊。內容先沿用原獨立桶頁，
-// 只拿掉小地圖（地圖本身就在旁邊）；返回清單由面板標題列提供。
+// 只拿掉小地圖（地圖本身就在旁邊）；回清單靠點地圖空白處或 Esc（MapPage）。
+// label：清單已知的桶名，讀取中先當標題，桶換桶時不會閃過「桶詳情」。
 export function BinPanel({
   id,
   wasteType,
+  label,
   onLocation,
+  onTally,
 }: Pick<WasteControls, "wasteType"> & {
   id: string;
+  label?: string;
   onLocation?: (location: ApiLocation) => void;
+  /** 建議點投票面板投完票時回報最新票數（地圖標記跟著更新）。 */
+  onTally?: (tally: ProposalTally) => void;
 }) {
   const { session } = useSession();
   const view = useBinView(id, wasteType);
@@ -76,14 +83,14 @@ export function BinPanel({
   if (!view.data)
     return (
       <div className="api-bin-detail mx-bin">
-        <h1>桶詳情</h1>
+        <h1>{label || "桶詳情"}</h1>
         <LoadState {...view} />
       </div>
     );
   const { location: item, status, can_report } = view.data;
   const parts = apiCompartments(status, view.data.compartments);
   if (item.placement_status === "proposed")
-    return <BinProposal key={item.id} location={item} />;
+    return <BinProposal key={item.id} location={item} onTally={onTally} />;
   return (
     <div className="api-bin-detail mx-bin">
       <div className="page-heading bin-heading">
@@ -91,12 +98,14 @@ export function BinPanel({
           <span className="bin-avatar" aria-hidden="true">
             <Mascot state={apiBinState(status)} />
           </span>
-          <div>
+          {/* 行政區與「既有公布桶」對站在現場的市民沒有資訊量，拿掉；
+              只有市民投票新放的桶標「新設」，跟清單列同一顆膠囊。 */}
+          <div className="bin-title-row">
             <h1>{item.label}</h1>
-            <p>
-              {item.district} ·{" "}
-              {item.placement_status === "installed" ? "設置" : "既有公布桶"}
-            </p>
+            {(item.bin_status?.is_new ||
+              item.placement_status === "installed") && (
+              <span className="status-pill">新設</span>
+            )}
           </div>
         </div>
       </div>
@@ -108,9 +117,6 @@ export function BinPanel({
       )}
       <section className="card bin-overview">
         <section aria-label="各類桶槽" className="bin-compartment-overview">
-          <div className="bin-detail-buddy">
-            <Mascot state={apiBinState(status)} />
-          </div>
           {/* 面板同時顯示兩槽、由使用者自己判斷；不傳 onSelectWaste，槽只顯示不能點。
               種類由地圖篩選列的選單決定。 */}
           <StationCard compartments={compartmentCards(parts)} label="" />

@@ -132,7 +132,7 @@ test("B V1 public proposals share Bin IDs and votes appear with V2 progress", as
   const writes = await setup(page);
   await citizen(page, "vote");
   await expect(
-    page.getByRole("heading", { name: "要桶投票", exact: true }),
+    page.getByRole("heading", { name: "設桶投票", exact: true }),
   ).toBeVisible();
   const row = page
     .locator(".location-row")

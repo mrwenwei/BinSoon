@@ -83,6 +83,8 @@ const paths = {
   report: "M12 3 2 21h20L12 3Zm0 6v5m0 3v1",
   gift: "M3 8h18v5H3V8Zm2 5v8h14v-8M12 8v13m0-13C4 8 5 1 9 3l3 5Zm0 0c8 0 7-7 3-5l-3 5Z",
   close: "m6 6 12 12M18 6 6 18",
+  // Lucide share（lucide-static，ISC）：方框開口＋向上箭頭，三段合成一條 path。
+  share: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
   clock: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M12 6v6l4 2",
 };
 export function Icon({ name }: { name: keyof typeof paths }) {

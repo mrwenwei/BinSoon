@@ -177,7 +177,7 @@ function AppContent() {
                 },
                 {
                   href: "#vote",
-                  label: "要桶投票",
+                  label: "設桶投票",
                   current:
                     ["vote", "vote-done", "proposals"].includes(page) ||
                     params.get("tab") === "vote",
