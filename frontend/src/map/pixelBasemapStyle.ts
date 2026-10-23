@@ -1,9 +1,9 @@
 import type { Map as MlMap, StyleSpecification } from "maplibre-gl";
 
-// 像素插畫風底圖（本機實驗，try/pixel-skin；只給 MapPage 用）。
+// 像素插畫風底圖（本機實驗，try/pixel-skin；預設用於所有地圖）。
 // 同一組 OpenFreeMap openmaptiles 向量圖磚，只換樣式：米色磚紋地面、柔綠點紋草地、
 // 淺紫灰道路＋白色虛線中線、白色半透明圓角路名牌。不改既有 basemapStyle.ts。
-// 顏色讀地圖容器上的 CSS 變數（styles.css 的 .px-map 區塊，--px-*），
+// 顏色讀地圖容器上的 CSS 變數（styles.css 的 :root 區塊，--px-*），
 // 所以要調色或還原只改 CSS。MapLibre 不能讀 CSS 變數，建立底圖時讀計算值。
 const OFM = "https://tiles.openfreemap.org";
 

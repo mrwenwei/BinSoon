@@ -84,7 +84,7 @@ interface Props {
   markerIcon?: (location: LocationRecord, selected: boolean) => L.DivIcon;
   markerLabel?: (location: LocationRecord) => string;
   markerDescription?: (location: LocationRecord) => string | undefined;
-  /** 底圖樣式（只在建立地圖時讀一次）："pixel" 為像素插畫底圖，顏色讀容器上的 --px-* 變數。 */
+  /** 底圖樣式（只在建立地圖時讀一次；預設 "pixel"）："pixel" 為像素插畫底圖，顏色讀容器上的 --px-* 變數。 */
   basemap?: "default" | "pixel";
   /** 固定起點標記（不可點、不影響視野）。 */
   origin?: { latitude: number; longitude: number; label: string };
@@ -145,7 +145,7 @@ export function LocationMap({
   markerIcon,
   markerLabel,
   markerDescription,
-  basemap: basemapKind = "default",
+  basemap: basemapKind = "pixel",
   origin,
   focusOffsetY,
   browseTopInset = 0,
