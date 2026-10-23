@@ -243,6 +243,8 @@ export function LocationMap({
         {
           record,
           state,
+          // 自己認領的 BinU（標記 class 有 mine）：聚合後代表桶腳下掛一顆愛心。
+          mine: / mine\b/.test(className),
           point: instance.project(record.marker.getLatLng(), zoom),
         },
       ];
@@ -268,7 +270,8 @@ export function LocationMap({
       for (const item of group.items)
         markers.current.removeLayer(item.record.marker);
       const center = instance.unproject([group.x, group.y], zoom);
-      const label = `${group.items.length} 個桶，放大查看`;
+      const mine = group.items.some((item) => item.mine);
+      const label = `${group.items.length} 個桶${mine ? "（含你的 BinU）" : ""}，放大查看`;
       // 放大兩級，並把這群桶放在看得到的地圖區正中間（手機上扣掉抽屜與頂部工具列）。
       const zoomIn = () => {
         const next = Math.min(zoom + 2, instance.getMaxZoom());
@@ -283,6 +286,7 @@ export function LocationMap({
         icon: clusterIcon(
           bestState(group.items.map((item) => item.state)),
           group.items.length,
+          mine,
         ),
         title: label,
         alt: label,
@@ -678,7 +682,9 @@ export function LocationMap({
     const point = following.current;
     if (!browse || !instance || !point) return;
     // 縮放取整數：飛行中途被打斷（桶換桶、抽屜開合）時 getZoom() 可能是小數。
-    const zoom = Math.max(Math.round(instance.getZoom()), 16);
+    // 選桶一次放大到看得到詳細資訊的級距（18：頭上血條、完整名牌、全部展開）；
+    // 已經在 18 以上就維持，不拉遠。
+    const zoom = Math.max(Math.round(instance.getZoom()), BOT_BARS_MIN_ZOOM);
     const target = centreFor(instance, point, zoom, offsetRef.current);
     if (mode === "jump" || reducedMotion()) {
       instance.setView(target, zoom, { animate: false });

@@ -1,4 +1,3 @@
-import { Icon } from "../Icon";
 import { useDemoData } from "../../data/demoMode";
 import { BinProposal } from "./BinProposal";
 import type { ProposalTally } from "../../map/browseMarkers";
@@ -19,6 +18,15 @@ import { LoadState } from "./LoadState";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
 import { reasonLabels, Status } from "./mapShared";
+import {
+  ClaimCta,
+  ClaimLimitRow,
+  ClaimStep,
+  type ClaimControls,
+} from "./ClaimStep";
+import { CLAIM_LIMIT, useMyClaims } from "./useMyClaims";
+import { NameTag } from "../Pixel";
+import { demoBinById } from "../../data/demoCitizen";
 // 桶詳情的 view 讀取；地圖面板（BinPanel）與步行導航頁共用。
 export function useBinView(id: string, wasteType: string) {
   const { session } = useSession();
@@ -60,15 +68,20 @@ export function BinPanel({
   label,
   onLocation,
   onTally,
+  claim,
 }: Pick<WasteControls, "wasteType"> & {
   id: string;
   label?: string;
   onLocation?: (location: ApiLocation) => void;
   /** 建議點投票面板投完票時回報最新票數（地圖標記跟著更新）。 */
   onTally?: (tally: ProposalTally) => void;
+  /** 認領步驟的開關與名字草稿（MapPage 保管，取消、Esc、點地圖空白都退回桶詳情、草稿保留）。 */
+  claim?: ClaimControls;
 }) {
   const { session } = useSession();
   const view = useBinView(id, wasteType);
+  const claims = useMyClaims();
+  const demo = useDemoData(session?.access_token);
   const loaded = view.data;
   useEffect(() => {
     if (loaded && onLocation)
@@ -91,6 +104,39 @@ export function BinPanel({
   const parts = apiCompartments(status, view.data.compartments);
   if (item.placement_status === "proposed")
     return <BinProposal key={item.id} location={item} onTally={onTally} />;
+  // 展示模式的桶名會被換成私人桶名；名牌當標題時，下一行放原本的地址。
+  const address = (demo && demoBinById(id)?.label) || item.label;
+  const mine = claims.names.get(id);
+  const canClaim =
+    !view.error &&
+    (view.data.can_apply_adoption ||
+      (!session &&
+        !view.data.adopter &&
+        !view.data.my_adoption_id &&
+        status.operational_status !== "removed"));
+  // 展示模式每人最多 5 隻（正式後端沒有這個上限，照後端規則走）。
+  const atLimit =
+    demo &&
+    !!session &&
+    !view.error &&
+    !view.data.my_adoption_id &&
+    claims.count >= CLAIM_LIMIT &&
+    status.operational_status === "normal";
+  if (claim?.open && canClaim && session)
+    return (
+      <ClaimStep
+        binId={id}
+        address={address}
+        state={apiBinState(status)}
+        draft={claim.draft}
+        onDraft={claim.setDraft}
+        onCancel={claim.cancel}
+        onDone={() => {
+          view.reload();
+          claim.done();
+        }}
+      />
+    );
   return (
     <div className="api-bin-detail mx-bin">
       <div className="page-heading bin-heading">
@@ -99,13 +145,17 @@ export function BinPanel({
             <Mascot state={apiBinState(status)} />
           </span>
           {/* 行政區與「既有公布桶」對站在現場的市民沒有資訊量，拿掉；
-              只有市民投票新放的桶標「新設」，跟清單列同一顆膠囊。 */}
-          <div className="bin-title-row">
-            <h1>{item.label}</h1>
-            {(item.bin_status?.is_new ||
-              item.placement_status === "installed") && (
-              <span className="status-pill">新設</span>
-            )}
+              只有市民投票新放的桶標「新設」，跟清單列同一顆膠囊。
+              自己認領的桶：標題本身就是名牌（愛心＋名字），下一行原地址。 */}
+          <div className="bin-title-text">
+            <div className="bin-title-row">
+              <h1>{mine ? <NameTag name={mine} size="xl" /> : item.label}</h1>
+              {(item.bin_status?.is_new ||
+                item.placement_status === "installed") && (
+                <span className="status-pill">新設</span>
+              )}
+            </div>
+            {mine && <p className="bin-title-sub">{address}</p>}
           </div>
         </div>
       </div>
@@ -166,7 +216,7 @@ export function BinPanel({
             )}
           </div>
         </div>
-        {!useDemoData(session?.access_token) && (
+        {!demo && (
           <p className="bin-adoption tiny">
             認養：{view.data.adopter?.display_name || "尚無認養者"} ·
             {view.data.adopter && "已核准的公開認養資訊"}
@@ -176,37 +226,33 @@ export function BinPanel({
         {view.data.adopter?.intro && (
           <p>認養店家介紹：{view.data.adopter.intro}</p>
         )}
-        {!view.error &&
-          (view.data.can_apply_adoption ||
-            (!session &&
-              !view.data.adopter &&
-              !view.data.my_adoption_id &&
-              status.operational_status !== "removed")) && (
+        {/* 認領列：點了抽屜原地換成取名步驟；沒登入先登入再回到這個桶。
+            自己已認領：這裡不放東西（標題就是名牌，結束認領在「我的 BinU」）。 */}
+        {canClaim && !atLimit && (
+          <ClaimCta
+            onStart={session ? claim?.start : undefined}
+            loginHref={
+              session
+                ? undefined
+                : `#login?next=${encodeURIComponent(wasteHref(`bin/${id}`, wasteType).slice(1))}`
+            }
+          />
+        )}
+        {atLimit && <ClaimLimitRow />}
+        {/* 正式後端要審核：送出後到核准前，標題還不是名牌，這裡說明審核中。 */}
+        {view.data.my_adoption_id && !mine && !demo && (
+          <div className="claim-limit">
+            <p>
+              <strong>認領申請審核中</strong>
+              <small>審核通過後，這隻就是你的 BinU</small>
+            </p>
             <a
-              className="button secondary bin-adopt-cta"
-              href={`#adopt/apply/${id}`}
-              aria-label="申請認養此桶"
+              className="text-button"
+              href={`#adopt/${view.data.my_adoption_id}`}
             >
-              {useDemoData(session?.access_token) ? (
-                <>
-                  <Icon name="heart" />
-                  <span>認領這位 BinU</span>
-                  <small>屬實首報 ×2</small>
-                  <Icon name="arrow" />
-                </>
-              ) : (
-                "待認養 · 申請認養此桶"
-              )}
+              查看
             </a>
-          )}
-
-        {view.data.my_adoption_id && (
-          <a
-            className="button secondary"
-            href={`#adopt/${view.data.my_adoption_id}`}
-          >
-            管理我的認養
-          </a>
+          </div>
         )}
       </section>
     </div>

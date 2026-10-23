@@ -2,6 +2,7 @@ import L from "leaflet";
 import type { BinState } from "../data/binState";
 import { stateVisual } from "../components/binVisual";
 import { binBotSvg } from "./binBot";
+import { heartOnlyHtml } from "../components/pixelArt";
 
 // 垃圾桶機器人的聚合規則（2026-10-21 定案「會疊就聚合」）：
 // 不管縮放多少，畫面上會疊在一起的桶合成一隻代表的垃圾桶，右上角數字＝桶數；
@@ -52,10 +53,11 @@ export function stateFromIconClass(className = ""): BinState | undefined {
   return RANK.find((state) => className.includes(stateVisual[state].className));
 }
 
-export function clusterIcon(state: BinState, count: number) {
+// mine：聚合裡有自己認領的 BinU 時，代表桶腳下只掛一顆像素愛心（沒有名字、沒有牌框）。
+export function clusterIcon(state: BinState, count: number, mine = false) {
   return L.divIcon({
-    className: `pixel-marker bin bot-marker bot-cluster ${stateVisual[state].className}`,
-    html: `<span class="marker-body">${binBotSvg(state)}<span class="marker-count">${count}</span></span>`,
+    className: `pixel-marker bin bot-marker bot-cluster ${stateVisual[state].className}${mine ? " mine" : ""}`,
+    html: `<span class="marker-body">${binBotSvg(state)}<span class="marker-count">${count}</span></span>${mine ? heartOnlyHtml() : ""}`,
     iconSize: [52, 52],
     iconAnchor: [26, 50],
   });

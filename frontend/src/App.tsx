@@ -10,6 +10,8 @@ import { isDemoToken, useDemoData } from "./data/demoMode";
 import { isWasteType, wasteHref, type WasteType } from "./data/waste";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DemoNav } from "./components/DemoNav";
+import { Coin } from "./components/Pixel";
+import { ToastHost } from "./components/Toast";
 import { request, type Membership } from "./data/api";
 import { useApi } from "./components/api/useApi";
 import {
@@ -226,6 +228,7 @@ function AppContent() {
         }
         account={page !== "crew" && session && <Account onLogout={signOut} />}
       />
+      <ToastHost />
       {notice && (
         <p className="storage-warning" role="status">
           {notice} <button onClick={clearNotice}>關閉提示</button>
@@ -489,7 +492,9 @@ function PointsButton() {
       href="#member"
       aria-label={`會員中心，目前 ${points ?? "—"} 點`}
     >
-      <strong>{points ?? "—"}</strong>PTS
+      {/* 代幣＝點數（認領流程 v3）：代幣＋數字，不再寫英文縮寫 PTS。 */}
+      <Coin />
+      <strong className="numeral-sm">{points ?? "—"}</strong>
     </a>
   );
 }

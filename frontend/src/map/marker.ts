@@ -8,10 +8,11 @@ import { mascotSvg } from "../components/mascotSvg";
 import { stateVisual } from "../components/binVisual";
 import { binBotSvg, removedBinSvg } from "./binBot";
 import { botBarsHtml, type BotBar } from "./botBars";
+import { nameTagHtml } from "../components/pixelArt";
 
 // 選中底盤（配色 v4，底盤 ③ 像素風實心底座）：角色腳下的扁橢圓，每格約 2px（格數＝底盤寬÷2，
 // 由 LocationMap 依縮放級距傳入：2 倍 36、縮放 16–17 28、1 倍 21、地標 21）；外圈一格
-// --route-casing、內部 --signal、中間一圈同心白環（像靶心）、下半內部疊 --marker-shadow
+// --route-casing、內部 --signal、下半內部疊 --marker-shadow
 // （顏色在 CSS 的 .marker-base 裡給）。底盤與十字線由 LocationMap 放在另一層（shadowPane），在所有標記下面。
 const baseCache = new Map<number, string>();
 export function selectedBaseHtml(cells = 30) {
@@ -27,17 +28,10 @@ export function selectedBaseHtml(cells = 30) {
     x < cw &&
     y < ch &&
     ((x + 0.5 - rx) / rx) ** 2 + ((y + 0.5 - ry) / ry) ** 2 <= 1;
-  // 同心白環：正規化半徑落在這個區間的內部格子。
-  const ring = (x: number, y: number) => {
-    const r = Math.sqrt(
-      ((x + 0.5 - rx) / rx) ** 2 + ((y + 0.5 - ry) / ry) ** 2,
-    );
-    return r >= 0.42 && r <= 0.72;
-  };
+  // 2026-10-23：拿掉中間的同心白環，內部只留橘色（下半照舊疊陰影）。
   let edge = "";
   let fill = "";
   let shade = "";
-  let white = "";
   for (let y = 0; y < ch; y++)
     for (let x = 0; x < cw; x++) {
       if (!inside(x, y)) continue;
@@ -49,13 +43,12 @@ export function selectedBaseHtml(cells = 30) {
         !inside(x, y + 1)
       )
         edge += cell;
-      else if (ring(x, y)) white += cell;
       else {
         fill += cell;
         if (y + 0.5 > ry + 0.5) shade += cell;
       }
     }
-  const html = `<span class="marker-base" aria-hidden="true"><svg viewBox="0 0 ${cw} ${ch}" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true"><path class="base-fill" d="${fill}"/><path class="base-shade" d="${shade}"/><path class="base-ring" d="${white}"/><path class="base-edge" d="${edge}"/></svg></span>`;
+  const html = `<span class="marker-base" aria-hidden="true"><svg viewBox="0 0 ${cw} ${ch}" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true"><path class="base-fill" d="${fill}"/><path class="base-shade" d="${shade}"/><path class="base-edge" d="${edge}"/></svg></span>`;
   baseCache.set(cells, html);
   return html;
 }
@@ -72,6 +65,8 @@ export function markerIcon(
   state: BinState = "hungry",
   lifecycle?: "new" | "removed",
   bars?: BotBar[],
+  /** 自己認領的 BinU 的名字：腳下掛名牌（愛心＋名字），縮放 15 以下沒選中時只剩愛心（CSS）。 */
+  mine?: string,
 ) {
   // 選中：腳下底盤與十字定位線由 LocationMap 另外畫在所有標記下面（selectedBaseLayerHtml）。
   if (kind !== "bin")
@@ -86,8 +81,8 @@ export function markerIcon(
     ? `${removedBinSvg()}<span class="marker-removed-label">撤</span>`
     : `${binBotSvg(state)}${bars ? botBarsHtml(bars) : ""}`;
   return L.divIcon({
-    className: `pixel-marker bin bot-marker ${removed ? "removed" : stateVisual[state].className} ${selected ? "selected" : ""}`,
-    html: `<span class="marker-body">${body}</span>${lifecycle === "new" ? '<span class="marker-lifecycle new">新</span>' : ""}`,
+    className: `pixel-marker bin bot-marker ${removed ? "removed" : stateVisual[state].className} ${selected ? "selected" : ""}${mine ? " mine" : ""}`,
+    html: `<span class="marker-body">${body}</span>${lifecycle === "new" ? '<span class="marker-lifecycle new">新</span>' : ""}${mine ? nameTagHtml(mine) : ""}`,
     iconSize: [52, 52],
     iconAnchor: [26, 50],
   });
