@@ -49,6 +49,9 @@
   --focus-ring: var(
     --signal
   ); /* 鍵盤焦點外框，2px；指向訊號橘（「你選的／你在哪」），不是新顏色。 */
+  --input-focus: var(
+    --focus-ring
+  ); /* 文字輸入框（input／textarea／select）的焦點外框；day 跟 --focus-ring，night 覆寫成 teal。 */
 }
 :root {
   --space-1: 4px; /* 圖示與文字、色塊之間。 */
@@ -356,6 +359,7 @@
   --px-divider: var(--divider);
   --px-hairline: var(--hairline);
   /* 互動＝teal；選取／你在哪＝橘（原版規則）；teal 底上的字＝深色 text-on-light */
+  --input-focus: var(--teal); /* night：輸入框焦點外框用 teal（其他焦點仍為橘）。 */
   --px-purple: var(--teal);
   --px-purple-hover: color-mix(in srgb, var(--teal) 82%, #fff);
   --px-purple-deep: var(--teal);

@@ -76,6 +76,11 @@ summary:focus-visible,
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+input:not([type="radio"]):not([type="checkbox"]):not([type="range"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-color: var(--input-focus);
+}
 h1:focus {
   outline: none;
 }
@@ -10635,7 +10640,7 @@ input[type="file"]::file-selector-button {
   color: var(--text-muted);
 }
 .claim-field input:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: 2px solid var(--input-focus);
   outline-offset: 0;
 }
 .claim-help {

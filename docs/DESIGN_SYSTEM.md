@@ -77,7 +77,7 @@
 | 失聯 | `--px-offline`／文字 `--px-offline-ink` | #A9A6C2／#6B6890 |
 | 互動與選取 | `--px-purple`（`--px-select` 指向它） | #6F63D9 |
 
-  night 沿用原版：餓了 teal、吃飽了橘、失聯灰，互動 teal、選取橘。
+  night 沿用原版：餓了 teal、吃飽了橘、失聯灰，互動 teal、選取橘。night 下文字輸入框（input／textarea／select）的 focus 外框用 teal（token `--input-focus`），按鈕、連結、地圖選取等其他焦點仍為橘。
 - **day 的色彩規則**：綠／紅／灰只代表桶況，紫只代表互動與選取（按鈕、連結、選中列、十字線、焦點環）。不要用綠、紅、灰做按鈕或選取，也不要用紫表示桶況。（「橘色＝選取」「teal＝可以去」只適用 night。）
 - **新樣式撰寫規則**：
   1. 像素皮膚對原版元素的覆蓋（顏色、圓角、陰影、字體）寫 `:where(:root[data-theme="day"]) .xxx { … }`（`:where()` 不增加權重）。
