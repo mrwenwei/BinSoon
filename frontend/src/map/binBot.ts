@@ -166,6 +166,15 @@ const SKINS: Record<BinState, Record<string, string>> = {
     G: "#4f5552",
   },
 };
+// 狀態色可被 CSS 覆蓋（--bot-<狀態>-<格>），沒覆蓋時用上面的原色。
+function skinColors(state: BinState) {
+  return Object.fromEntries(
+    Object.entries(SKINS[state]).map(([key, fallback]) => [
+      key,
+      `var(--bot-${state}-${key}, ${fallback})`,
+    ]),
+  );
+}
 const COMMON: Record<string, string> = {
   K: "var(--text-on-light)",
   N: "#242828",
@@ -424,7 +433,7 @@ export function binBotSvg(state: BinState, animated = true) {
   const key = `${state}/${animated}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const colors = { ...COMMON, ...SKINS[state] };
+  const colors = { ...COMMON, ...skinColors(state) };
   if (!animated) {
     const svg = `<svg class="bin-bot bot-${state}" viewBox="${BOX}" shape-rendering="crispEdges" aria-hidden="true"><g class="bot-idle">${compose(IDLE[state], colors)}</g></svg>`;
     cache.set(key, svg);

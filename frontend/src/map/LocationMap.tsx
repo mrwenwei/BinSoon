@@ -23,6 +23,10 @@ import {
   registerBasemapImages,
   token,
 } from "./basemapStyle";
+import {
+  pixelBasemapStyle,
+  registerPixelBasemapImages,
+} from "./pixelBasemapStyle";
 import type { Point } from "../data/participation";
 import {
   cumulativeMeters,
@@ -80,6 +84,8 @@ interface Props {
   markerIcon?: (location: LocationRecord, selected: boolean) => L.DivIcon;
   markerLabel?: (location: LocationRecord) => string;
   markerDescription?: (location: LocationRecord) => string | undefined;
+  /** 底圖樣式（只在建立地圖時讀一次）："pixel" 為像素插畫底圖，顏色讀容器上的 --px-* 變數。 */
+  basemap?: "default" | "pixel";
   /** 固定起點標記（不可點、不影響視野）。 */
   origin?: { latitude: number; longitude: number; label: string };
   /** 有給時：只在選取對象改變時置中，並把選取點往上移這麼多像素（手機抽屜遮住下半部）。 */
@@ -139,6 +145,7 @@ export function LocationMap({
   markerIcon,
   markerLabel,
   markerDescription,
+  basemap: basemapKind = "default",
   origin,
   focusOffsetY,
   browseTopInset = 0,
@@ -451,7 +458,11 @@ export function LocationMap({
     try {
       basemap = maplibreGL({
         // 自訂灰綠底圖：OpenFreeMap openmaptiles 圖磚＋色票 token。
-        style: binsoonBasemapStyle(),
+        // pixel：同一組圖磚的像素插畫樣式，顏色讀容器上的 --px-* 變數。
+        style:
+          basemapKind === "pixel"
+            ? pixelBasemapStyle(container.current!)
+            : binsoonBasemapStyle(),
         attributionControl: false,
         pixelRatio: compactMap
           ? Math.min(window.devicePixelRatio || 1, 1.5)
@@ -472,7 +483,9 @@ export function LocationMap({
       };
       basemap.addTo(instance);
       const gl = basemap.getMaplibreMap();
-      registerBasemapImages(gl);
+      if (basemapKind === "pixel")
+        registerPixelBasemapImages(gl, container.current!);
+      else registerBasemapImages(gl);
       // 樣式是內嵌的，所以「載入成功」改以 OpenFreeMap 圖磚來源的 TileJSON
       // 成功讀到為準；任何來源錯誤都顯示提示，之後不自動清除。
       let failed = false;

@@ -1,4 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700;900&family=Silkscreen&display=swap");
+/* 像素地圖（.px-map）用的圓體數字／英文；中文退回 Noto Sans TC。字型檔只在畫面用到 Nunito 時才下載。 */
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&display=swap");
 @import "./styles/tokens.css";
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -10854,4 +10856,343 @@ input[type="file"]::file-selector-button {
 .claim-dialog-actions .button {
   min-height: 48px;
   justify-content: center;
+}
+
+/* ── 像素插畫風地圖（本機實驗，branch try/pixel-skin）：只換皮 ───────────
+   只作用在 MapPage 的 <main class="mx-layout px-map">，且只含純視覺屬性
+   （顏色、背景、border-color、陰影、字體、圓角、SVG fill／stroke）；不改尺寸與版面。
+   還原：拿掉 MapPage 的 px-map class 與 LocationMap 的 basemap="pixel"，
+   再刪 pixelBasemapStyle.ts 與這一整段。
+   --px-* 是這套風格的調色盤（底圖 pixelBasemapStyle.ts 也從這裡讀色）。
+   兩個語意在這裡拆開：吃飽了＝珊瑚紅（--px-full，覆蓋 --status-full 與 --signal），
+   你選的／你在哪＝紫色（--px-select，覆蓋 --focus-ring／--route 並改寫選取的規則）。
+   --teal 原本同時是「餓了」與「互動」：互動（主要按鈕、連結）＝紫色，餓了＝--px-hungry*。
+   桶況色另用 --bot-<state>-<格>（binBot.ts 的 Bin友 圖形）覆蓋；未覆蓋時 binBot.ts
+   用原本的色碼。Noto Sans TC 只載入 400／500／700／900，所以字重只用這四種。 */
+.px-map {
+  /* ════ 1. 色票（只有這一段放色碼；之後整站套用就把這段整個搬到 :root） ════ */
+  /* 底圖：地面／草地／水／道路（pixelBasemapStyle.ts 讀這些） */
+  --px-ground: #f4e1cb;
+  --px-brick-line: #ecd3b6;
+  --px-brick-light: #f8ebdc;
+  --px-block: #efd7bd;
+  --px-building: #edd4b8;
+  --px-building-edge: #d6b690;
+  --px-building-shadow: #e0c29f;
+  --px-grass: #bfe2a2;
+  --px-grass-dot: #9dcf7d;
+  --px-grass-light: #d8f0c3;
+  --px-wood: #addb8e;
+  --px-water: #acd6ee;
+  --px-water-light: #e6f4fb;
+  --px-road: #d7d0e5;
+  --px-road-edge: #bcb2d3;
+  --px-road-dash: #ffffff;
+  --px-path: #e6cfb2;
+  --px-rail: #9a90b0;
+  --px-label-bg: rgba(255, 255, 255, 0.84);
+  --px-label-halo: #ffffff;
+  /* 介面：墨色、卡片、線條、硬邊陰影 */
+  --px-ink: #2f2a3d;
+  --px-ink-soft: #6f6784;
+  --px-ink-body: #4a4459;
+  --px-card: #ffffff;
+  --px-card-alt: #fffaf4;
+  --px-line: #efe2d2;
+  --px-line-control: #d9c9b6;
+  --px-line-input: #e6d6c3;
+  --px-shadow: #e3c7a6; /* 米色底上卡片的硬邊陰影 */
+  --px-shadow-ink: rgba(47, 42, 61, 0.28); /* 標記的硬邊陰影 */
+  --px-dot-off: #ece3d8;
+  --px-card-glass: rgba(255, 255, 255, 0.8);
+  --px-divider: rgba(47, 42, 61, 0.1);
+  --px-hairline: rgba(47, 42, 61, 0.07);
+  /* 紫色系：互動（主要按鈕、連結、chips、搜尋框、目前步驟）與選取（底盤、十字線、選中列、焦點環） */
+  --px-purple: #6f63d9;
+  --px-purple-hover: #5a4fc4; /* 主要按鈕 hover／active */
+  --px-purple-deep: #5247b8; /* 淺底上的紫字、陰影邊 */
+  --px-purple-soft: #ece9fb;
+  --px-on-purple: #ffffff;
+  --px-select: var(--px-purple); /* 選取／你在哪；要和互動分色時改這一個 */
+  /* 桶況：餓了＝淺草綠、吃飽了＝珊瑚紅、失聯＝灰紫 */
+  --px-hungry: #a8e09a;
+  --px-hungry-edge: #5faf55; /* 草地上的同色相描邊 */
+  --px-hungry-ink: #3a8a36; /* 淺底上的「餓了」文字與細框（#A8E09A 當字太淺） */
+  --px-full: #f07a6a;
+  --px-full-ink: #c94f40; /* 淺底上的「吃飽了」文字 */
+  --px-offline: #a9a6c2;
+  /* Bin友各格（箱身 B 是主色，其餘為同色相明暗） */
+  --px-bot-hungry-T: #d3f2c8;
+  --px-bot-hungry-W: #eefbe8;
+  --px-bot-hungry-S: #78c46c;
+  --px-bot-hungry-F: #bdeab0;
+  --px-bot-hungry-R: #bdeab0;
+  --px-bot-hungry-U: #98d48a;
+  --px-bot-hungry-B: #a8e09a;
+  --px-bot-hungry-D: #5faf55;
+  --px-bot-full-T: #f9b3a8;
+  --px-bot-full-W: #fde6e1;
+  --px-bot-full-S: #d9604f;
+  --px-bot-full-F: #f48a7b;
+  --px-bot-full-R: #f48a7b;
+  --px-bot-full-U: #e66d5d;
+  --px-bot-full-B: #f07a6a;
+  --px-bot-full-D: #c04a3e;
+  --px-bot-offline-T: #d6d4e4;
+  --px-bot-offline-W: #f3f2f8;
+  --px-bot-offline-S: #8a87aa;
+  --px-bot-offline-F: #b9b6cf;
+  --px-bot-offline-R: #b9b6cf;
+  --px-bot-offline-U: #a09db9;
+  --px-bot-offline-B: #a9a6c2;
+  --px-bot-offline-D: #77749a;
+  /* 圓角與字體 */
+  --px-radius-card: 22px;
+  --px-radius-row: 20px;
+  --px-radius-small: 12px;
+  --px-radius-pill: 999px;
+  --px-font-round:
+    "Nunito", "Noto Sans TC", system-ui, -apple-system, "PingFang TC",
+    sans-serif;
+
+  /* ════ 2. 掛到設計系統 token（只在 .px-map 內生效；整站套用時這段改掛到 :root 即可） ════ */
+  --map: var(--px-ground);
+  --chrome: var(--px-card);
+  --panel: var(--px-card);
+  --field: var(--px-card-alt);
+  --mint: var(--px-purple-soft);
+  --text: var(--px-ink);
+  --text-muted: var(--px-ink-soft);
+  --text-body: var(--px-ink-body);
+  --text-on-light: var(--px-ink);
+  --text-on-light-muted: var(--px-ink-body);
+  --line: var(--px-line);
+  --line-control: var(--px-line-control);
+  --line-input: var(--px-line-input);
+  --divider: var(--px-divider);
+  --hairline: var(--px-hairline);
+  /* --teal 原本同時是「餓了」與「互動」：這裡只留互動（紫），餓了改走 --status-hungry／--px-hungry*。 */
+  --teal: var(--px-purple);
+  --teal-on-mint: var(--px-purple-deep);
+  --tint-teal: var(--px-purple-soft);
+  /* --signal 原本同時是「吃飽了」與「選取」：這裡只留吃飽了／警示（珊瑚紅），選取走 --px-select。 */
+  --signal: var(--px-full);
+  --signal-on-light: var(--px-full-ink);
+  --tint-signal: color-mix(in srgb, var(--signal) 14%, var(--chrome));
+  --status-hungry: var(--px-hungry);
+  --status-full: var(--px-full);
+  --status-offline: var(--px-offline);
+  --focus-ring: var(--px-select);
+  --route: var(--px-select);
+  --marker-shadow: var(--px-shadow-ink);
+  /* binBot.ts 讀的鉤子：var(--bot-<狀態>-<格>, 原色) */
+  --bot-hungry-T: var(--px-bot-hungry-T);
+  --bot-hungry-W: var(--px-bot-hungry-W);
+  --bot-hungry-S: var(--px-bot-hungry-S);
+  --bot-hungry-F: var(--px-bot-hungry-F);
+  --bot-hungry-R: var(--px-bot-hungry-R);
+  --bot-hungry-U: var(--px-bot-hungry-U);
+  --bot-hungry-B: var(--px-bot-hungry-B);
+  --bot-hungry-D: var(--px-bot-hungry-D);
+  --bot-full-T: var(--px-bot-full-T);
+  --bot-full-W: var(--px-bot-full-W);
+  --bot-full-S: var(--px-bot-full-S);
+  --bot-full-F: var(--px-bot-full-F);
+  --bot-full-R: var(--px-bot-full-R);
+  --bot-full-U: var(--px-bot-full-U);
+  --bot-full-B: var(--px-bot-full-B);
+  --bot-full-D: var(--px-bot-full-D);
+  --bot-offline-T: var(--px-bot-offline-T);
+  --bot-offline-W: var(--px-bot-offline-W);
+  --bot-offline-S: var(--px-bot-offline-S);
+  --bot-offline-F: var(--px-bot-offline-F);
+  --bot-offline-R: var(--px-bot-offline-R);
+  --bot-offline-U: var(--px-bot-offline-U);
+  --bot-offline-B: var(--px-bot-offline-B);
+  --bot-offline-D: var(--px-bot-offline-D);
+  color: var(--text);
+  background: var(--px-ground);
+}
+.px-map .leaflet-container {
+  background: var(--px-ground);
+}
+/* 綠桶在綠草地上：同色相的深綠硬邊陰影，主色仍是 #A8E09A（只是陰影，不改尺寸） */
+.px-map .bin-bot.bot-hungry {
+  filter: drop-shadow(0 1px 0 var(--px-hungry-edge))
+    drop-shadow(0 0 1px var(--px-hungry-edge));
+}
+/* 選取＝紫色（顏色換掉，形狀、粗細、尺寸、動畫不動） */
+.px-map .marker-base .base-fill {
+  fill: var(--px-select);
+}
+.px-map .marker-crosshair::before {
+  border-top-color: var(--px-select);
+}
+.px-map .marker-crosshair::after {
+  border-left-color: var(--px-select);
+}
+.px-map .mx-list .location-row.active {
+  box-shadow: inset 3px 0 0 var(--px-select);
+}
+/* 面板、清單、篩選：淺色配色、圓角、硬邊陰影（無模糊） */
+.px-map .mx-panel {
+  background: var(--px-card);
+  border-right-color: var(--px-line);
+}
+.px-map .mx-title {
+  font-family: var(--px-font-round);
+  font-weight: 900;
+}
+.px-map .mx-home-toolbar {
+  border-radius: var(--px-radius-card);
+  box-shadow: 0 3px 0 var(--px-shadow);
+}
+.px-map .search-field input {
+  border-color: var(--px-line);
+  border-radius: var(--px-radius-pill);
+  background: var(--px-card-alt);
+}
+.px-map .filter-chips button {
+  border-color: var(--px-line);
+  border-radius: var(--px-radius-pill);
+  background: var(--px-card);
+  color: var(--text-body);
+  box-shadow: 0 2px 0 var(--px-line);
+}
+.px-map .filter-chips button[aria-pressed="true"] {
+  border-color: var(--px-purple);
+  background: var(--px-purple);
+  color: var(--px-on-purple);
+  box-shadow: 0 2px 0 var(--px-purple-deep);
+}
+.px-map .mx-filter-toggle {
+  border-color: var(--px-line);
+  border-radius: var(--px-radius-pill);
+}
+.px-map .waste-picker.icon-only .segmented label {
+  border-color: var(--px-line);
+  background: var(--px-card);
+  color: var(--px-ink-soft);
+}
+.px-map .waste-picker.icon-only .segmented label:first-child {
+  border-radius: var(--px-radius-small) 0 0 var(--px-radius-small);
+}
+.px-map .waste-picker.icon-only .segmented label:last-child {
+  border-radius: 0 var(--px-radius-small) var(--px-radius-small) 0;
+}
+.px-map .waste-picker.icon-only .segmented label:has(input:checked) {
+  border-color: var(--px-purple);
+  background: var(--px-purple-soft);
+  color: var(--px-purple-deep);
+}
+.px-map .mx-list .location-row {
+  border-radius: var(--px-radius-row);
+}
+.px-map .mx-list .location-row:hover,
+.px-map .mx-list .location-row.active {
+  background: var(--px-card-alt);
+}
+.px-map .fill-bar:not(.thick):not(.state-offline) {
+  border-radius: 4px;
+  background: var(--px-dot-off);
+}
+.px-map .mx-usable .numeral-sm {
+  font-family: var(--px-font-round);
+}
+.px-map .mx-legend {
+  border-radius: var(--px-radius-small);
+  background: var(--px-card);
+  box-shadow: 0 3px 0 var(--px-shadow);
+}
+.px-map .mx-legend-popover {
+  border-color: var(--px-line);
+  border-radius: var(--px-radius-row);
+  box-shadow: 0 4px 0 var(--px-shadow);
+}
+.px-map .leaflet-control-zoom.leaflet-bar {
+  border-radius: var(--px-radius-small);
+  box-shadow: 0 3px 0 var(--px-shadow);
+}
+.px-map .leaflet-control-zoom a,
+.px-map.leaflet-touch .leaflet-control-zoom a,
+.px-map .leaflet-touch .leaflet-control-zoom a {
+  background: var(--px-card);
+  color: var(--px-ink);
+  border-bottom-color: var(--px-line);
+}
+.px-map .leaflet-control-attribution.leaflet-control {
+  background: var(--px-card-glass);
+  color: var(--px-ink-soft);
+}
+.px-map .leaflet-control-attribution a {
+  color: var(--px-ink);
+}
+.px-map .leaflet-control-scale-line {
+  border-color: var(--px-ink);
+  background: var(--px-card-glass);
+  color: var(--px-ink);
+}
+.px-map .mx-origin-pin {
+  border-radius: 8px;
+  background: var(--px-purple);
+  color: var(--px-on-purple);
+  font-family: var(--px-font-round);
+  box-shadow: 0 2px 0 var(--px-ink);
+}
+.px-map .mx-origin-label {
+  border-radius: var(--px-radius-pill);
+  background: var(--px-ink);
+  color: var(--px-on-purple);
+  font-family: var(--px-font-round);
+  box-shadow: 0 2px 0 var(--px-shadow-ink);
+}
+.px-map .mx-handle span {
+  background: var(--px-dot-off);
+}
+@media (max-width: 760px) {
+  .px-map .mx-panel {
+    border-radius: var(--px-radius-card) var(--px-radius-card) 0 0;
+    border-top-color: var(--px-line);
+    box-shadow: 0 -4px 0 var(--px-shadow);
+  }
+}
+/* 「餓了」文字／細框：--teal 已改成互動紫，餓了的字色在這裡明確指定（填色仍是 #A8E09A） */
+.px-map .status-pill.state-hungry {
+  border-color: var(--px-hungry-ink);
+  color: var(--px-hungry-ink);
+}
+.px-map .row-state.state-hungry,
+.px-map .mx-usable.state-hungry .numeral-sm,
+.px-map .state-hungry > .compartment-name .compartment-status,
+.px-map .single-status.state-hungry .compartment-status {
+  color: var(--px-hungry-ink);
+}
+.px-map .fill-bar.state-hungry > span {
+  background: var(--px-hungry);
+}
+/* 主要按鈕（CTA）＝紫底白字；hover／active 用較深的紫。只換顏色，尺寸與文字不動 */
+.px-map .button.primary {
+  border-color: var(--px-purple);
+  background: var(--px-purple);
+  color: var(--px-on-purple);
+}
+.px-map .button.primary:hover:not(:disabled),
+.px-map .button.primary:active:not(:disabled) {
+  border-color: var(--px-purple-hover);
+  background: var(--px-purple-hover);
+}
+.px-map .mx-vote-steps .cur .dot,
+.px-map .vote-done-timeline .is-complete .vote-done-step-dot,
+.px-map .proposal-progress-track [data-active="true"] i,
+.px-map .citizen-report-actions .button[aria-pressed="true"] {
+  color: var(--px-on-purple);
+}
+/* 「吃飽了」文字：淺底上用深一點的珊瑚紅才讀得到（色帶、條、圖例仍是 #F07A6A） */
+.px-map .status-pill.state-full,
+.px-map .row-state.state-full,
+.px-map .mx-slot.state-full .mx-slot-value,
+.px-map .mx-usable.state-full .numeral-sm,
+.px-map .compartment-full-tag,
+.px-map .compartment.state-full .compartment-pct {
+  color: var(--px-full-ink);
 }
