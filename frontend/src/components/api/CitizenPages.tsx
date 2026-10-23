@@ -21,6 +21,8 @@ import { wasteHref, wasteName, type WasteType } from "../../data/waste";
 import { Mascot } from "../Mascot";
 import { Icon } from "../Icon";
 import { Coin, NameTag, PixelHeart } from "../Pixel";
+import { useBookings } from "../VanPages";
+import { dateLabel, shifts, stops, today } from "../../data/vanDemo";
 import { StationCard } from "../StationCard";
 import { removedBinSvg } from "../../map/binBot";
 import { compartmentCards } from "./Waste";
@@ -59,6 +61,12 @@ export function CitizenHome() {
       }),
     true,
   );
+  const vanBookings = useBookings()
+    .filter((b) => b.date > today())
+    .sort(
+      (a, b) => a.date.localeCompare(b.date) || a.shift.localeCompare(b.shift),
+    );
+  const nextVan = vanBookings[0];
   const claims = value.adoptions.filter((a) => a.status === "active").length;
   const votes = value.proposals.filter((p) => p.my_vote).length;
   const installed = value.proposals.filter(
@@ -91,6 +99,18 @@ export function CitizenHome() {
           <span>
             <strong>我的 BinU</strong>
             <small>認養 {claims} 個 · 屬實首報點數 ×2</small>
+          </span>
+          <Icon name="arrow" />
+        </a>
+        <a className="card" href="#van/mine">
+          <Icon name="truck" />
+          <span>
+            <strong>我的小車預約</strong>
+            <small>
+              {nextVan
+                ? `${vanBookings.length} 筆預約 · 最近 ${dateLabel(nextVan.date)}${shifts[nextVan.shift].name} ${stops.find((s) => s.id === nextVan.stop)?.name}`
+                : "還沒有預約"}
+            </small>
           </span>
           <Icon name="arrow" />
         </a>

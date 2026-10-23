@@ -9,6 +9,8 @@ export const stops = [
     address: "信義路二段",
     distance: 120,
     count: 6,
+    lat: 25.03358,
+    lng: 121.52955,
     x: 27,
     y: 35,
   },
@@ -18,6 +20,8 @@ export const stops = [
     address: "金華街 × 永康街",
     distance: 380,
     count: 11,
+    lat: 25.03032,
+    lng: 121.5298,
     x: 68,
     y: 35,
   },
@@ -27,6 +31,8 @@ export const stops = [
     address: "金華街",
     distance: 460,
     count: 12,
+    lat: 25.03035,
+    lng: 121.5312,
     x: 55,
     y: 80,
   },
@@ -36,6 +42,8 @@ export const stops = [
     address: "金華街 × 麗水街",
     distance: 560,
     count: 10,
+    lat: 25.03042,
+    lng: 121.52863,
     x: 84,
     y: 80,
   },
@@ -45,6 +53,8 @@ export const stops = [
     address: "杭州南路",
     distance: 240,
     count: 3,
+    lat: 25.03025,
+    lng: 121.52685,
     x: 44,
     y: 70,
   },
@@ -137,4 +147,50 @@ export function routeFor(bookings: Booking[], date: string, shift: Shift) {
       total: s.count + merged.reduce((n, p) => n + p.count, 0),
     };
   });
+}
+
+// 市民端「使用者位置」：沿用桶地圖的示意起點（components/api/mapShared 的 ORIGIN）。
+// distance 欄位保留給舊資料，市民端改用 distanceM() 由經緯度算出（haversine）。
+export const VAN_ORIGIN = { latitude: 25.033, longitude: 121.5358 };
+export const vanCoordinates: Record<string, [number, number]> =
+  Object.fromEntries(stops.map((s) => [s.id, [s.lat, s.lng]]));
+export function distanceM(stop: { lat: number; lng: number }) {
+  const r = Math.PI / 180;
+  const dLat = (stop.lat - VAN_ORIGIN.latitude) * r;
+  const dLng = (stop.lng - VAN_ORIGIN.longitude) * r;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(stop.lat * r) *
+      Math.cos(VAN_ORIGIN.latitude * r) *
+      Math.sin(dLng / 2) ** 2;
+  return Math.round(2 * 6371000 * Math.asin(Math.sqrt(h)));
+}
+export function distanceText(m: number) {
+  return m < 1000 ? `${m} 公尺` : `${(m / 1000).toFixed(1)} 公里`;
+}
+export const NEAR_M = 800;
+export const OPEN_AT = 10;
+export function needAt(
+  bookings: Booking[],
+  date: string,
+  shift: Shift,
+  stop: string,
+) {
+  return Math.max(0, OPEN_AT - countAt(bookings, date, shift, stop));
+}
+export function shortDate(date: string) {
+  return dateLabel(date).split("（")[0];
+}
+export function slotNeedText(need: number) {
+  return need > 0 ? `差 ${need} 人開站` : "已開站 ✓";
+}
+// 未來七天 × 兩個時段裡最快成團的一格（差最少人；同樣就取最早）。
+export function bestSlot(bookings: Booking[], stop: string) {
+  let best: { date: string; shift: Shift; need: number } | undefined;
+  for (const date of availableDates())
+    for (const shift of Object.keys(shifts) as Shift[]) {
+      const need = needAt(bookings, date, shift, stop);
+      if (!best || need < best.need) best = { date, shift, need };
+    }
+  return best!;
 }

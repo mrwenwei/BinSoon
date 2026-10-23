@@ -105,6 +105,45 @@ export function coinSvg() {
   return coinCache;
 }
 
+// 小車停靠點：側視小貨車停在站牌位置，內部 14×10 格＋外框＝16×12 格，×2＝32×24（整數倍）。
+// 車身 --px-purple（互動／地點）、下緣陰影 --px-purple-deep、貨箱白板與車頭燈 --px-card、
+// 車窗 --px-purple-soft、輪胎與外框 --text-on-light（同愛心、代幣的描邊色），輪轂白。
+const VAN_STOP = [
+  "PPPPPPPPP.....",
+  "PSSSSSSSP.....",
+  "PSSSSSSSPPP...",
+  "PSSSSSSSPWWWP.",
+  "PPPPPPPPPWWWPP",
+  "PPPPPPPPPPPPPG",
+  "DDDDDDDDDDDDDD",
+  ".TTT.....TTT..",
+  ".TCT.....TCT..",
+  ".TTT.....TTT..",
+];
+const vanStopCache = new Map<number, string>();
+export function vanStopSvg(scale: 2 | 3 = 2) {
+  let svg = vanStopCache.get(scale);
+  if (!svg) {
+    svg = outlinedSvg(
+      VAN_STOP,
+      {
+        K: "var(--text-on-light)",
+        P: "var(--px-purple)",
+        D: "var(--px-purple-deep)",
+        S: "var(--px-card)",
+        W: "var(--px-purple-soft)",
+        G: "var(--px-card)",
+        T: "var(--text-on-light)",
+        C: "var(--px-card)",
+      },
+      scale,
+      "px-vanstop",
+    );
+    vanStopCache.set(scale, svg);
+  }
+  return svg;
+}
+
 const escapeHtml = (value: string) =>
   value.replace(
     /[&<>"']/g,

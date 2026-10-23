@@ -6,6 +6,7 @@ import "./styles.css";
 import "./styles/skin-citizen.css";
 import "./styles/skin-civic.css";
 import "./styles/skin-crew.css";
+import "./styles/skin-van.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

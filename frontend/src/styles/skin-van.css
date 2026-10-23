@@ -1,0 +1,144 @@
+/* Pixel skin：市民端預約小車（#van 瀏覽、停靠點詳情、我的預約）。只用 --px-* token。 */
+
+/* 像素小車停靠點 icon：框內固定 32×24（16×12 格 ×2），蓋過 .row-buddy／地標旗子的尺寸規則。 */
+.row-buddy.vanstop {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--px-radius-small);
+  background: var(--px-purple-soft);
+}
+.row-buddy.vanstop svg,
+.pixel-marker.vanstop .marker-body svg,
+.van-stop-info svg {
+  width: 32px;
+  height: 24px;
+}
+.row-buddy.vanstop .px-art,
+.van-stop-info .px-art {
+  display: inline-flex;
+}
+
+/* 清單：最快成團摘要用內文色，距離／地址維持次要色 */
+.van-browse .van-row .van-row-slot {
+  color: var(--px-purple-deep);
+  font-weight: 700;
+}
+.van-browse .van-row > .icon {
+  color: var(--px-ink-muted);
+}
+.van-browse .mx-row-title .status-pill {
+  background: var(--px-purple-soft);
+  color: var(--px-purple-deep);
+  border-radius: var(--px-radius-pill);
+  white-space: nowrap;
+}
+.van-browse .mx-head-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+}
+.van-browse .van-mine-link {
+  color: var(--px-purple-deep);
+  white-space: nowrap;
+  font-weight: 700;
+}
+.van-browse .filter-chips button {
+  border-radius: var(--px-radius-pill);
+}
+
+/* 停靠點詳情 */
+.van-stop-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--px-card);
+  border: 1px solid var(--px-line);
+  border-radius: var(--px-radius-card);
+  box-shadow: 0 3px 0 var(--px-shadow);
+}
+.van-stop-info small {
+  display: block;
+  color: var(--px-ink-body);
+}
+.van-stop-page .van-content h2 {
+  font-weight: 900;
+}
+.van-slotgrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.van-slot-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: stretch;
+}
+.van-slot-date {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  color: var(--px-ink);
+}
+.van-slot-date small {
+  color: var(--px-ink-body);
+}
+.van-slot {
+  display: grid;
+  gap: var(--space-1);
+  align-content: center;
+  min-height: 64px;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  background: var(--px-card);
+  color: var(--px-ink);
+  border: 1px solid var(--px-line-control);
+  border-radius: var(--px-radius-small);
+  box-shadow: 0 2px 0 var(--px-shadow);
+}
+.van-slot small {
+  display: block;
+  color: var(--px-ink-body);
+}
+.van-slot strong {
+  font-size: 13px;
+  color: var(--px-ink-body);
+}
+.van-slot.open strong {
+  color: var(--px-hungry-ink);
+}
+.van-slot[aria-pressed="true"] {
+  background: var(--px-purple-soft);
+  border: 2px solid var(--px-purple);
+  box-shadow: 0 2px 0 var(--px-purple-deep);
+}
+.van-slot[aria-pressed="true"] strong,
+.van-slot[aria-pressed="true"] small {
+  color: var(--px-purple-deep);
+}
+.van-slot:disabled {
+  background: var(--px-dot-off);
+  box-shadow: none;
+  border-style: dashed;
+  opacity: 1;
+}
+.van-slot:disabled strong {
+  color: var(--px-purple-deep);
+}
+.van-slot:focus-visible {
+  outline: 3px solid var(--px-purple);
+}
+
+/* 我的預約列表 */
+.van-booking {
+  background: var(--px-card);
+  border: 1px solid var(--px-line);
+  border-radius: var(--px-radius-card);
+  box-shadow: 0 3px 0 var(--px-shadow);
+}

@@ -1,25 +1,50 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { Icon } from "./Icon";
+import { VanStop } from "./Pixel";
+import { vanStopSvg } from "./pixelArt";
+import {
+  MOBILE_QUERY,
+  SheetHandle,
+  useBottomSheet,
+  useMediaQuery,
+} from "./useBottomSheet";
 import L from "leaflet";
 import { requestRoadRoute, type CrewRoute } from "../data/crewRouting";
 import { LocationMap } from "../map/LocationMap";
 import type { LocationRecord } from "../data/locations";
 import {
+  NEAR_M,
+  VAN_ORIGIN,
   addDays,
   availableDates,
+  bestSlot,
   countAt,
   dateLabel,
+  distanceM,
+  distanceText,
+  needAt,
   readBookings,
   routeFor,
   shifts,
+  shortDate,
+  slotNeedText,
   stops,
   today,
+  vanCoordinates,
   writeBookings,
   type Booking,
   type Shift,
 } from "../data/vanDemo";
 import "./van.css";
-function useBookings() {
+export function useBookings() {
   const [bookings, set] = useState(readBookings);
   useEffect(() => {
     const refresh = () => set(readBookings());
@@ -32,14 +57,6 @@ function useBookings() {
   }, []);
   return bookings;
 }
-// Display stops are separate from the repository's Bin / CSV data.
-const vanCoordinates: Record<string, [number, number]> = {
-  dongmen: [25.03358, 121.52955],
-  yongkang: [25.03032, 121.5298],
-  jinhua: [25.03035, 121.5312],
-  lishui: [25.03042, 121.52863],
-  hangzhou: [25.03025, 121.52685],
-};
 const vanOrigin: [number, number] = [25.033, 121.5355];
 function VanMap({
   selected,
@@ -117,37 +134,14 @@ function VanMap({
     </div>
   );
 }
-export function CitizenVan() {
-  const bookings = useBookings();
-  const [view, setView] = useState<"list" | "form" | "detail">(() =>
-    readBookings().some((b) => b.date > today()) ? "list" : "form",
-  );
-  const [date, setDate] = useState(availableDates()[0]);
-  const [shift, setShift] = useState<Shift>("evening");
-  const [stop, setStop] = useState<string>("dongmen");
-  const [id, setId] = useState<string>();
-  const [error, setError] = useState("");
-  const active = bookings.filter((b) => b.date > today());
-  const booking = bookings.find((b) => b.id === id);
-  const save = (next: Booking[], after: () => void) => {
-    try {
-      writeBookings(next);
-      setError("");
-      after();
-    } catch {
-      setError("無法儲存預約，請允許瀏覽器儲存空間。");
-    }
-  };
-  const open = (b: Booking) => {
-    setId(b.id);
-    setDate(b.date);
-    setShift(b.shift);
-    setStop(b.stop);
-    setView("detail");
-  };
-  const selected = stops.find((s) => s.id === stop)!;
-  const count = countAt(bookings, date, shift, stop);
-  const published =
+// 市民端預約小車：#van 瀏覽（地圖＋清單）、#van/stop/<id> 選日期時段、
+// #van/mine 我的預約列表、#van/booking/<id> 預約詳情。資料只在本機 localStorage（VAN_KEY）。
+let lastVanStop: string | undefined;
+const go = (hash: string) => {
+  window.location.hash = hash;
+};
+function isPublished(date: string) {
+  return (
     today() > addDays(date, -1) ||
     (today() === addDays(date, -1) &&
       Number(
@@ -156,258 +150,636 @@ export function CitizenVan() {
           hour: "2-digit",
           hourCycle: "h23",
         }).format(new Date()),
-      ) >= 20);
+      ) >= 20)
+  );
+}
+const stopRecord = (stop: (typeof stops)[number]): LocationRecord => ({
+  id: stop.id,
+  kind: "place",
+  label: stop.name,
+  address: stop.address,
+  latitude: stop.lat,
+  longitude: stop.lng,
+  district: "大安區",
+  note: "",
+  source_type: "local_van_demo",
+  source_row: null,
+  source_file: null,
+  location_precision: "representative_point_only",
+  reported_count: null,
+});
+const vanOriginMarker = { ...VAN_ORIGIN, label: "起點" };
+const vanInitialCenter: [number, number] = [
+  VAN_ORIGIN.latitude,
+  VAN_ORIGIN.longitude,
+];
+const vanMarker = (_: LocationRecord, active: boolean) =>
+  L.divIcon({
+    className: `pixel-marker mx-landmark vanstop ${active ? "selected" : ""}`,
+    html: `<span class="marker-body">${vanStopSvg(2)}</span>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 40],
+  });
+const slotSummary = (d: string, s: Shift, need: number) =>
+  `${shortDate(d)} ${shifts[s].name} ${need > 0 ? `差 ${need} 人` : "已開站"}`;
+
+function VanBrowse() {
+  const bookings = useBookings();
+  const mobile = useMediaQuery(MOBILE_QUERY);
+  const [q, setQ] = useState("");
+  const [near, setNear] = useState(false);
+  const [soon, setSoon] = useState(false);
+  const all = useMemo(
+    () =>
+      stops
+        .map((s) => ({
+          stop: s,
+          meters: distanceM(s),
+          best: bestSlot(bookings, s.id),
+        }))
+        .sort((a, b) => a.meters - b.meters),
+    [bookings],
+  );
+  const nearestId = all[0].stop.id;
+  const rows = all.filter(
+    ({ stop, meters, best }) =>
+      `${stop.name}${stop.address}`.includes(q.trim()) &&
+      (!near || meters <= NEAR_M) &&
+      (!soon || best.need <= 3),
+  );
+  const highlightId = lastVanStop ?? nearestId;
+  const selected = stops.find((s) => s.id === highlightId);
+  const mapItems = useMemo(() => {
+    const shown = rows.map((r) => stopRecord(r.stop));
+    return selected && !shown.some((p) => p.id === selected.id)
+      ? [...shown, stopRecord(selected)]
+      : shown;
+  }, [rows.map((r) => r.stop.id).join(","), selected?.id]);
+  const select = useCallback((p: LocationRecord) => {
+    lastVanStop = p.id;
+    go(`van/stop/${p.id}`);
+  }, []);
+  const description = useCallback(
+    (p: LocationRecord) => {
+      const row = all.find((r) => r.stop.id === p.id);
+      return row
+        ? `${distanceText(row.meters)}，${slotSummary(row.best.date, row.best.shift, row.best.need)}`
+        : undefined;
+    },
+    [all],
+  );
+  // 抽屜（只在手機）：同 MapPage 的量法。
+  const layoutRef = useRef<HTMLElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [dims, setDims] = useState({ layout: 0, head: 0, toolbar: 0 });
+  useLayoutEffect(() => {
+    const measure = () => {
+      const next = {
+        layout: layoutRef.current?.clientHeight ?? 0,
+        toolbar: toolbarRef.current?.offsetHeight ?? 0,
+        head:
+          (handleRef.current?.offsetHeight ?? 0) +
+          (headRef.current?.offsetHeight ?? 0),
+      };
+      setDims((p) =>
+        p.layout === next.layout &&
+        p.head === next.head &&
+        p.toolbar === next.toolbar
+          ? p
+          : next,
+      );
+    };
+    measure();
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    });
+    for (const ref of [layoutRef, handleRef, headRef, toolbarRef])
+      if (ref.current) observer.observe(ref.current);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [mobile]);
+  const heights = useMemo(() => {
+    const full = Math.max(
+      dims.head,
+      dims.layout - (dims.toolbar ? dims.toolbar + 24 : 12),
+    );
+    const half = Math.min(300, Math.round(dims.layout * 0.42));
+    return {
+      collapsed: dims.head,
+      half: Math.min(full, Math.max(dims.head, half)),
+      full,
+    };
+  }, [dims]);
+  const sheet = useBottomSheet({
+    enabled: mobile,
+    heights,
+    dragZone: ".mx-panel-head",
+    scrollRef: bodyRef,
+  });
+  const { stop: drawer, px: drawerPx } = sheet;
+  const focusOffsetY = mobile ? Math.round(heights.half / 2) : 0;
+  const viewOffsetY = mobile
+    ? Math.round((heights[drawer] - (dims.toolbar ? dims.toolbar + 8 : 0)) / 2)
+    : 0;
+  const style = mobile
+    ? ({
+        "--mx-drawer-h": `${drawerPx}px`,
+        "--mx-toolbar-h": `${dims.toolbar}px`,
+      } as CSSProperties)
+    : undefined;
+  const mine = bookings.filter((b) => b.date > today()).length;
+  const reset = () => {
+    setQ("");
+    setNear(false);
+    setSoon(false);
+  };
+  return (
+    <main
+      className="mx-layout px-map mx-home van-browse"
+      ref={layoutRef}
+      style={style}
+      data-drawer={mobile ? drawer : undefined}
+    >
+      <div
+        ref={toolbarRef}
+        className="mx-home-toolbar"
+        aria-label="停靠點搜尋與篩選"
+      >
+        <div className="mx-home-controls">
+          <label className="search-field">
+            <span className="visually-hidden">搜尋停靠點</span>
+            <input
+              type="search"
+              aria-label="搜尋停靠點"
+              placeholder="搜尋站名、地址⋯"
+              maxLength={200}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </label>
+          <div className="filter-chips" role="group" aria-label="篩選">
+            <button
+              type="button"
+              aria-pressed={near}
+              onClick={() => setNear(!near)}
+            >
+              離我近
+            </button>
+            <button
+              type="button"
+              aria-pressed={soon}
+              onClick={() => setSoon(!soon)}
+            >
+              快開站
+            </button>
+          </div>
+        </div>
+      </div>
+      <section
+        className={`mx-panel${sheet.dragging ? " dragging" : ""}`}
+        aria-label="停靠點清單"
+        data-view="list"
+        ref={sheet.panelRef}
+        {...sheet.panelProps}
+      >
+        <SheetHandle ref={handleRef} {...sheet.handleProps} />
+        <div className="mx-panel-head" ref={headRef}>
+          <div className="mx-head-title">
+            <h1 className="mx-title">預約清運小車</h1>
+            <a className="text-button van-mine-link" href="#van/mine">
+              我的預約{mine ? `（${mine}）` : ""}
+            </a>
+          </div>
+        </div>
+        <div className="mx-panel-body" ref={bodyRef} inert={sheet.collapsed}>
+          <div className="mx-panel-content">
+            {rows.length > 0 ? (
+              <ul className="mx-list" aria-label="小車停靠點">
+                {rows.map(({ stop, meters, best }) => (
+                  <li key={stop.id}>
+                    <button
+                      type="button"
+                      className={`location-row van-row${stop.id === highlightId ? " active" : ""}`}
+                      aria-current={
+                        stop.id === highlightId ? "true" : undefined
+                      }
+                      data-id={stop.id}
+                      onClick={() => select(stopRecord(stop))}
+                    >
+                      <span className="row-buddy vanstop">
+                        <VanStop />
+                      </span>
+                      <span className="row-copy">
+                        <span className="mx-row-title">
+                          <strong>{stop.name}</strong>
+                          {stop.id === nearestId && (
+                            <span className="status-pill">離你最近</span>
+                          )}
+                        </span>
+                        <small>
+                          {stop.address} · {distanceText(meters)}
+                        </small>
+                        <small className="van-row-slot">
+                          最快：{slotSummary(best.date, best.shift, best.need)}
+                        </small>
+                      </span>
+                      <Icon name="arrow" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mx-empty">
+                <p>找不到符合的停靠點。</p>
+                <button type="button" className="text-button" onClick={reset}>
+                  清除搜尋與篩選
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+      <div className="mx-map van-browse-map">
+        <LocationMap
+          basemap="pixel"
+          locations={mapItems}
+          selected={selected ? stopRecord(selected) : null}
+          onSelect={select}
+          initialCenter={vanInitialCenter}
+          fitKey={
+            mapItems.length
+              ? `${mapItems.map((p) => p.id).join(",")}/${focusOffsetY}`
+              : undefined
+          }
+          markerIcon={vanMarker}
+          markerLabel={(p) => `小車停靠點：${p.label}`}
+          markerDescription={description}
+          origin={vanOriginMarker}
+          focusSelected={false}
+          focusOffsetY={focusOffsetY}
+          viewOffsetY={viewOffsetY}
+        />
+      </div>
+    </main>
+  );
+}
+
+function VanStopPage({ stopId, editId }: { stopId?: string; editId?: string }) {
+  const bookings = useBookings();
+  const stop = stops.find((s) => s.id === stopId);
+  const editing = editId ? bookings.find((b) => b.id === editId) : undefined;
+  const [pick, setPick] = useState<{ date: string; shift: Shift } | null>(
+    editing ? { date: editing.date, shift: editing.shift } : null,
+  );
+  const [error, setError] = useState("");
+  const seeded = useRef(!!editing);
+  useEffect(() => {
+    // 重新整理後 bookings 才讀到：把原本的格子預選一次。
+    if (editing && !seeded.current) {
+      seeded.current = true;
+      setPick({ date: editing.date, shift: editing.shift });
+    }
+  }, [editing]);
+  if (!stop)
+    return (
+      <main className="van-page">
+        <header className="van-heading">
+          <h1>找不到這個停靠點</h1>
+        </header>
+        <div className="van-content">
+          <a className="button secondary" href="#van">
+            返回停靠點
+          </a>
+        </div>
+      </main>
+    );
+  const others = bookings.filter((b) => b.id !== editing?.id);
+  const backHref = editing ? `#van/booking/${editing.id}` : "#van";
+  const submit = () => {
+    if (!pick) return;
+    if (!availableDates().includes(pick.date)) {
+      setError("請選擇未來七天的日期");
+      return;
+    }
+    if (others.some((b) => b.date === pick.date && b.shift === pick.shift)) {
+      setError("此日期與時段已有預約");
+      return;
+    }
+    const next: Booking = {
+      id: editing?.id ?? crypto.randomUUID(),
+      date: pick.date,
+      shift: pick.shift,
+      stop: stop.id,
+    };
+    try {
+      writeBookings([...bookings.filter((b) => b.id !== next.id), next]);
+      setError("");
+      window.location.replace(`#van/booking/${next.id}`);
+    } catch {
+      setError("無法儲存預約，請允許瀏覽器儲存空間。");
+    }
+  };
+  return (
+    <main className="van-page van-stop-page">
+      <header className="van-heading">
+        <a
+          className="text-button"
+          href={backHref}
+          aria-label={editing ? "返回預約詳情" : "返回停靠點"}
+        >
+          <Icon name="back" />
+        </a>
+        <h1>{stop.name}</h1>
+      </header>
+      <div className="van-content">
+        <section className="van-stop-info">
+          <span className="row-buddy vanstop">
+            <VanStop />
+          </span>
+          <span>
+            <strong>{stop.address}</strong>
+            <small>離你 {distanceText(distanceM(stop))}</small>
+          </span>
+        </section>
+        {error && <p role="alert">{error}</p>}
+        <h2>選日期與時段</h2>
+        <ul className="van-slotgrid" aria-label="日期與時段">
+          {availableDates().map((d) => (
+            <li className="van-slot-row" key={d}>
+              <span className="van-slot-date">
+                <b>{shortDate(d)}</b>
+                <small>
+                  週
+                  {
+                    "日一二三四五六"[
+                      new Date(`${d}T12:00:00+08:00`).getUTCDay()
+                    ]
+                  }
+                </small>
+              </span>
+              {(Object.keys(shifts) as Shift[]).map((s) => {
+                const mine = others.find((b) => b.date === d && b.shift === s);
+                const need = needAt(others, d, s, stop.id);
+                const on = pick?.date === d && pick.shift === s;
+                return (
+                  <button
+                    type="button"
+                    key={s}
+                    className={`van-slot${need === 0 ? " open" : ""}`}
+                    aria-pressed={mine ? undefined : on}
+                    disabled={!!mine}
+                    onClick={() => {
+                      setPick({ date: d, shift: s });
+                      setError("");
+                    }}
+                  >
+                    <span>
+                      {shifts[s].name}
+                      <small>{shifts[s].time}</small>
+                    </span>
+                    <strong>{mine ? "你已預約" : slotNeedText(need)}</strong>
+                  </button>
+                );
+              })}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="van-submit">
+        <button className="button primary" disabled={!pick} onClick={submit}>
+          {pick
+            ? `${editing ? "更新預約" : "預約"} ${shortDate(pick.date)} ${shifts[pick.shift].name} · ${stop.name}`
+            : "請先選一個日期與時段"}
+        </button>
+        <small>
+          <Icon name="clock" /> 前一天 20:00 公布路線
+        </small>
+      </div>
+    </main>
+  );
+}
+
+function VanMine() {
+  const bookings = useBookings();
+  const active = bookings
+    .filter((b) => b.date > today())
+    .sort(
+      (a, b) => a.date.localeCompare(b.date) || a.shift.localeCompare(b.shift),
+    );
+  return (
+    <main className="van-page">
+      <header className="van-heading">
+        <a className="text-button" href="#member" aria-label="返回我的">
+          <Icon name="back" />
+        </a>
+        <h1>我的小車預約</h1>
+      </header>
+      <div className="van-content">
+        {active.length ? (
+          <>
+            <h2>已預約</h2>
+            {active.map((b) => (
+              <button
+                className="van-booking"
+                key={b.id}
+                onClick={() => go(`van/booking/${b.id}`)}
+              >
+                <Icon name="truck" />
+                <span>
+                  <strong>
+                    {dateLabel(b.date)} {shifts[b.shift].name} ·{" "}
+                    {stops.find((s) => s.id === b.stop)?.name}
+                  </strong>
+                  <small>
+                    目前 {countAt(bookings, b.date, b.shift, b.stop)} / 10 人 ·{" "}
+                    {dateLabel(addDays(b.date, -1))} 20:00 公布路線
+                  </small>
+                </span>
+                <Icon name="arrow" />
+              </button>
+            ))}
+            <a className="button secondary" href="#van">
+              ＋ 再預約其他日期
+            </a>
+          </>
+        ) : (
+          <>
+            <p>還沒有預約。選一個停靠點與時段，滿 10 人小車就會停靠。</p>
+            <a className="button primary" href="#van">
+              預約清運小車
+            </a>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function VanBookingDetail({ bookingId }: { bookingId?: string }) {
+  const bookings = useBookings();
+  const [error, setError] = useState("");
+  const booking = bookings.find((b) => b.id === bookingId);
+  if (!booking)
+    return (
+      <main className="van-page">
+        <header className="van-heading">
+          <a className="text-button" href="#van/mine" aria-label="返回我的預約">
+            <Icon name="back" />
+          </a>
+          <h1>我的清運預約</h1>
+        </header>
+        <div className="van-content">
+          <p>找不到這筆預約，可能已取消。</p>
+          <a className="button secondary" href="#van/mine">
+            看我的預約
+          </a>
+        </div>
+      </main>
+    );
+  const { date, shift } = booking;
+  const selected = stops.find((s) => s.id === booking.stop)!;
+  const count = countAt(bookings, date, shift, booking.stop);
+  const published = isPublished(date);
   const assigned = routeFor(bookings, date, shift).find(
-    (s) => s.id === stop || s.merged.some((m) => m.id === stop),
+    (s) => s.id === booking.stop || s.merged.some((m) => m.id === booking.stop),
   );
   return (
     <main className="van-page">
       <header className="van-heading">
-        {view !== "list" && (view === "detail" || active.length > 0) && (
-          <button
-            className="text-button"
-            aria-label="返回預約"
-            onClick={() => setView("list")}
-          >
-            <Icon name="back" />
-          </button>
-        )}
-        <h1>{view === "detail" ? "我的清運預約" : "預約清運小車"}</h1>
-        {view === "detail" && (
-          <span className="van-pill">
-            {published ? "路線已公布" : "等待公布路線"}
-          </span>
-        )}
+        <a className="text-button" href="#van/mine" aria-label="返回我的預約">
+          <Icon name="back" />
+        </a>
+        <h1>我的清運預約</h1>
+        <span className="van-pill">
+          {published ? "路線已公布" : "等待公布路線"}
+        </span>
       </header>
       {error && <p role="alert">{error}</p>}
-      {view === "list" ? (
-        <div className="van-content">
-          <h2>已預約</h2>
-          {active.map((b) => (
-            <button className="van-booking" key={b.id} onClick={() => open(b)}>
-              <Icon name="truck" />
-              <span>
-                <strong>
-                  {dateLabel(b.date)} {shifts[b.shift].name} ·{" "}
-                  {stops.find((s) => s.id === b.stop)?.name}
-                </strong>
-                <small>
-                  目前 {countAt(bookings, b.date, b.shift, b.stop)} / 10 人 ·{" "}
-                  {dateLabel(addDays(b.date, -1))} 20:00 公布路線
-                </small>
-              </span>
-              <Icon name="arrow" />
-            </button>
-          ))}
+      <div className="van-content">
+        <section className="card van-detail">
+          <p>
+            {dateLabel(date)} {shifts[shift].name}
+          </p>
+          <strong className="van-time">{shifts[shift].time}</strong>
+          <h2>
+            {selected.name} · {selected.address}
+          </h2>
+          <hr />
+          <div className="van-between">
+            <span>
+              目前 <b>{count}</b> 人預約（含你）
+            </span>
+            <strong>
+              {count < 10 ? `還差 ${10 - count} 人` : "已達開站人數"}
+            </strong>
+          </div>
+          <progress max="10" value={count} />
+          <p>滿 10 人就停靠</p>
+        </section>
+        <section className="van-booking">
+          <span>
+            路線公布
+            <strong className="van-time">
+              {dateLabel(addDays(date, -1))} 20:00
+            </strong>
+          </span>
+        </section>
+        <section className="card">
+          <h2>公布路線後會怎樣</h2>
+          <p>
+            <span className="van-pill">滿 10 人</span>　確定停靠該站點。
+          </p>
+          <p>
+            <span className="van-pill">不到 10 人</span>　併到最近的開站點。
+          </p>
+          {published && (
+            <p>
+              {assigned?.id === booking.stop
+                ? "確定停靠"
+                : `併入 · ${assigned?.name}`}
+            </p>
+          )}
+        </section>
+        <button
+          className="button primary"
+          onClick={async () => {
+            const text = `${dateLabel(date)} ${shifts[shift].name} · ${selected.name}`;
+            try {
+              if (navigator.share)
+                await navigator.share({
+                  title: "揪親朋好友一起預約",
+                  text,
+                  url: `${location.origin}${location.pathname}#van`,
+                });
+              else {
+                await navigator.clipboard.writeText(
+                  `${text} ${location.origin}${location.pathname}#van`,
+                );
+                setError("已複製預約資訊");
+              }
+            } catch {
+              /* Share cancellation leaves booking untouched. */
+            }
+          }}
+        >
+          揪親朋好友一起預約
+        </button>
+        <div className="van-two">
           <button
             className="button secondary"
-            onClick={() => {
-              setId(undefined);
-              setDate(availableDates()[0]);
-              setView("form");
-            }}
+            disabled={published}
+            onClick={() => go(`van/stop/${booking.stop}?edit=${booking.id}`)}
           >
-            ＋ 再預約其他日期
+            修改預約
           </button>
-        </div>
-      ) : view === "detail" && booking ? (
-        <div className="van-content">
-          <section className="card van-detail">
-            <p>
-              {dateLabel(date)} {shifts[shift].name}
-            </p>
-            <strong className="van-time">{shifts[shift].time}</strong>
-            <h2>
-              {selected.name} · {selected.address}
-            </h2>
-            <hr />
-            <div className="van-between">
-              <span>
-                目前 <b>{count}</b> 人預約（含你）
-              </span>
-              <strong>
-                {count < 10 ? `還差 ${10 - count} 人` : "已達開站人數"}
-              </strong>
-            </div>
-            <progress max="10" value={count} />
-            <p>滿 10 人就停靠</p>
-          </section>
-          <section className="van-booking">
-            <span>
-              路線公布
-              <strong className="van-time">
-                {dateLabel(addDays(date, -1))} 20:00
-              </strong>
-            </span>
-          </section>
-          <section className="card">
-            <h2>公布路線後會怎樣</h2>
-            <p>
-              <span className="van-pill">滿 10 人</span>　確定停靠該站點。
-            </p>
-            <p>
-              <span className="van-pill">不到 10 人</span>　併到最近的開站點。
-            </p>
-            {published && (
-              <p>
-                {assigned?.id === stop
-                  ? "確定停靠"
-                  : `併入 · ${assigned?.name}`}
-              </p>
-            )}
-          </section>
           <button
-            className="button primary"
-            onClick={async () => {
-              const text = `${dateLabel(date)} ${shifts[shift].name} · ${selected.name}`;
+            className="button secondary"
+            disabled={published}
+            onClick={() => {
               try {
-                if (navigator.share)
-                  await navigator.share({
-                    title: "揪親朋好友一起預約",
-                    text,
-                    url: `${location.origin}${location.pathname}#van`,
-                  });
-                else {
-                  await navigator.clipboard.writeText(
-                    `${text} ${location.origin}${location.pathname}#van`,
-                  );
-                  setError("已複製預約資訊");
-                }
+                writeBookings(bookings.filter((b) => b.id !== booking.id));
+                go("van/mine");
               } catch {
-                /* Share cancellation leaves booking untouched. */
+                setError("無法儲存預約，請允許瀏覽器儲存空間。");
               }
             }}
           >
-            揪親朋好友一起預約
+            取消預約
           </button>
-          <div className="van-two">
-            <button
-              className="button secondary"
-              disabled={published}
-              onClick={() => setView("form")}
-            >
-              修改預約
-            </button>
-            <button
-              className="button secondary"
-              disabled={published}
-              onClick={() =>
-                save(
-                  bookings.filter((b) => b.id !== id),
-                  () => {
-                    setId(undefined);
-                    setView("list");
-                  },
-                )
-              }
-            >
-              取消預約
-            </button>
-          </div>
         </div>
-      ) : (
-        <>
-          <VanMap
-            selected={stop}
-            onSelect={setStop}
-            counts={(id) => countAt(bookings, date, shift, id)}
-          />
-          <div className="van-content">
-            <h2>1. 選日期</h2>
-            <div className="van-dates">
-              {availableDates().map((d) => (
-                <button
-                  key={d}
-                  aria-pressed={d === date}
-                  onClick={() => setDate(d)}
-                >
-                  <span>
-                    週
-                    {
-                      "日一二三四五六"[
-                        new Date(`${d}T12:00:00+08:00`).getUTCDay()
-                      ]
-                    }
-                  </span>
-                  <strong>{dateLabel(d).split("（")[0]}</strong>
-                </button>
-              ))}
-            </div>
-            <h2>2. 選時段</h2>
-            <div className="van-two">
-              {(Object.keys(shifts) as Shift[]).map((s) => (
-                <button
-                  className="van-choice"
-                  key={s}
-                  aria-pressed={shift === s}
-                  onClick={() => setShift(s)}
-                >
-                  <span>{shifts[s].name}</span>
-                  <strong className="van-time">{shifts[s].time}</strong>
-                </button>
-              ))}
-            </div>
-            <h2>3. 選停靠點</h2>
-            {stops.map((s) => {
-              const n = countAt(bookings, date, shift, s.id);
-              return (
-                <button
-                  className="van-choice"
-                  key={s.id}
-                  aria-pressed={stop === s.id}
-                  onClick={() => setStop(s.id)}
-                >
-                  <div className="van-between">
-                    <strong>{s.name}</strong>
-                    <strong>{n} 人</strong>
-                  </div>
-                  <p>
-                    {s.address} · 離你 {s.distance}m
-                  </p>
-                  <progress max="10" value={n} />
-                  <small>
-                    {n < 10 ? `還差 ${10 - n} 人開站` : "已達開站人數"}
-                  </small>
-                </button>
-              );
-            })}
-          </div>
-          <div className="van-submit">
-            <button
-              className="button primary"
-              onClick={() => {
-                if (!availableDates().includes(date)) {
-                  setError("請選擇未來七天的日期");
-                  return;
-                }
-                const duplicate = bookings.find(
-                  (b) => b.date === date && b.shift === shift && b.id !== id,
-                );
-                if (duplicate) {
-                  setError("此日期與時段已有預約");
-                  return;
-                }
-                const next = {
-                  id: id || crypto.randomUUID(),
-                  date,
-                  shift,
-                  stop,
-                };
-                save([...bookings.filter((b) => b.id !== id), next], () => {
-                  setId(next.id);
-                  setView("detail");
-                });
-              }}
-            >
-              預約 · {dateLabel(date)} {shifts[shift].name} · {selected.name}
-            </button>
-            <small>
-              <Icon name="clock" /> 前一天 20:00 公布路線
-            </small>
-          </div>
-        </>
-      )}
+      </div>
     </main>
+  );
+}
+
+export function CitizenVan({
+  view,
+  target,
+  edit,
+}: {
+  view?: string;
+  target?: string;
+  edit?: string | null;
+}) {
+  return view === "stop" ? (
+    <VanStopPage
+      key={`${target}/${edit}`}
+      stopId={target}
+      editId={edit ?? undefined}
+    />
+  ) : view === "mine" ? (
+    <VanMine />
+  ) : view === "booking" ? (
+    <VanBookingDetail key={target} bookingId={target} />
+  ) : (
+    <VanBrowse />
   );
 }
 function VanDriving({
