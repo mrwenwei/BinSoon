@@ -78,3 +78,18 @@
 .binu-card-head .icon-button svg {
   stroke-width: 3;
 }
+
+/* 我的 BinU：計數與 BinU 列垂直置中，和下方說明拉開距離（使用者要求的版面調整） */
+.binu-collect {
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+.binu-slots {
+  align-items: center;
+  gap: 8px;
+}
+.binu-rule {
+  margin-top: 0;
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--px-line-control);
+}
