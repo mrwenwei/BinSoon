@@ -1,0 +1,36 @@
+/* Pixel skin：清潔隊／staff 頁（staff、crew、路線、小車 van、審核）。只寫純視覺屬性，規則見 docs/PIXEL_SKIN.md。 */
+
+/* 米色底上的次要小字：--px-ink-soft 只有 4.2:1，改用內文色（≥4.5:1）。 */
+:where(:root[data-theme="day"]) .crew-demo-notice > span,
+:where(:root[data-theme="day"]) .crew-route-heading .eyebrow,
+:where(:root[data-theme="day"]) .crew-route-count,
+:where(:root[data-theme="day"]) .crew-route-count > span,
+:where(:root[data-theme="day"]) .staff-main .tiny,
+:where(:root[data-theme="day"]) .api-route-refresh .tiny,
+:where(:root[data-theme="day"]) .page-heading .eyebrow,
+:where(:root[data-theme="day"]) .page-heading > div > p,
+:where(:root[data-theme="day"]) .api-route-page .eyebrow,
+:where(:root[data-theme="day"]) .crew-demo .eyebrow,
+:where(:root[data-theme="day"]) .crew-route-itinerary > header .eyebrow,
+:where(:root[data-theme="day"]) .van-page .eyebrow,
+:where(:root[data-theme="day"]) .van-content > p,
+:where(:root[data-theme="day"]) .crew-ranking .crew-list-header p,
+:where(:root[data-theme="day"]) .api-route-page .tiny {
+  color: var(--px-ink-body);
+}
+
+/* 米色底上的連結：紫 3.7:1 不足，改用淺底紫字。 */
+:where(:root[data-theme="day"]) .page-heading > a,
+:where(:root[data-theme="day"]) .api-route-page .page-heading > a {
+  color: var(--px-purple-deep);
+}
+
+/* 淺紫底上的小字 */
+:where(:root[data-theme="day"]) .crew-vehicle-switch .crew-vehicle-description {
+  color: var(--px-ink-body);
+}
+
+/* 選中的小車站點 icon：深墨字壓在深紫底只有 1.9:1，改白。 */
+:where(:root[data-theme="day"]) .van-stop-icon.selected {
+  color: var(--px-on-purple);
+}

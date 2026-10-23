@@ -625,7 +625,7 @@ export function MapPage({
 
   return (
     <main
-      className={`mx-layout ${view === "list" && !voting ? "mx-home" : ""}`}
+      className={`mx-layout px-map ${view === "list" && !voting ? "mx-home" : ""}`}
       ref={layoutRef}
       style={style}
       data-drawer={mobile ? drawer : undefined}

@@ -320,28 +320,48 @@ test("share falls back to a small LINE / copy / cancel menu", async ({
   await expect(page.locator(".mx-panel")).toHaveAttribute("data-view", "bin");
 });
 
-test("map and list use the M3 proposed pin with a support label; the tab is 設桶投票", async ({
-  page,
-}) => {
-  await setup(page, [21, 1]);
-  await page.goto("/#vote");
-  await expect(
-    page
-      .getByRole("navigation", { name: "主要分頁" })
-      .getByRole("link", { name: "設桶投票", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "設桶投票", level: 1 }),
-  ).toBeVisible();
-  const pin = page.locator(".leaflet-marker-icon.mx-proposed");
-  await expect(pin.locator("svg.bin-bot-proposed")).toHaveCount(1);
-  await expect(pin.locator(".proposal-marker-votes")).toHaveText("支持 95%");
-  expect(
-    await pin
+// 「＋」顏色走 --teal-on-mint：night（原版）= teal-on-mint 深青；day = --px-purple-deep。
+for (const theme of ["night", "day"] as const) {
+  test(`map and list use the M3 proposed pin with a support label; the tab is 設桶投票 (${theme})`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (t) => localStorage.setItem("binsoon-theme", t),
+      theme,
+    );
+    await setup(page, [21, 1]);
+    await page.goto("/#vote");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await expect(
+      page
+        .getByRole("navigation", { name: "主要分頁" })
+        .getByRole("link", { name: "設桶投票", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "設桶投票", level: 1 }),
+    ).toBeVisible();
+    const pin = page.locator(".leaflet-marker-icon.mx-proposed");
+    await expect(pin.locator("svg.bin-bot-proposed")).toHaveCount(1);
+    await expect(pin.locator(".proposal-marker-votes")).toHaveText("支持 95%");
+    const plusColor = await pin
       .locator(".mx-proposed-plus")
-      .evaluate((el) => getComputedStyle(el).color),
-  ).toBe("rgb(29, 102, 80)");
-  await expect(
-    page.locator(".location-row .mx-proposed-row svg.bin-bot-proposed"),
-  ).toHaveCount(1);
-});
+      .evaluate((el) => getComputedStyle(el).color);
+    if (theme === "night") {
+      expect(plusColor).toBe("rgb(29, 102, 80)");
+    } else {
+      // day：從 token 讀計算值（用探針元素把 var() 解成 rgb），不寫死色碼。
+      const token = await page.evaluate(() => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--px-purple-deep)";
+        document.body.appendChild(probe);
+        const c = getComputedStyle(probe).color;
+        probe.remove();
+        return c;
+      });
+      expect(plusColor).toBe(token);
+    }
+    await expect(
+      page.locator(".location-row .mx-proposed-row svg.bin-bot-proposed"),
+    ).toHaveCount(1);
+  });
+}

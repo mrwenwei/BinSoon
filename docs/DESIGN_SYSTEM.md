@@ -14,12 +14,14 @@
 
 2026-10-19 起前端全面換成設計者提供的「BinSoon 色票」。本文件是前端實作的規範與對照表；設計權威來源是設計者的 BinSoon 色票設計系統（README、tokens、MapMarker／StationCard／SingleBinCard／NearestList 元件說明）與 style-a／style-b 設計稿。兩者有出入時以設計系統 README 為準，並記錄在文末「待決事項」。
 
+> **主題**：本文件第 1–8 節的深炭灰＋teal＋橘色選取描述的是 **night（原版）主題**。預設的 **day（日間像素）主題**配色、圓角、字體不同，見下方「主題（日間像素／夜間原版）」一節；兩者衝突時，day 以該節為準。
+
 一句話：**任務控制台的骨架，加上像素電子雞的親切感。** 深炭灰的頂欄、面板和卡片，中間放灰綠色的地圖；青綠代表「可以去」，訊號橘代表「吃飽了」與「你選的／你在哪」（選中、焦點、導航路線，見第 1、2、7 節）。
 
 ## 1. 設計原則
 
 1. **深炭灰骨架＋灰綠地圖。** 頂欄、卡片、圖例列用 `chrome`，面板和頁面底用 `panel`，輸入框用 `field`；地圖（含 MapLibre 底圖）用 `map` 系列。
-2. **青綠是「去」，橘色是「吃飽了」或「你選的／你在哪」。** 主要行動一律 `teal`（文字 `text-on-light`）。`signal` 兩種語意靠形狀區分（配色 v4，不新增顏色）：
+2. **青綠是「去」，橘色是「吃飽了」或「你選的／你在哪」（night／原版適用；day 主題改為綠＝餓了、紅＝吃飽了、紫＝互動與選取，見「主題」一節）。** 主要行動一律 `teal`（文字 `text-on-light`）。`signal` 兩種語意靠形狀區分（配色 v4，不新增顏色）：
    - **填滿或大字＝吃飽了**：桶身、色帶、斜紋警示條、吃飽了的百分比與可丟數、吃飽了膠囊（橘框＋字＋像素小 z）。吃飽了每處至少兩個非顏色線索（字、小 z、斜紋、表情）。
    - **線或框＝選中／目前位置**：地圖選中底座與十字線、已選篩選膠囊 2px 外框、`--focus-ring`、`.text-button` 底線、清單剛看過列的左線、導航路線。
    - **永遠不做按鈕底色**，就算整張卡片是橘色，主按鈕仍是青綠。警示框不用橘（中性左框＋⚠）。投票面板不用橘。禁用紫色。
@@ -59,6 +61,29 @@
 
 - `frontend/index.html` 的 `<meta name="theme-color" content="#232826">`：瀏覽器頂欄色無法讀 CSS 變數，數值等於 `chrome`。
 - MapLibre 底圖與 Leaflet 路線、QR Code 需要實際色值：`src/map/basemapStyle.ts` 的 `token()` 在執行時讀 `:root` 的 token；水域色由 `map-park` 混 `teal-on-mint` 算出。程式內沒有寫死色碼。
+
+## 主題（日間像素／夜間原版）
+
+- **定位**：`day`＝日間像素皮膚（米色地面、白卡片、圓角、Nunito，詳見 [PIXEL_SKIN.md](PIXEL_SKIN.md)）；`night`＝夜間原版，就是本文件第 1–8 節描述的設計系統（深炭灰、teal、橘色選取）。
+- **機制**：`<html data-theme="day|night">`，預設 `day`。`frontend/index.html` 的 inline script 在 render 前設定：先看網址 `?theme=night|day`（會覆寫並寫入 localStorage），否則讀 localStorage key `binsoon-theme`，都沒有就 day。執行期讀寫在 `src/theme.ts`。
+- **切換鈕**：header（`DemoNav.tsx`）「市民／清潔隊」右邊的圓形鈕，day 顯示月亮、night 顯示太陽，即時生效。
+- **token 集中在 `frontend/src/styles/tokens.css`**：原版 token 在最上方的 `:root`；`:root[data-theme="day"]` 區塊放 day 的全部 `--px-*` 色票、圓角、字體，並把原版 token（`--teal`、`--signal`、`--chrome`、`--text`…）改掛到 `--px-*`；`:root[data-theme="night"]` 區塊把 `--px-*` 對映回原版 token。styles.css 與 skin-*.css 只放規則，不再定義色碼 token。
+- **day 語意色**：
+
+| 語意 | token | 值 |
+| --- | --- | --- |
+| 餓了（可以丟） | `--px-hungry`／文字 `--px-hungry-ink` | #A8E09A／#34802F |
+| 吃飽了 | `--px-full`／文字 `--px-full-ink` | #F07A6A／#BF4637 |
+| 失聯 | `--px-offline`／文字 `--px-offline-ink` | #A9A6C2／#6B6890 |
+| 互動與選取 | `--px-purple`（`--px-select` 指向它） | #6F63D9 |
+
+  night 沿用原版：餓了 teal、吃飽了橘、失聯灰，互動 teal、選取橘。night 下文字輸入框（input／textarea／select）的 focus 外框用 teal（token `--input-focus`），按鈕、連結、地圖選取等其他焦點仍為橘。
+- **day 的色彩規則**：綠／紅／灰只代表桶況，紫只代表互動與選取（按鈕、連結、選中列、十字線、焦點環）。不要用綠、紅、灰做按鈕或選取，也不要用紫表示桶況。（「橘色＝選取」「teal＝可以去」只適用 night。）
+- **新樣式撰寫規則**：
+  1. 像素皮膚對原版元素的覆蓋（顏色、圓角、陰影、字體）寫 `:where(:root[data-theme="day"]) .xxx { … }`（`:where()` 不增加權重）。
+  2. 新結構（main 沒有的元素）寫不帶前綴的規則，顏色只引用 `--px-*` token，兩個主題共用同一份。
+  3. 新增色碼或 `--px-*` token 一律加在 tokens.css，day、night 各補一份值；規則檔不寫死色碼。
+  4. night 專屬規則寫在 `skin-night.css`（`:root[data-theme="night"] …`）。
 
 ## 3. 字體與字級
 
@@ -120,7 +145,7 @@
 | 前端 BinState | 文案 | 條件 | 視覺 |
 | --- | --- | --- | --- |
 | `hungry` | 餓了 | 0–79% | `status-hungry` 青綠 |
-| `full` | 吃飽了 | 80% 以上 | `status-full` 橘，滿度條加斜紋 |
+| `full` | 吃飽了 | 80% 以上 | `status-full` 橘（day：珊瑚紅），滿度條加斜紋 |
 | `offline` | 失聯 | 沒有讀值、維修中或撤除 | `status-offline` 灰＋虛線外框 |
 
 **後端 API 仍回四態 `fill_status`**（hungry <50、half 50–79、full ≥80、unknown＝未知／維修／撤除）。前端只在 API 轉接層對照，不改後端與 API 契約：`src/data/api.ts` 的 `apiBinState()`：`hungry`、`half` → hungry；`full` → full；`unknown` → offline。狀態列文字由 `components/api/Waste.tsx` 的 `statusText()` 產生（撤除→「已撤除」、維修→「維修中」、無讀值→「失聯」、其餘「餓了 · 62%」）。視覺對照（token、虛線、class）集中在 `src/components/binVisual.ts` 的 `stateVisual`，CSS 用 `.state-hungry/.state-full/.state-offline`。
@@ -169,7 +194,7 @@
 
 | 項目 | 位置 |
 | --- | --- |
-| 色票 token（設計系統產生，勿手改） | `frontend/src/styles/tokens.css` |
+| 色票 token（原版段為設計系統產生，勿手改；末段為 day／night 主題 token） | `frontend/src/styles/tokens.css` |
 | 全站樣式 | `frontend/src/styles.css`：開頭 `@import` 字體與 tokens、衍生 token、頂欄與側邊選單、按鈕／膠囊／輸入框／卡片、地圖首頁、Leaflet 控制項、電子雞標記、一般頁面、桶況卡片、手機版媒體查詢；之後是舊 A／B／D 展示頁樣式（已全數改用 token）；最後是 API 正式流程樣式 |
 | 三態與雙桶定義 | `frontend/src/data/binState.ts` |
 | API 四態 → 三態、compartments | `frontend/src/data/api.ts`（`apiBinState`、`apiCompartments`、`apiStationState`） |

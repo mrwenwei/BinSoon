@@ -1,0 +1,257 @@
+/* 市民端預約小車（#van 瀏覽、停靠點詳情、我的預約）。新結構：不帶主題前綴，只用 --px-* token；
+   night 下 --px-* 由 tokens.css 對映到原版 token，所以兩個主題共用同一份規則。 */
+
+/* 像素小車停靠點 icon：框內固定 32×24（16×12 格 ×2），蓋過 .row-buddy／地標旗子的尺寸規則。 */
+.row-buddy.vanstop {
+  width: 48px;
+  height: 42px;
+  border-radius: var(--px-radius-small);
+  background: var(--px-purple-soft);
+}
+.row-buddy.vanstop svg,
+.pixel-marker.vanstop .marker-body svg,
+.van-stop-info svg {
+  width: 40px;
+  height: 30px;
+}
+.row-buddy.vanstop .px-art,
+.van-stop-info .px-art {
+  display: inline-flex;
+}
+
+/* 清單：最快成團摘要用內文色，距離／地址維持次要色 */
+.van-browse .van-row .van-row-slot {
+  color: var(--px-purple-deep);
+  font-weight: 700;
+}
+.van-browse .van-row > .icon {
+  color: var(--px-ink-muted);
+}
+.van-browse .mx-row-title .status-pill {
+  background: var(--px-purple-soft);
+  color: var(--px-purple-deep);
+  border-radius: var(--px-radius-pill);
+  white-space: nowrap;
+}
+.van-browse .mx-head-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+}
+.van-browse .van-mine-link {
+  color: var(--px-purple-deep);
+  white-space: nowrap;
+  font-weight: 700;
+}
+.van-browse .filter-chips button {
+  border-radius: var(--px-radius-pill);
+}
+
+.van-browse .location-row {
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+}
+.van-browse .mx-panel {
+  overflow: hidden;
+}
+
+/* 小車清單選中列：只有底色變化，沒有左側紫線（桶地圖清單不受影響） */
+.van-browse .mx-list .location-row.active {
+  box-shadow: none;
+  background: color-mix(in srgb, var(--px-purple-soft) 60%, var(--px-card));
+}
+
+/* 停靠點詳情（抽屜／側欄內） */
+.van-detail-head {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: var(--space-3);
+}
+.van-head-text {
+  min-width: 0;
+  display: grid;
+}
+.van-head-text .mx-title {
+  white-space: normal;
+}
+.van-head-text small {
+  color: var(--px-ink-body);
+}
+.van-sheet-content {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+}
+.van-sheet-content h2 {
+  margin: 0;
+  font: var(--text-heading);
+  font-weight: 900;
+}
+.van-sheet-content > p {
+  margin: 0;
+  color: var(--px-full-ink);
+}
+.van-section {
+  display: grid;
+  gap: var(--space-2);
+}
+.van-section + .van-section {
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--px-line-control);
+}
+.van-sheet-content .van-section h2 {
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--px-ink);
+}
+/* 日期列：每顆 68px，橫向滑動；左右留邊讓第一／最後一顆可滑到中間 */
+.van-datechips {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  margin-inline: calc(var(--space-4) * -1);
+  padding: 2px var(--space-4) 6px;
+  scroll-padding-inline: var(--space-4);
+}
+.van-datechips::-webkit-scrollbar {
+  display: none;
+}
+.van-datechip {
+  flex: 0 0 68px;
+  scroll-snap-align: center;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  padding: var(--space-2) 0 var(--space-2);
+  background: var(--px-card);
+  color: var(--px-ink);
+  border: 1px solid var(--px-line-control);
+  border-radius: var(--px-radius-small);
+  box-shadow: 0 2px 0 var(--px-shadow);
+}
+.van-datechip span {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--px-ink-body);
+}
+.van-datechip strong {
+  font-size: 16px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+.van-datechip em {
+  font-style: normal;
+  font-size: 12px;
+  line-height: 18px;
+  min-height: 18px;
+  white-space: nowrap;
+  color: var(--px-purple-deep);
+  font-weight: 700;
+}
+.van-datechip[aria-pressed="true"] {
+  background: var(--px-purple);
+  border-color: var(--px-purple);
+  box-shadow: 0 2px 0 var(--px-purple-deep);
+}
+.van-datechip[aria-pressed="true"] span,
+.van-datechip[aria-pressed="true"] strong,
+.van-datechip[aria-pressed="true"] em {
+  color: var(--px-on-purple);
+}
+.van-datechip:focus-visible,
+.van-slot:focus-visible {
+  outline: 3px solid var(--px-purple);
+  outline-offset: 1px;
+}
+.van-shifts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+/* 時段按鈕層級：時段名稱（16px 粗）＞ 時間（13px）＞ 人數提示（13px 粗、有顏色） */
+.van-slot {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  padding: var(--space-3);
+  text-align: left;
+  background: var(--px-card);
+  color: var(--px-ink);
+  border: 1px solid var(--px-line-control);
+  border-radius: var(--px-radius-small);
+  box-shadow: 0 2px 0 var(--px-shadow);
+}
+.van-slot b {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 900;
+}
+.van-slot span {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--px-ink-body);
+}
+.van-slot strong {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--px-ink-body);
+}
+.van-slot.soon strong {
+  color: var(--px-purple-deep);
+}
+.van-slot.open strong {
+  color: var(--px-hungry-ink);
+}
+.van-slot[aria-pressed="true"] {
+  background: var(--px-purple-soft);
+  border: 2px solid var(--px-purple);
+  box-shadow: 0 2px 0 var(--px-purple-deep);
+}
+.van-slot[aria-pressed="true"] strong {
+  color: var(--px-purple-deep);
+}
+.van-slot:disabled {
+  background: var(--px-dot-off);
+  box-shadow: none;
+  border-style: dashed;
+  opacity: 1;
+}
+.van-slot:disabled strong {
+  color: var(--px-purple-deep);
+}
+.van-panel-foot {
+  flex: none;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-3);
+  background: var(--px-card);
+  border-top: 2px solid var(--px-divider);
+}
+.van-panel-foot .button {
+  width: 100%;
+  justify-content: center;
+  min-height: 48px;
+}
+.van-panel-foot small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--px-ink-body);
+}
+
+/* 我的預約列表 */
+.van-booking {
+  background: var(--px-card);
+  border: 1px solid var(--px-line);
+  border-radius: var(--px-radius-card);
+  box-shadow: 0 3px 0 var(--px-shadow);
+}

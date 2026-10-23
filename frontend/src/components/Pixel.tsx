@@ -1,4 +1,4 @@
-import { coinSvg, pixelHeartSvg } from "./pixelArt";
+import { coinSvg, pixelHeartSvg, vanStopSvg } from "./pixelArt";
 
 // 認領流程 v3 的共用小元件：像素愛心、代幣、點數徽章、名牌（愛心＋名字）。
 
@@ -8,6 +8,16 @@ export function PixelHeart({ scale = 2 }: { scale?: 2 | 3 }) {
       className="px-art"
       aria-hidden="true"
       dangerouslySetInnerHTML={{ __html: pixelHeartSvg(scale) }}
+    />
+  );
+}
+
+export function VanStop({ scale = 2 }: { scale?: 2 | 3 }) {
+  return (
+    <span
+      className="px-art"
+      aria-hidden="true"
+      dangerouslySetInnerHTML={{ __html: vanStopSvg(scale) }}
     />
   );
 }

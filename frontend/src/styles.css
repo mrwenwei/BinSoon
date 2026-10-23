@@ -1,4 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700;900&family=Silkscreen&display=swap");
+/* 全站數字／英文用 Nunito；中文退回 Noto Sans TC。 */
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700;800;900&display=swap");
 @import "./styles/tokens.css";
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -73,6 +75,11 @@ summary:focus-visible,
 [tabindex]:not([tabindex="-1"]):focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+input:not([type="radio"]):not([type="checkbox"]):not([type="range"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-color: var(--input-focus);
 }
 h1:focus {
   outline: none;
@@ -10633,7 +10640,7 @@ input[type="file"]::file-selector-button {
   color: var(--text-muted);
 }
 .claim-field input:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: 2px solid var(--input-focus);
   outline-offset: 0;
 }
 .claim-help {
@@ -10854,4 +10861,386 @@ input[type="file"]::file-selector-button {
 .claim-dialog-actions .button {
   min-height: 48px;
   justify-content: center;
+}
+
+/* ── 像素皮膚（day 主題）：整站規則層 ───────────
+   規則見 docs/PIXEL_SKIN.md；所有 day／night 的 token 定義已集中在 styles/tokens.css
+   （--px-* 色票、--teal→互動紫、--signal 拆成吃飽了珊瑚與選取紫、狀態色、圓角、字體），本檔只放規則。
+   --teal 原本同時是「餓了」與「互動」：互動（主要按鈕、連結）＝紫色，餓了＝--px-hungry*
+   （下面「桶況文字」那段逐一指定，不走 --teal）。
+   桶況色另用 --bot-<state>-<格>（binBot.ts 的 Bin友 圖形）覆蓋；未覆蓋時 binBot.ts 用原本的色碼。
+   Noto Sans TC 只載入 400／500／700／900，所以字重只用這四種。
+   各頁專屬的樣式寫在 styles/skin-*.css（main.tsx 依序載入，在本檔之後）。 */
+:root[data-theme="day"] {
+  color-scheme: light;
+  background: var(--px-ground);
+}
+:where(:root[data-theme="day"]) body {
+  background: var(--px-ground);
+}
+/* ── 桶況文字／填色：「餓了」走綠，不跟著 --teal 變紫 ───────────────────── */
+:where(:root[data-theme="day"]) .status-pill.state-hungry {
+  border-color: var(--px-hungry-ink);
+  color: var(--px-hungry-ink);
+}
+:where(:root[data-theme="day"]) .row-state.state-hungry,
+:where(:root[data-theme="day"]) .mx-usable.state-hungry .numeral-sm,
+:where(:root[data-theme="day"]) .state-hungry > .compartment-name .compartment-status,
+:where(:root[data-theme="day"]) .single-status.state-hungry .compartment-status,
+:where(:root[data-theme="day"]) .compartment.state-hungry .compartment-pct {
+  color: var(--px-hungry-ink);
+}
+:where(:root[data-theme="day"]) .fill-bar > span {
+  background: var(--px-hungry);
+}
+/* 吃飽了：文字用深珊瑚（淺底可讀）、條與斜紋用珊瑚兩色（不用黑／深炭灰） */
+:where(:root[data-theme="day"]) .status-pill.state-full,
+:where(:root[data-theme="day"]) .row-state.state-full,
+:where(:root[data-theme="day"]) .mx-slot.state-full .mx-slot-value,
+:where(:root[data-theme="day"]) .mx-usable.state-full .numeral-sm,
+:where(:root[data-theme="day"]) .compartment-full-tag,
+:where(:root[data-theme="day"]) .compartment.state-full .compartment-pct,
+:where(:root[data-theme="day"]) .state-full > .compartment-name .compartment-status,
+:where(:root[data-theme="day"]) .single-status.state-full .compartment-status {
+  color: var(--px-full-ink);
+}
+:where(:root[data-theme="day"]) .fill-bar.state-full > span {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--px-full-ink) 0 4px,
+    var(--px-full) 4px 8px
+  );
+}
+:where(:root[data-theme="day"]) .hazard-stripe {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--px-full-ink) 0 6px,
+    var(--px-full) 6px 12px
+  );
+}
+:where(:root[data-theme="day"]) .fill-bar.thick {
+  background: var(--px-dot-off);
+}
+:where(:root[data-theme="day"]) .fill-bar.thick > span {
+  opacity: 1;
+}
+/* 失聯：灰紫；文字與虛線框用較深的 ink，白底 ≥ 4.5:1 */
+:where(:root[data-theme="day"]) .status-pill.state-offline {
+  border-color: var(--px-offline-ink);
+  color: var(--px-offline-ink);
+}
+:where(:root[data-theme="day"]) .state-offline > .compartment-name .compartment-status,
+:where(:root[data-theme="day"]) .single-status.state-offline .compartment-status,
+:where(:root[data-theme="day"]) .compartment.state-offline .compartment-pct {
+  color: var(--px-offline-ink);
+}
+:where(:root[data-theme="day"]) .fill-bar.state-offline {
+  outline-color: var(--px-offline-ink);
+}
+/* 其他原本用 --signal 當文字色的警示／錯誤：淺底改深珊瑚 */
+:where(:root[data-theme="day"]) .staff-overdue,
+:where(:root[data-theme="day"]) .staff-ranking small,
+:where(:root[data-theme="day"]) .crew-route-feedback [role="alert"],
+:where(:root[data-theme="day"]) .page [role="alert"] > p,
+:where(:root[data-theme="day"]) .crew-issue-urgent,
+:where(:root[data-theme="day"]) .crew-attention,
+:where(:root[data-theme="day"]) .claim-help.error,
+:where(:root[data-theme="day"]) .location-check {
+  color: var(--px-full-ink);
+}
+:where(:root[data-theme="day"]) .location-check.valid {
+  color: var(--px-purple);
+}
+/* ── 選取／你在哪＝紫（--px-select）；吃飽了才用珊瑚 ─────────────────────── */
+:where(:root[data-theme="day"]) .tabs button[aria-selected="true"] {
+  box-shadow: inset 0 0 0 2px var(--px-select);
+}
+:where(:root[data-theme="day"]) .mx-list .location-row.active {
+  box-shadow: inset 3px 0 0 var(--px-select);
+}
+:where(:root[data-theme="day"]) .nearby-proposals {
+  border-left-color: var(--px-select);
+}
+:where(:root[data-theme="day"]) .dot {
+  color: var(--px-purple);
+}
+:where(:root[data-theme="day"]) .marker-base .base-fill {
+  fill: var(--px-select);
+}
+:where(:root[data-theme="day"]) .marker-crosshair::before {
+  border-top-color: var(--px-select);
+}
+:where(:root[data-theme="day"]) .marker-crosshair::after {
+  border-left-color: var(--px-select);
+}
+/* 綠桶在綠草地上：同色相的深綠硬邊陰影，主色仍是 #A8E09A（只是陰影，不改尺寸） */
+:where(:root[data-theme="day"]) .bin-bot.bot-hungry {
+  filter: drop-shadow(0 1px 0 var(--px-hungry-edge))
+    drop-shadow(0 0 1px var(--px-hungry-edge));
+}
+/* ── 互動：主要按鈕／chips／搜尋框／步驟＝紫底白字 ──────────────────────── */
+:where(:root[data-theme="day"]) .button.primary,
+:where(:root[data-theme="day"]) .crew-demo .button.primary {
+  border-color: var(--px-purple);
+  background: var(--px-purple);
+  color: var(--px-on-purple);
+}
+:where(:root[data-theme="day"]) .button.primary:hover:not(:disabled),
+:where(:root[data-theme="day"]) .button.primary:active:not(:disabled) {
+  border-color: var(--px-purple-hover);
+  background: var(--px-purple-hover);
+}
+:where(:root[data-theme="day"]) .reward-tabs button[aria-selected="true"],
+:where(:root[data-theme="day"]) .gnav-report.arrived,
+:where(:root[data-theme="day"]) .gnav-banner.arrived .gnav-banner-icon,
+:where(:root[data-theme="day"]) .mx-vote-steps .cur .dot,
+:where(:root[data-theme="day"]) .vote-done-timeline .is-complete .vote-done-step-dot,
+:where(:root[data-theme="day"]) .proposal-progress-track [data-active="true"] i,
+:where(:root[data-theme="day"]) .citizen-report-actions .button[aria-pressed="true"] {
+  color: var(--px-on-purple);
+}
+:where(:root[data-theme="day"]) .search-field input {
+  border-color: var(--px-line);
+  border-radius: var(--px-radius-pill);
+  background: var(--px-card-alt);
+}
+:where(:root[data-theme="day"]) .filter-chips button {
+  border-color: var(--px-line);
+  border-radius: var(--px-radius-pill);
+  background: var(--px-card);
+  color: var(--text-body);
+  box-shadow: 0 2px 0 var(--px-line);
+}
+:where(:root[data-theme="day"]) .filter-chips button[aria-pressed="true"] {
+  border-color: var(--px-purple);
+  background: var(--px-purple);
+  color: var(--px-on-purple);
+  box-shadow: 0 2px 0 var(--px-purple-deep);
+}
+/* ── 淺色 icon／框線：原本為深色底設計的淺色前景，白底上改成看得見的顏色 ─────── */
+:where(:root[data-theme="day"]) .claim-situations .icon,
+:where(:root[data-theme="day"]) .row-state.place {
+  color: var(--px-ink-muted);
+}
+:where(:root[data-theme="day"]) .mx-note,
+:where(:root[data-theme="day"]) .tier-list li[aria-current] > span,
+:where(:root[data-theme="day"]) .member-page-tabs a[aria-current="page"],
+:where(:root[data-theme="day"]) .crew-choice button[aria-pressed="true"] {
+  border-color: var(--px-purple);
+}
+:where(:root[data-theme="day"]) .mx-note {
+  border-left-color: var(--px-purple);
+}
+/* ── 全站導覽列：淺底、深字、選中項用紫 ─────────────────────────────────── */
+:where(:root[data-theme="day"]) .topbar,
+:where(:root[data-theme="day"]) .m-tabs,
+:where(:root[data-theme="day"]) .staff-nav,
+:where(:root[data-theme="day"]) .drawer-head {
+  background: var(--px-card);
+}
+:where(:root[data-theme="day"]) .topbar {
+  box-shadow: 0 2px 0 var(--px-shadow);
+}
+:where(:root[data-theme="day"]) .primary-tabs a[aria-current="page"],
+:where(:root[data-theme="day"]) .desktop-nav a[aria-current="page"],
+:where(:root[data-theme="day"]) .m-tabs a[aria-current="page"] {
+  color: var(--px-purple-deep);
+  border-bottom-color: var(--px-purple);
+}
+:where(:root[data-theme="day"]) .drawer-section a[aria-current="page"] {
+  border-left-color: var(--px-purple);
+  background: var(--px-purple-soft);
+  color: var(--px-purple-deep);
+}
+:where(:root[data-theme="day"]) .staff-nav a:hover,
+:where(:root[data-theme="day"]) .staff-nav a[aria-current="page"],
+:where(:root[data-theme="day"]) .demo-identity a[aria-current="page"] {
+  background: var(--px-purple-soft);
+  color: var(--px-purple-deep);
+}
+/* ── 圓角：膠囊（按鈕、標籤、狀態膠囊）。卡片／小元件走上面的 --radius-* token ── */
+:where(:root[data-theme="day"]) .button,
+:where(:root[data-theme="day"]) .status-pill,
+:where(:root[data-theme="day"]) .points-button,
+:where(:root[data-theme="day"]) .history-state,
+:where(:root[data-theme="day"]) .staff-status,
+:where(:root[data-theme="day"]) .buddy-tags span,
+:where(:root[data-theme="day"]) .demo-tag,
+:where(:root[data-theme="day"]) .prototype {
+  border-radius: var(--px-radius-pill);
+}
+/* ── 卡片：硬邊陰影（無模糊） ─────────────────────────────────────────── */
+:where(:root[data-theme="day"]) .card,
+:where(:root[data-theme="day"]) .station-card {
+  box-shadow: 0 3px 0 var(--px-shadow);
+}
+/* ── 地圖（所有頁面的 Leaflet 控制項） ──────────────────────────────────── */
+:where(:root[data-theme="day"]) .leaflet-container {
+  background: var(--px-ground);
+}
+:where(:root[data-theme="day"]) .leaflet-control-zoom.leaflet-bar {
+  border-radius: var(--px-radius-small);
+  box-shadow: 0 3px 0 var(--px-shadow);
+}
+:where(:root[data-theme="day"]) .leaflet-control-zoom a,
+:where(:root[data-theme="day"]) .leaflet-touch .leaflet-control-zoom a {
+  background: var(--px-card);
+  color: var(--px-ink);
+  border-bottom-color: var(--px-line);
+}
+.leaflet-control-attribution.leaflet-control {
+  background: var(--px-card-glass);
+  color: var(--px-ink-soft);
+}
+:where(:root[data-theme="day"]) .leaflet-control-attribution a {
+  color: var(--px-ink);
+}
+/* 署名：預設收合成「i」圓鈕，點開顯示完整署名（OSM／OpenMapTiles／OpenFreeMap 為授權要求，不可移除） */
+.leaflet-control-attribution.leaflet-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(78vw, 320px);
+  margin: 0 8px 6px 0;
+  padding: 2px;
+  border-radius: var(--px-radius-pill);
+  background: color-mix(in srgb, var(--px-card) 78%, transparent);
+  color: var(--px-ink-soft);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.leaflet-control-attribution .px-attr-toggle {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--px-ink-soft);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--px-ink-soft);
+  font: italic 700 13px/1 serif;
+  cursor: pointer;
+}
+.leaflet-control-attribution .px-attr-toggle:focus-visible {
+  outline: 2px solid var(--px-purple);
+  outline-offset: 1px;
+}
+.leaflet-control-attribution .px-attr-text {
+  padding-right: 8px;
+}
+.leaflet-control-attribution .px-attr-text[hidden] {
+  display: none;
+}
+/* 載入中提示（LoadState 的 role="status"）：白底上要清楚可見（--px-ink-soft ≥ 4.5:1） */
+:where(:root[data-theme="day"]) .page > p[role="status"],
+:where(:root[data-theme="day"]) .mx-panel p[role="status"] {
+  color: var(--px-ink-soft);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+:where(:root[data-theme="day"]) .leaflet-control-scale-line {
+  border-color: var(--px-ink);
+  background: var(--px-card-glass);
+  color: var(--px-ink);
+}
+:where(:root[data-theme="day"]) .mx-origin-pin {
+  border-radius: 8px;
+  background: var(--px-purple);
+  color: var(--px-on-purple);
+  font-family: var(--px-font-round);
+  box-shadow: 0 2px 0 var(--px-ink);
+}
+:where(:root[data-theme="day"]) .mx-origin-label {
+  border-radius: var(--px-radius-pill);
+  background: var(--px-ink);
+  color: var(--px-on-purple);
+  font-family: var(--px-font-round);
+  box-shadow: 0 2px 0 var(--px-shadow-ink);
+}
+:where(:root[data-theme="day"]) .mx-legend {
+  border-radius: var(--px-radius-small);
+  background: var(--px-card);
+  box-shadow: 0 3px 0 var(--px-shadow);
+}
+:where(:root[data-theme="day"]) .mx-legend-popover {
+  border-color: var(--px-line);
+  border-radius: var(--px-radius-row);
+  box-shadow: 0 4px 0 var(--px-shadow);
+}
+/* 頁尾：融入米色頁面，不再是一條白帶 */
+:where(:root[data-theme="day"]) .api-footer {
+  background: transparent;
+  border-top-color: var(--px-divider);
+  color: var(--px-ink-body); /* ink-soft 在米色上只有 4.2:1 */
+}
+:where(:root[data-theme="day"]) .api-footer a {
+  color: var(--px-purple-deep); /* 紫在米色上只有 3.7:1 */
+}
+
+/* 錯誤提示：珊瑚文字改用 ink（#F07A6A 當字對比不足）；提示列加圓角 */
+:where(:root[data-theme="day"]) .api-form [role="alert"],
+:where(:root[data-theme="day"]) .page [role="alert"] > p {
+  color: var(--px-full-ink);
+}
+:where(:root[data-theme="day"]) .page > [role="alert"] {
+  border-radius: var(--px-radius-small);
+}
+
+/* ── 地圖頁專屬（<main class="mx-layout px-map">） ──────────────────────── */
+:where(:root[data-theme="day"]) .px-map {
+  color: var(--text);
+  background: var(--px-ground);
+}
+:where(:root[data-theme="day"]) .px-map .mx-panel {
+  background: var(--px-card);
+  border-right-color: var(--px-line);
+}
+:where(:root[data-theme="day"]) .px-map .mx-title {
+  font-family: var(--px-font-round);
+  font-weight: 900;
+}
+:where(:root[data-theme="day"]) .px-map .mx-home-toolbar {
+  border-radius: var(--px-radius-card);
+  box-shadow: 0 3px 0 var(--px-shadow);
+}
+:where(:root[data-theme="day"]) .px-map .mx-filter-toggle {
+  border-color: var(--px-line);
+  border-radius: var(--px-radius-pill);
+}
+:where(:root[data-theme="day"]) .px-map .waste-picker.icon-only .segmented label {
+  border-color: var(--px-line);
+  background: var(--px-card);
+  color: var(--px-ink-soft);
+}
+:where(:root[data-theme="day"]) .px-map .waste-picker.icon-only .segmented label:first-child {
+  border-radius: var(--px-radius-small) 0 0 var(--px-radius-small);
+}
+:where(:root[data-theme="day"]) .px-map .waste-picker.icon-only .segmented label:last-child {
+  border-radius: 0 var(--px-radius-small) var(--px-radius-small) 0;
+}
+:where(:root[data-theme="day"]) .px-map .waste-picker.icon-only .segmented label:has(input:checked) {
+  border-color: var(--px-purple);
+  background: var(--px-purple-soft);
+  color: var(--px-purple-deep);
+}
+:where(:root[data-theme="day"]) .px-map .mx-list .location-row {
+  border-radius: var(--px-radius-row);
+}
+:where(:root[data-theme="day"]) .px-map .mx-list .location-row:hover,
+:where(:root[data-theme="day"]) .px-map .mx-list .location-row.active {
+  background: var(--px-card-alt);
+}
+:where(:root[data-theme="day"]) .px-map .fill-bar:not(.thick):not(.state-offline) {
+  border-radius: 4px;
+  background: var(--px-dot-off);
+}
+:where(:root[data-theme="day"]) .px-map .mx-handle span {
+  background: var(--px-dot-off);
+}
+@media (max-width: 760px) {
+  :where(:root[data-theme="day"]) .px-map .mx-panel {
+    border-radius: var(--px-radius-card) var(--px-radius-card) 0 0;
+    border-top-color: var(--px-line);
+    box-shadow: 0 -4px 0 var(--px-shadow);
+  }
 }

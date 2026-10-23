@@ -105,6 +105,48 @@ export function coinSvg() {
   return coinCache;
 }
 
+// 小車停靠點：淺紫圓潤的垃圾車（右側車頭、左側圓弧壓縮車斗），沒有表情。
+// 內部 18×13 格＋外框＝20×15 格，×2＝40×30（整數倍）。階梯狀像素圓角做出圓潤輪廓；
+// 車身 --px-van、亮面 --px-van-light、陰影 --px-van-shade、車窗 --px-card、
+// 輪胎與外框 --text-on-light（同愛心、代幣的描邊色）、輪心 --px-dot-off。
+const VAN_STOP = [
+  "...LLLLLLLL.......",
+  "..LLBBBBBBBB......",
+  ".LBBBBBBBBBB......",
+  "LBBBBBBBBBBBSLLL..",
+  "LBBBBBBBBBBBSLWWBB",
+  "LBBBBBBBBBBBSLWWWB",
+  "LBSSSSSSSSBBSBBBBB",
+  "BBBBBBBBBBBBSBBBBB",
+  "BBBTTTBBBBBBSTTTBB",
+  ".STCCCTSSSSSTCCCTS",
+  "..TCCCT.....TCCCT.",
+  "..TCCCT.....TCCCT.",
+  "...TTT.......TTT..",
+];
+const vanStopCache = new Map<number, string>();
+export function vanStopSvg(scale: 2 | 3 = 2) {
+  let svg = vanStopCache.get(scale);
+  if (!svg) {
+    svg = outlinedSvg(
+      VAN_STOP,
+      {
+        K: "var(--text-on-light)",
+        B: "var(--px-van)",
+        L: "var(--px-van-light)",
+        S: "var(--px-van-shade)",
+        W: "var(--px-card)",
+        T: "var(--text-on-light)",
+        C: "var(--px-dot-off)",
+      },
+      scale,
+      "px-vanstop",
+    );
+    vanStopCache.set(scale, svg);
+  }
+  return svg;
+}
+
 const escapeHtml = (value: string) =>
   value.replace(
     /[&<>"']/g,

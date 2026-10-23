@@ -20,7 +20,9 @@ import {
 import { wasteHref, wasteName, type WasteType } from "../../data/waste";
 import { Mascot } from "../Mascot";
 import { Icon } from "../Icon";
-import { NameTag, PixelHeart, Points } from "../Pixel";
+import { Coin, NameTag, PixelHeart } from "../Pixel";
+import { useBookings } from "../VanPages";
+import { dateLabel, shifts, stops, today } from "../../data/vanDemo";
 import { StationCard } from "../StationCard";
 import { removedBinSvg } from "../../map/binBot";
 import { compartmentCards } from "./Waste";
@@ -59,6 +61,12 @@ export function CitizenHome() {
       }),
     true,
   );
+  const vanBookings = useBookings()
+    .filter((b) => b.date > today())
+    .sort(
+      (a, b) => a.date.localeCompare(b.date) || a.shift.localeCompare(b.shift),
+    );
+  const nextVan = vanBookings[0];
   const claims = value.adoptions.filter((a) => a.status === "active").length;
   const votes = value.proposals.filter((p) => p.my_vote).length;
   const installed = value.proposals.filter(
@@ -75,7 +83,10 @@ export function CitizenHome() {
       {member.data && (
         <section className="member-hero" aria-label="我的點數">
           <span>可用點數</span>
-          <strong className="numeral-xl">{member.data.available_points}</strong>
+          <strong className="numeral-xl">
+            {member.data.available_points}
+            <Coin />
+          </strong>
           <p>另有 {member.data.pending_points} 點審核中</p>
           <a className="button primary" href="#rewards">
             兌換獎勵 <Icon name="arrow" />
@@ -88,6 +99,18 @@ export function CitizenHome() {
           <span>
             <strong>我的 BinU</strong>
             <small>認養 {claims} 個 · 屬實首報點數 ×2</small>
+          </span>
+          <Icon name="arrow" />
+        </a>
+        <a className="card" href="#van/mine">
+          <Icon name="truck" />
+          <span>
+            <strong>我的小車預約</strong>
+            <small>
+              {nextVan
+                ? `${vanBookings.length} 筆預約 · 最近 ${dateLabel(nextVan.date)}${shifts[nextVan.shift].name} ${stops.find((s) => s.id === nextVan.stop)?.name}`
+                : "還沒有預約"}
+            </small>
           </span>
           <Icon name="arrow" />
         </a>
@@ -275,7 +298,7 @@ export function CitizenBins({ wasteType }: { wasteType: WasteType }) {
         </span>
       </div>
       <p className="binu-rule">
-        第一個回報、查證屬實就拿 <Points value={CLAIM_POINTS} small />
+        搶先回報你的 BinU，清潔隊確認屬實，{CLAIM_POINTS} 點就入袋！
       </p>
       <div className="citizen-bin-list">
         {active.map((item) => (

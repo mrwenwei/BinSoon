@@ -9,6 +9,23 @@
       content="BinSoon 台北垃圾桶地圖原型，瀏覽公布桶位置與場所代表點。"
     />
     <title>BinSoon｜台北丟垃圾變順</title>
+    <script>
+      // 日夜主題：render 前先設 data-theme，避免閃爍。?theme=night|day 覆寫並記住。
+      (function () {
+        var theme = "day";
+        try {
+          var q = new URLSearchParams(location.search).get("theme");
+          if (q === "day" || q === "night") {
+            theme = q;
+            try { localStorage.setItem("binsoon-theme", q); } catch (e) {}
+          } else {
+            var saved = localStorage.getItem("binsoon-theme");
+            if (saved === "day" || saved === "night") theme = saved;
+          }
+        } catch (e) {}
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

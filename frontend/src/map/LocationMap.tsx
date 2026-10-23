@@ -23,6 +23,11 @@ import {
   registerBasemapImages,
   token,
 } from "./basemapStyle";
+import {
+  pixelBasemapStyle,
+  registerPixelBasemapImages,
+} from "./pixelBasemapStyle";
+import { useTheme } from "../theme";
 import type { Point } from "../data/participation";
 import {
   cumulativeMeters,
@@ -38,6 +43,8 @@ if (compactMap) setWorkerCount(1);
 interface Props {
   /** Keep a compact multi-stop map framed while highlighting a selection. */
   focusSelected?: boolean;
+  /** 瀏覽模式選取時至少放大到這個級距（預設 BOT_BARS_MIN_ZOOM；小車停靠點用較低級距方便比較）。 */
+  focusMinZoom?: number;
   operations?: OperationalState;
   binMarkerLabel?: string;
   locations: LocationRecord[];
@@ -80,6 +87,8 @@ interface Props {
   markerIcon?: (location: LocationRecord, selected: boolean) => L.DivIcon;
   markerLabel?: (location: LocationRecord) => string;
   markerDescription?: (location: LocationRecord) => string | undefined;
+  /** 底圖樣式；不給時跟著主題（day＝"pixel" 像素插畫、night＝"default" 原版），切換主題時會即時換底圖。 */
+  basemap?: "default" | "pixel";
   /** 固定起點標記（不可點、不影響視野）。 */
   origin?: { latitude: number; longitude: number; label: string };
   /** 有給時：只在選取對象改變時置中，並把選取點往上移這麼多像素（手機抽屜遮住下半部）。 */
@@ -116,6 +125,7 @@ function playOnce(element: HTMLElement, className: string, animation: string) {
 }
 export function LocationMap({
   focusSelected = true,
+  focusMinZoom,
   locations,
   selected,
   onSelect,
@@ -139,6 +149,7 @@ export function LocationMap({
   markerIcon,
   markerLabel,
   markerDescription,
+  basemap: basemapProp,
   origin,
   focusOffsetY,
   browseTopInset = 0,
@@ -390,6 +401,10 @@ export function LocationMap({
     if (browse && element && !reducedMotion())
       playOnce(element, "mx-pick", "mx-base-pick");
   };
+  const theme = useTheme();
+  const basemapKind = basemapProp ?? (theme === "day" ? "pixel" : "default");
+  const basemapKindRef = useRef(basemapKind);
+  const basemapLayer = useRef<L.MaplibreGL | undefined>(undefined);
   const [basemapFailed, setBasemapFailed] = useState(false);
   const [rasterFallback, setRasterFallback] = useState(false);
   useEffect(() => {
@@ -419,6 +434,50 @@ export function LocationMap({
     L.control
       .scale({ imperial: false, position: "bottomleft" })
       .addTo(instance);
+    // 署名：移除 Leaflet 前綴；預設收合成「i」按鈕，點開顯示完整署名（文字與連結不刪減）。
+    const attribution = instance.attributionControl;
+    attribution.setPrefix(false);
+    let attributionOpen = false;
+    const renderAttribution = () => {
+      const box = attribution.getContainer();
+      if (!box) return;
+      const text = document.createElement("span");
+      text.className = "px-attr-text";
+      text.id = "map-attribution-text";
+      text.innerHTML = box.innerHTML;
+      text.hidden = !attributionOpen;
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "px-attr-toggle";
+      toggle.textContent = "i";
+      toggle.setAttribute("aria-label", "地圖資料來源與署名");
+      toggle.setAttribute("aria-controls", text.id);
+      toggle.setAttribute("aria-expanded", String(attributionOpen));
+      const setOpen = (open: boolean) => {
+        attributionOpen = open;
+        text.hidden = !open;
+        toggle.setAttribute("aria-expanded", String(open));
+        box.classList.toggle("is-open", open);
+      };
+      toggle.addEventListener("click", () => setOpen(!attributionOpen));
+      box.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && attributionOpen) {
+          setOpen(false);
+          toggle.focus();
+        }
+      });
+      box.classList.toggle("is-open", attributionOpen);
+      box.replaceChildren(toggle, text);
+      L.DomEvent.disableClickPropagation(box);
+    };
+    const updateAttribution = attribution as unknown as {
+      _update: () => void;
+    };
+    const originalUpdate = updateAttribution._update.bind(attribution);
+    updateAttribution._update = () => {
+      originalUpdate();
+      renderAttribution();
+    };
     instance.attributionControl.addAttribution(
       '<a href="https://openfreemap.org/" target="_blank" rel="noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a>',
     );
@@ -449,9 +508,14 @@ export function LocationMap({
       useRaster();
     }, 15000);
     try {
+      const basemapKind = basemapKindRef.current;
       basemap = maplibreGL({
         // 自訂灰綠底圖：OpenFreeMap openmaptiles 圖磚＋色票 token。
-        style: binsoonBasemapStyle(),
+        // pixel：同一組圖磚的像素插畫樣式，顏色讀容器上的 --px-* 變數。
+        style:
+          basemapKind === "pixel"
+            ? pixelBasemapStyle(container.current!)
+            : binsoonBasemapStyle(),
         attributionControl: false,
         pixelRatio: compactMap
           ? Math.min(window.devicePixelRatio || 1, 1.5)
@@ -471,8 +535,11 @@ export function LocationMap({
         return layer;
       };
       basemap.addTo(instance);
+      basemapLayer.current = basemap;
       const gl = basemap.getMaplibreMap();
-      registerBasemapImages(gl);
+      if (basemapKind === "pixel")
+        registerPixelBasemapImages(gl, container.current!);
+      else registerBasemapImages(gl);
       // 樣式是內嵌的，所以「載入成功」改以 OpenFreeMap 圖磚來源的 TileJSON
       // 成功讀到為準；任何來源錯誤都顯示提示，之後不自動清除。
       let failed = false;
@@ -526,6 +593,27 @@ export function LocationMap({
       dispose();
     };
   }, []);
+  // 主題切換：就地換底圖樣式（地圖、標記、選取、視野都不動）。
+  const appliedKind = useRef(basemapKind);
+  useEffect(() => {
+    basemapKindRef.current = basemapKind;
+    if (appliedKind.current === basemapKind) return;
+    appliedKind.current = basemapKind;
+    const gl = basemapLayer.current?.getMaplibreMap();
+    const scope = container.current;
+    if (!gl || !scope) return;
+    // 讀的是 <html data-theme> 已生效的 token，所以要在屬性改完之後才建樣式。
+    const register = () => {
+      if (basemapKind === "pixel") registerPixelBasemapImages(gl, scope);
+      else registerBasemapImages(gl);
+    };
+    gl.once("style.load", register);
+    gl.setStyle(
+      basemapKind === "pixel"
+        ? pixelBasemapStyle(scope)
+        : binsoonBasemapStyle(),
+    );
+  }, [basemapKind]);
   // 標記依 kind/id 增量更新：背景輪詢不重建標記，位置、圖示、名稱沒變就不動，
   // 停在標記上的鍵盤焦點、選取高亮與使用者目前的平移縮放都不會因為輪詢而遺失。
   // 瀏覽模式（MapPage）與其他頁共用這一套，只有自動框選的時機不同。
@@ -684,7 +772,10 @@ export function LocationMap({
     // 縮放取整數：飛行中途被打斷（桶換桶、抽屜開合）時 getZoom() 可能是小數。
     // 選桶一次放大到看得到詳細資訊的級距（18：頭上血條、完整名牌、全部展開）；
     // 已經在 18 以上就維持，不拉遠。
-    const zoom = Math.max(Math.round(instance.getZoom()), BOT_BARS_MIN_ZOOM);
+    const zoom = Math.max(
+      Math.round(instance.getZoom()),
+      focusMinZoom ?? BOT_BARS_MIN_ZOOM,
+    );
     const target = centreFor(instance, point, zoom, offsetRef.current);
     if (mode === "jump" || reducedMotion()) {
       instance.setView(target, zoom, { animate: false });
@@ -724,7 +815,14 @@ export function LocationMap({
     following.current = point;
     offsetAtSelection.current = offsetRef.current;
     followSelection.current("fly");
-  }, [browse, selected?.id, selected?.latitude, selected?.longitude, focusKey, focusSelected]);
+  }, [
+    browse,
+    selected?.id,
+    selected?.latitude,
+    selected?.longitude,
+    focusKey,
+    focusSelected,
+  ]);
   // 使用者自己拖、縮放或用鍵盤移動地圖後，就不再自動把選取的桶拉回中間。
   useEffect(() => {
     const element = container.current;

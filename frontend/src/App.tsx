@@ -236,7 +236,7 @@ function AppContent() {
       )}
       <div ref={main}>
         {page === "van" ? (
-          <CitizenVan />
+          <CitizenVan view={id} target={workId} edit={params.get("edit")} />
         ) : page === "crew" && id === "van" ? (
           <CrewVan />
         ) : page === "crew" ? (
