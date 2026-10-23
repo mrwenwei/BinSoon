@@ -52,8 +52,8 @@ export function DemoNav({
                 <Icon
                   name={
                     (crew
-                      ? (["report", "route", "star"] as const)
-                      : (["map", "pin", "user"] as const))[i]
+                      ? (["report", "route", "truck", "star"] as const)
+                      : (["map", "pin", "truck", "user"] as const))[i]
                   }
                 />
               </span>

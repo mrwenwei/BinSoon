@@ -65,6 +65,8 @@ export function wasteIconInnerHtml(type: "general" | "recycling") {
 }
 
 const paths = {
+  truck:
+    "M3 5h12v12H3V5Zm12 5h4l3 4v3h-7M9 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm12 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0",
   car: "M5 17H3v-6l2-6h14l2 6v6h-2M3 11h18M7 17h10M5 17v3m14-3v3M6 14h2m8 0h2",
   scooter:
     "M4 17a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm12 0a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM7 17l4-8h5l3 8M11 9H6m10 0-1-5h-3m-2 13h6",
