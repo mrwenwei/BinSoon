@@ -98,6 +98,9 @@
 | `--px-purple-soft` | `#ece9fb` | 淺紫底（選中底、--mint、--tint-teal） |
 | `--px-on-purple` | `#ffffff` | 紫底上的白字 |
 | `--px-select` | `var(--px-purple)` | 選取／你在哪（= --px-purple；要與互動分色時改這個） |
+| `--px-van` | `#b8aef2` | 小車停靠點 icon 車身（淺紫；定義在 skin-van.css） |
+| `--px-van-light` | `#dcd6fa` | 小車 icon 亮面 |
+| `--px-van-shade` | `#9387e3` | 小車 icon 陰影面 |
 | `--px-hungry` | `#a8e09a` | 餓了填色（桶身、條、色帶） |
 | `--px-hungry-edge` | `#5faf55` | 草地上的綠桶描邊 |
 | `--px-hungry-ink` | `#34802f` | 餓了的文字、數字、百分比、細框 |

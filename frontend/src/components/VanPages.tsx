@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type RefObject,
 } from "react";
 import { Icon } from "./Icon";
 import { VanStop } from "./Pixel";
@@ -183,9 +184,10 @@ const vanMarker = (_: LocationRecord, active: boolean) =>
 const slotSummary = (d: string, s: Shift, need: number) =>
   `${shortDate(d)} ${shifts[s].name} ${need > 0 ? `差 ${need} 人` : "已開站"}`;
 
-function VanBrowse() {
+function VanBrowse({ stopId, editId }: { stopId?: string; editId?: string }) {
   const bookings = useBookings();
   const mobile = useMediaQuery(MOBILE_QUERY);
+  const detail = stops.find((s) => s.id === stopId);
   const [q, setQ] = useState("");
   const [near, setNear] = useState(false);
   const [soon, setSoon] = useState(false);
@@ -207,18 +209,49 @@ function VanBrowse() {
       (!near || meters <= NEAR_M) &&
       (!soon || best.need <= 3),
   );
-  const highlightId = lastVanStop ?? nearestId;
+  const highlightId = detail?.id ?? lastVanStop ?? nearestId;
+  useEffect(() => {
+    if (detail) lastVanStop = detail.id;
+  }, [detail?.id]);
   const selected = stops.find((s) => s.id === highlightId);
+  // 開著詳情時地圖顯示全部停靠點（篩選只作用在清單）。
+  const shownIds = (detail ? all : rows).map((r) => r.stop.id).join(",");
   const mapItems = useMemo(() => {
-    const shown = rows.map((r) => stopRecord(r.stop));
+    const shown = shownIds
+      ? shownIds
+          .split(",")
+          .map((id) => stopRecord(stops.find((s) => s.id === id)!))
+      : [];
     return selected && !shown.some((p) => p.id === selected.id)
       ? [...shown, stopRecord(selected)]
       : shown;
-  }, [rows.map((r) => r.stop.id).join(","), selected?.id]);
-  const select = useCallback((p: LocationRecord) => {
-    lastVanStop = p.id;
-    go(`van/stop/${p.id}`);
-  }, []);
+  }, [shownIds, selected?.id]);
+  const suffix = editId ? `?edit=${editId}` : "";
+  const select = useCallback(
+    (p: LocationRecord) => {
+      if (p.id === detail?.id) return;
+      lastVanStop = p.id;
+      const fromList = !detail;
+      window.location.hash = `van/stop/${p.id}${suffix}`;
+      // 記在這筆瀏覽紀錄上：上一筆就是清單，關閉詳情時直接回上一頁。
+      if (fromList) history.replaceState({ vanFromList: true }, "");
+    },
+    [detail?.id, suffix],
+  );
+  const closeDetail = useCallback(() => {
+    if (editId) window.location.hash = `van/booking/${editId}`;
+    else if ((history.state as { vanFromList?: boolean } | null)?.vanFromList)
+      history.back();
+    else window.location.hash = "van";
+  }, [editId]);
+  useEffect(() => {
+    if (!detail) return;
+    const keydown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) closeDetail();
+    };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [detail?.id, closeDetail]);
   const description = useCallback(
     (p: LocationRecord) => {
       const row = all.find((r) => r.stop.id === p.id);
@@ -235,6 +268,7 @@ function VanBrowse() {
   const headRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState({ layout: 0, head: 0, toolbar: 0 });
+  const [focusKey, setFocusKey] = useState(0);
   useLayoutEffect(() => {
     const measure = () => {
       const next = {
@@ -264,29 +298,44 @@ function VanBrowse() {
       observer.disconnect();
       cancelAnimationFrame(frame);
     };
-  }, [mobile]);
+  }, [mobile, !!detail]);
   const heights = useMemo(() => {
     const full = Math.max(
       dims.head,
       dims.layout - (dims.toolbar ? dims.toolbar + 24 : 12),
     );
-    const half = Math.min(300, Math.round(dims.layout * 0.42));
+    // 詳情半開 65%：標題、幾列時段與底部固定的確認按鈕都看得到。
+    const half = detail
+      ? Math.round(dims.layout * 0.65)
+      : Math.min(300, Math.round(dims.layout * 0.42));
     return {
       collapsed: dims.head,
       half: Math.min(full, Math.max(dims.head, half)),
       full,
     };
-  }, [dims]);
+  }, [dims, !!detail]);
   const sheet = useBottomSheet({
     enabled: mobile,
     heights,
     dragZone: ".mx-panel-head",
     scrollRef: bodyRef,
   });
-  const { stop: drawer, px: drawerPx } = sheet;
+  const { stop: drawer, setStop: setDrawer, px: drawerPx } = sheet;
+  useEffect(() => {
+    if (detail) setDrawer("half");
+  }, [detail?.id]);
+  const previousDrawer = useRef(drawer);
+  useEffect(() => {
+    if (previousDrawer.current === "full" && drawer === "half")
+      setFocusKey((k) => k + 1);
+    previousDrawer.current = drawer;
+  }, [drawer]);
   const focusOffsetY = mobile ? Math.round(heights.half / 2) : 0;
   const viewOffsetY = mobile
-    ? Math.round((heights[drawer] - (dims.toolbar ? dims.toolbar + 8 : 0)) / 2)
+    ? Math.round(
+        (heights[drawer] - (detail || !dims.toolbar ? 0 : dims.toolbar + 8)) /
+          2,
+      )
     : 0;
   const style = mobile
     ? ({
@@ -294,6 +343,16 @@ function VanBrowse() {
         "--mx-toolbar-h": `${dims.toolbar}px`,
       } as CSSProperties)
     : undefined;
+  // 清單 ⇄ 詳情換畫面：詳情從頂端開始，回清單時捲回原本位置。
+  const contentKey = detail ? `stop/${detail.id}` : "list";
+  const listScroll = useRef(0);
+  const shownContent = useRef(contentKey);
+  useLayoutEffect(() => {
+    if (shownContent.current === contentKey) return;
+    shownContent.current = contentKey;
+    if (bodyRef.current)
+      bodyRef.current.scrollTop = detail ? 0 : listScroll.current;
+  }, [contentKey]);
   const mine = bookings.filter((b) => b.date > today()).length;
   const reset = () => {
     setQ("");
@@ -302,109 +361,137 @@ function VanBrowse() {
   };
   return (
     <main
-      className="mx-layout px-map mx-home van-browse"
+      className={`mx-layout px-map van-browse${detail ? "" : " mx-home"}`}
       ref={layoutRef}
       style={style}
       data-drawer={mobile ? drawer : undefined}
     >
-      <div
-        ref={toolbarRef}
-        className="mx-home-toolbar"
-        aria-label="停靠點搜尋與篩選"
-      >
-        <div className="mx-home-controls">
-          <label className="search-field">
-            <span className="visually-hidden">搜尋停靠點</span>
-            <input
-              type="search"
-              aria-label="搜尋停靠點"
-              placeholder="搜尋站名、地址⋯"
-              maxLength={200}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </label>
-          <div className="filter-chips" role="group" aria-label="篩選">
-            <button
-              type="button"
-              aria-pressed={near}
-              onClick={() => setNear(!near)}
-            >
-              離我近
-            </button>
-            <button
-              type="button"
-              aria-pressed={soon}
-              onClick={() => setSoon(!soon)}
-            >
-              快開站
-            </button>
+      {!detail && (
+        <div
+          ref={toolbarRef}
+          className="mx-home-toolbar"
+          aria-label="停靠點搜尋與篩選"
+        >
+          <div className="mx-home-controls">
+            <label className="search-field">
+              <span className="visually-hidden">搜尋停靠點</span>
+              <input
+                type="search"
+                aria-label="搜尋停靠點"
+                placeholder="搜尋站名、地址⋯"
+                maxLength={200}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </label>
+            <div className="filter-chips" role="group" aria-label="篩選">
+              <button
+                type="button"
+                aria-pressed={near}
+                onClick={() => setNear(!near)}
+              >
+                離我近
+              </button>
+              <button
+                type="button"
+                aria-pressed={soon}
+                onClick={() => setSoon(!soon)}
+              >
+                快開站
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       <section
         className={`mx-panel${sheet.dragging ? " dragging" : ""}`}
-        aria-label="停靠點清單"
-        data-view="list"
+        aria-label={detail ? "停靠點詳情" : "停靠點清單"}
+        data-view={detail ? "stop" : "list"}
         ref={sheet.panelRef}
         {...sheet.panelProps}
       >
         <SheetHandle ref={handleRef} {...sheet.handleProps} />
-        <div className="mx-panel-head" ref={headRef}>
-          <div className="mx-head-title">
-            <h1 className="mx-title">預約清運小車</h1>
-            <a className="text-button van-mine-link" href="#van/mine">
-              我的預約{mine ? `（${mine}）` : ""}
-            </a>
-          </div>
-        </div>
-        <div className="mx-panel-body" ref={bodyRef} inert={sheet.collapsed}>
-          <div className="mx-panel-content">
-            {rows.length > 0 ? (
-              <ul className="mx-list" aria-label="小車停靠點">
-                {rows.map(({ stop, meters, best }) => (
-                  <li key={stop.id}>
+        {detail ? (
+          <StopDetail
+            key={`${detail.id}/${editId}`}
+            stop={detail}
+            editId={editId}
+            headRef={headRef}
+            bodyRef={bodyRef}
+            collapsed={sheet.collapsed}
+            onBack={closeDetail}
+          />
+        ) : (
+          <>
+            <div className="mx-panel-head" ref={headRef}>
+              <div className="mx-head-title">
+                <h1 className="mx-title">預約清運小車</h1>
+                <a className="text-button van-mine-link" href="#van/mine">
+                  我的預約{mine ? `（${mine}）` : ""}
+                </a>
+              </div>
+            </div>
+            <div
+              className="mx-panel-body"
+              ref={bodyRef}
+              inert={sheet.collapsed}
+              onScroll={(e) => {
+                listScroll.current = e.currentTarget.scrollTop;
+              }}
+            >
+              <div className="mx-panel-content" key={contentKey}>
+                {rows.length > 0 ? (
+                  <ul className="mx-list" aria-label="小車停靠點">
+                    {rows.map(({ stop, meters, best }) => (
+                      <li key={stop.id}>
+                        <button
+                          type="button"
+                          className={`location-row van-row${stop.id === highlightId ? " active" : ""}`}
+                          aria-current={
+                            stop.id === highlightId ? "true" : undefined
+                          }
+                          data-id={stop.id}
+                          onClick={() => select(stopRecord(stop))}
+                        >
+                          <span className="row-buddy vanstop">
+                            <VanStop />
+                          </span>
+                          <span className="row-copy">
+                            <span className="mx-row-title">
+                              <strong>{stop.name}</strong>
+                              {stop.id === nearestId && (
+                                <span className="status-pill">離你最近</span>
+                              )}
+                            </span>
+                            <small>
+                              {stop.address} · {distanceText(meters)}
+                            </small>
+                            <small className="van-row-slot">
+                              最快：
+                              {slotSummary(best.date, best.shift, best.need)}
+                            </small>
+                          </span>
+                          <Icon name="arrow" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="mx-empty">
+                    <p>找不到符合的停靠點。</p>
                     <button
                       type="button"
-                      className={`location-row van-row${stop.id === highlightId ? " active" : ""}`}
-                      aria-current={
-                        stop.id === highlightId ? "true" : undefined
-                      }
-                      data-id={stop.id}
-                      onClick={() => select(stopRecord(stop))}
+                      className="text-button"
+                      onClick={reset}
                     >
-                      <span className="row-buddy vanstop">
-                        <VanStop />
-                      </span>
-                      <span className="row-copy">
-                        <span className="mx-row-title">
-                          <strong>{stop.name}</strong>
-                          {stop.id === nearestId && (
-                            <span className="status-pill">離你最近</span>
-                          )}
-                        </span>
-                        <small>
-                          {stop.address} · {distanceText(meters)}
-                        </small>
-                        <small className="van-row-slot">
-                          最快：{slotSummary(best.date, best.shift, best.need)}
-                        </small>
-                      </span>
-                      <Icon name="arrow" />
+                      清除搜尋與篩選
                     </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="mx-empty">
-                <p>找不到符合的停靠點。</p>
-                <button type="button" className="text-button" onClick={reset}>
-                  清除搜尋與篩選
-                </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </section>
       <div className="mx-map van-browse-map">
         <LocationMap
@@ -414,7 +501,7 @@ function VanBrowse() {
           onSelect={select}
           initialCenter={vanInitialCenter}
           fitKey={
-            mapItems.length
+            !detail && mapItems.length
               ? `${mapItems.map((p) => p.id).join(",")}/${focusOffsetY}`
               : undefined
           }
@@ -422,18 +509,35 @@ function VanBrowse() {
           markerLabel={(p) => `小車停靠點：${p.label}`}
           markerDescription={description}
           origin={vanOriginMarker}
-          focusSelected={false}
+          focusSelected={!!detail}
+          focusMinZoom={15}
           focusOffsetY={focusOffsetY}
           viewOffsetY={viewOffsetY}
+          focusKey={focusKey}
+          onBackgroundTap={detail ? closeDetail : undefined}
         />
       </div>
     </main>
   );
 }
 
-function VanStopPage({ stopId, editId }: { stopId?: string; editId?: string }) {
+// 抽屜／側欄裡的停靠點詳情：標題列（返回清單）、可捲動的 14 格時段、底部固定的確認按鈕。
+function StopDetail({
+  stop,
+  editId,
+  headRef,
+  bodyRef,
+  collapsed,
+  onBack,
+}: {
+  stop: (typeof stops)[number];
+  editId?: string;
+  headRef: RefObject<HTMLDivElement | null>;
+  bodyRef: RefObject<HTMLDivElement | null>;
+  collapsed: boolean;
+  onBack: () => void;
+}) {
   const bookings = useBookings();
-  const stop = stops.find((s) => s.id === stopId);
   const editing = editId ? bookings.find((b) => b.id === editId) : undefined;
   const [pick, setPick] = useState<{ date: string; shift: Shift } | null>(
     editing ? { date: editing.date, shift: editing.shift } : null,
@@ -447,21 +551,7 @@ function VanStopPage({ stopId, editId }: { stopId?: string; editId?: string }) {
       setPick({ date: editing.date, shift: editing.shift });
     }
   }, [editing]);
-  if (!stop)
-    return (
-      <main className="van-page">
-        <header className="van-heading">
-          <h1>找不到這個停靠點</h1>
-        </header>
-        <div className="van-content">
-          <a className="button secondary" href="#van">
-            返回停靠點
-          </a>
-        </div>
-      </main>
-    );
   const others = bookings.filter((b) => b.id !== editing?.id);
-  const backHref = editing ? `#van/booking/${editing.id}` : "#van";
   const submit = () => {
     if (!pick) return;
     if (!availableDates().includes(pick.date)) {
@@ -487,82 +577,89 @@ function VanStopPage({ stopId, editId }: { stopId?: string; editId?: string }) {
     }
   };
   return (
-    <main className="van-page van-stop-page">
-      <header className="van-heading">
-        <a
-          className="text-button"
-          href={backHref}
-          aria-label={editing ? "返回預約詳情" : "返回停靠點"}
+    <>
+      <div className="mx-panel-head van-detail-head" ref={headRef}>
+        <button
+          type="button"
+          className="text-button van-back"
+          aria-label={editing ? "返回預約詳情" : "返回清單"}
+          onClick={onBack}
         >
           <Icon name="back" />
-        </a>
-        <h1>{stop.name}</h1>
-      </header>
-      <div className="van-content">
-        <section className="van-stop-info">
-          <span className="row-buddy vanstop">
-            <VanStop />
-          </span>
-          <span>
-            <strong>{stop.address}</strong>
-            <small>離你 {distanceText(distanceM(stop))}</small>
-          </span>
-        </section>
-        {error && <p role="alert">{error}</p>}
-        <h2>選日期與時段</h2>
-        <ul className="van-slotgrid" aria-label="日期與時段">
-          {availableDates().map((d) => (
-            <li className="van-slot-row" key={d}>
-              <span className="van-slot-date">
-                <b>{shortDate(d)}</b>
-                <small>
-                  週
-                  {
-                    "日一二三四五六"[
-                      new Date(`${d}T12:00:00+08:00`).getUTCDay()
-                    ]
-                  }
-                </small>
-              </span>
-              {(Object.keys(shifts) as Shift[]).map((s) => {
-                const mine = others.find((b) => b.date === d && b.shift === s);
-                const need = needAt(others, d, s, stop.id);
-                const on = pick?.date === d && pick.shift === s;
-                return (
-                  <button
-                    type="button"
-                    key={s}
-                    className={`van-slot${need === 0 ? " open" : ""}`}
-                    aria-pressed={mine ? undefined : on}
-                    disabled={!!mine}
-                    onClick={() => {
-                      setPick({ date: d, shift: s });
-                      setError("");
-                    }}
-                  >
-                    <span>
-                      {shifts[s].name}
-                      <small>{shifts[s].time}</small>
-                    </span>
-                    <strong>{mine ? "你已預約" : slotNeedText(need)}</strong>
-                  </button>
-                );
-              })}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="van-submit">
-        <button className="button primary" disabled={!pick} onClick={submit}>
-          {pick
-            ? `${editing ? "更新預約" : "預約"} ${shortDate(pick.date)} ${shifts[pick.shift].name} · ${stop.name}`
-            : "請先選一個日期與時段"}
         </button>
-        <small>
-          <Icon name="clock" /> 前一天 20:00 公布路線
-        </small>
+        <h1 className="mx-title">{stop.name}</h1>
       </div>
-    </main>
+      <div className="mx-panel-body" ref={bodyRef} inert={collapsed}>
+        <div className="mx-panel-content van-sheet-content">
+          <section className="van-stop-info">
+            <span className="row-buddy vanstop">
+              <VanStop />
+            </span>
+            <span>
+              <strong>{stop.address}</strong>
+              <small>離你 {distanceText(distanceM(stop))}</small>
+            </span>
+          </section>
+          {error && <p role="alert">{error}</p>}
+          <h2>選日期與時段</h2>
+          <ul className="van-slotgrid" aria-label="日期與時段">
+            {availableDates().map((d) => (
+              <li className="van-slot-row" key={d}>
+                <span className="van-slot-date">
+                  <b>{shortDate(d)}</b>
+                  <small>
+                    週
+                    {
+                      "日一二三四五六"[
+                        new Date(`${d}T12:00:00+08:00`).getUTCDay()
+                      ]
+                    }
+                  </small>
+                </span>
+                {(Object.keys(shifts) as Shift[]).map((s) => {
+                  const mine = others.find(
+                    (b) => b.date === d && b.shift === s,
+                  );
+                  const need = needAt(others, d, s, stop.id);
+                  const on = pick?.date === d && pick.shift === s;
+                  return (
+                    <button
+                      type="button"
+                      key={s}
+                      className={`van-slot${need === 0 ? " open" : ""}`}
+                      aria-pressed={mine ? undefined : on}
+                      disabled={!!mine}
+                      onClick={() => {
+                        setPick({ date: d, shift: s });
+                        setError("");
+                      }}
+                    >
+                      <span>
+                        {shifts[s].name}
+                        <small>{shifts[s].time}</small>
+                      </span>
+                      <strong>{mine ? "你已預約" : slotNeedText(need)}</strong>
+                    </button>
+                  );
+                })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      {!collapsed && (
+        <div className="van-panel-foot">
+          <button className="button primary" disabled={!pick} onClick={submit}>
+            {pick
+              ? `${editing ? "更新預約" : "預約"} ${shortDate(pick.date)} ${shifts[pick.shift].name} · ${stop.name}`
+              : "請先選一個日期與時段"}
+          </button>
+          <small>
+            <Icon name="clock" /> 前一天 20:00 公布路線
+          </small>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -769,11 +866,7 @@ export function CitizenVan({
   edit?: string | null;
 }) {
   return view === "stop" ? (
-    <VanStopPage
-      key={`${target}/${edit}`}
-      stopId={target}
-      editId={edit ?? undefined}
-    />
+    <VanBrowse stopId={target} editId={edit ?? undefined} />
   ) : view === "mine" ? (
     <VanMine />
   ) : view === "booking" ? (

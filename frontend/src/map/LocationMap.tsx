@@ -42,6 +42,8 @@ if (compactMap) setWorkerCount(1);
 interface Props {
   /** Keep a compact multi-stop map framed while highlighting a selection. */
   focusSelected?: boolean;
+  /** 瀏覽模式選取時至少放大到這個級距（預設 BOT_BARS_MIN_ZOOM；小車停靠點用較低級距方便比較）。 */
+  focusMinZoom?: number;
   operations?: OperationalState;
   binMarkerLabel?: string;
   locations: LocationRecord[];
@@ -122,6 +124,7 @@ function playOnce(element: HTMLElement, className: string, animation: string) {
 }
 export function LocationMap({
   focusSelected = true,
+  focusMinZoom,
   locations,
   selected,
   onSelect,
@@ -741,7 +744,10 @@ export function LocationMap({
     // 縮放取整數：飛行中途被打斷（桶換桶、抽屜開合）時 getZoom() 可能是小數。
     // 選桶一次放大到看得到詳細資訊的級距（18：頭上血條、完整名牌、全部展開）；
     // 已經在 18 以上就維持，不拉遠。
-    const zoom = Math.max(Math.round(instance.getZoom()), BOT_BARS_MIN_ZOOM);
+    const zoom = Math.max(
+      Math.round(instance.getZoom()),
+      focusMinZoom ?? BOT_BARS_MIN_ZOOM,
+    );
     const target = centreFor(instance, point, zoom, offsetRef.current);
     if (mode === "jump" || reducedMotion()) {
       instance.setView(target, zoom, { animate: false });
@@ -781,7 +787,14 @@ export function LocationMap({
     following.current = point;
     offsetAtSelection.current = offsetRef.current;
     followSelection.current("fly");
-  }, [browse, selected?.id, selected?.latitude, selected?.longitude, focusKey, focusSelected]);
+  }, [
+    browse,
+    selected?.id,
+    selected?.latitude,
+    selected?.longitude,
+    focusKey,
+    focusSelected,
+  ]);
   // 使用者自己拖、縮放或用鍵盤移動地圖後，就不再自動把選取的桶拉回中間。
   useEffect(() => {
     const element = container.current;

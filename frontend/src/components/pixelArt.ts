@@ -105,20 +105,24 @@ export function coinSvg() {
   return coinCache;
 }
 
-// 小車停靠點：側視小貨車停在站牌位置，內部 14×10 格＋外框＝16×12 格，×2＝32×24（整數倍）。
-// 車身 --px-purple（互動／地點）、下緣陰影 --px-purple-deep、貨箱白板與車頭燈 --px-card、
-// 車窗 --px-purple-soft、輪胎與外框 --text-on-light（同愛心、代幣的描邊色），輪轂白。
+// 小車停靠點：淺紫圓潤的垃圾車（右側車頭、左側圓弧壓縮車斗），沒有表情。
+// 內部 18×13 格＋外框＝20×15 格，×2＝40×30（整數倍）。階梯狀像素圓角做出圓潤輪廓；
+// 車身 --px-van、亮面 --px-van-light、陰影 --px-van-shade、車窗 --px-card、
+// 輪胎與外框 --text-on-light（同愛心、代幣的描邊色）、輪心 --px-dot-off。
 const VAN_STOP = [
-  "PPPPPPPPP.....",
-  "PSSSSSSSP.....",
-  "PSSSSSSSPPP...",
-  "PSSSSSSSPWWWP.",
-  "PPPPPPPPPWWWPP",
-  "PPPPPPPPPPPPPG",
-  "DDDDDDDDDDDDDD",
-  ".TTT.....TTT..",
-  ".TCT.....TCT..",
-  ".TTT.....TTT..",
+  "...LLLLLLLL.......",
+  "..LLBBBBBBBB......",
+  ".LBBBBBBBBBB......",
+  "LBBBBBBBBBBBSLLL..",
+  "LBBBBBBBBBBBSLWWBB",
+  "LBBBBBBBBBBBSLWWWB",
+  "LBSSSSSSSSBBSBBBBB",
+  "BBBBBBBBBBBBSBBBBB",
+  "BBBTTTBBBBBBSTTTBB",
+  ".STTCTTSSSSSTTCTTS",
+  "..TCCCT.....TCCCT.",
+  "..TTCTT.....TTCTT.",
+  "...TTT.......TTT..",
 ];
 const vanStopCache = new Map<number, string>();
 export function vanStopSvg(scale: 2 | 3 = 2) {
@@ -128,13 +132,12 @@ export function vanStopSvg(scale: 2 | 3 = 2) {
       VAN_STOP,
       {
         K: "var(--text-on-light)",
-        P: "var(--px-purple)",
-        D: "var(--px-purple-deep)",
-        S: "var(--px-card)",
-        W: "var(--px-purple-soft)",
-        G: "var(--px-card)",
+        B: "var(--px-van)",
+        L: "var(--px-van-light)",
+        S: "var(--px-van-shade)",
+        W: "var(--px-card)",
         T: "var(--text-on-light)",
-        C: "var(--px-card)",
+        C: "var(--px-dot-off)",
       },
       scale,
       "px-vanstop",

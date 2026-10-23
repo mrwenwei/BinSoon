@@ -1,17 +1,23 @@
 /* Pixel skin：市民端預約小車（#van 瀏覽、停靠點詳情、我的預約）。只用 --px-* token。 */
 
+:root {
+  --px-van: #b8aef2;
+  --px-van-shade: #9387e3;
+  --px-van-light: #dcd6fa;
+}
+
 /* 像素小車停靠點 icon：框內固定 32×24（16×12 格 ×2），蓋過 .row-buddy／地標旗子的尺寸規則。 */
 .row-buddy.vanstop {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 42px;
   border-radius: var(--px-radius-small);
   background: var(--px-purple-soft);
 }
 .row-buddy.vanstop svg,
 .pixel-marker.vanstop .marker-body svg,
 .van-stop-info svg {
-  width: 32px;
-  height: 24px;
+  width: 40px;
+  height: 30px;
 }
 .row-buddy.vanstop .px-art,
 .van-stop-info .px-art {
@@ -49,7 +55,58 @@
   border-radius: var(--px-radius-pill);
 }
 
-/* 停靠點詳情 */
+.van-browse .location-row {
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+}
+.van-browse .mx-panel {
+  overflow: hidden;
+}
+
+/* 停靠點詳情（抽屜／側欄內） */
+.van-detail-head {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+.van-detail-head .van-back {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--px-purple-deep);
+}
+.van-sheet-content {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+}
+.van-sheet-content h2 {
+  margin: 0;
+  font: var(--text-heading);
+  font-weight: 900;
+}
+.van-sheet-content > p {
+  margin: 0;
+  color: var(--px-full-ink);
+}
+.van-panel-foot {
+  flex: none;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-3);
+  background: var(--px-card);
+  border-top: 2px solid var(--px-divider);
+}
+.van-panel-foot .button {
+  width: 100%;
+  justify-content: center;
+  min-height: 48px;
+}
+.van-panel-foot small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--px-ink-body);
+}
 .van-stop-info {
   display: flex;
   align-items: center;
@@ -63,9 +120,6 @@
 .van-stop-info small {
   display: block;
   color: var(--px-ink-body);
-}
-.van-stop-page .van-content h2 {
-  font-weight: 900;
 }
 .van-slotgrid {
   list-style: none;
