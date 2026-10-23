@@ -1,5 +1,7 @@
 import { isDemoToken } from "../../data/demoMode";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import type { ReactNode } from "react";
 import {
   query,
   request,
@@ -28,6 +30,7 @@ export function Rewards() {
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Reward | null>(null);
   const [result, setResult] = useState<RedeemResult | null>(null);
+  const trigger = useRef<HTMLElement | null>(null);
   const path = query("/rewards", { category, offset, limit: 20 });
   const list = useApi(
     path,
@@ -96,7 +99,7 @@ export function Rewards() {
           </a>
         </section>
       )}
-      <CommandFeedback action={action} />
+      {!selected && <CommandFeedback action={action} />}
       <ul className="reward-catalog">
         {list.data?.items.map((item) => {
           const current =
@@ -126,7 +129,8 @@ export function Rewards() {
                     balance == null ||
                     !!missing
                   }
-                  onClick={() => {
+                  onClick={(event) => {
+                    trigger.current = event.currentTarget;
                     action.cancel();
                     setSelected(item);
                   }}
@@ -152,35 +156,35 @@ export function Rewards() {
         />
       )}
       {selected && (
-        <section className="card api-command" aria-label="兌換確認">
-          <h2>確認兌換 {selected.name}</h2>
+        <RedeemDialog
+          title={`確認兌換 ${selected.name}`}
+          returnFocus={trigger}
+          closeDisabled={action.busy || !!action.pending}
+          onClose={() => setSelected(null)}
+          confirm={
+            <button
+              className="button primary"
+              disabled={action.blocked}
+              onClick={() =>
+                void action.run({
+                  path: "/redemptions",
+                  body: { reward_id: selected.id },
+                  label: `兌換 ${selected.name}`,
+                })
+              }
+            >
+              確認兌換
+            </button>
+          }
+        >
           <p>
             將使用 {selected.cost} 點；
             {isDemoToken(session?.access_token)
               ? "確認後扣除可用點數。"
               : "實際點數及庫存由後端確認。"}
           </p>
-          <button
-            className="button primary"
-            disabled={action.blocked}
-            onClick={() =>
-              void action.run({
-                path: "/redemptions",
-                body: { reward_id: selected.id },
-                label: `兌換 ${selected.name}`,
-              })
-            }
-          >
-            確認兌換
-          </button>
-          <button
-            className="button secondary"
-            disabled={action.busy || !!action.pending}
-            onClick={() => setSelected(null)}
-          >
-            取消
-          </button>
-        </section>
+          <CommandFeedback action={action} />
+        </RedeemDialog>
       )}
     </main>
   );
@@ -241,5 +245,97 @@ export function Redemptions({ id }: { id?: string }) {
         </>
       )}
     </main>
+  );
+}
+
+// 兌換確認彈窗：版型與焦點處理照 EndClaimDialog（role=dialog、aria-modal、Tab 只在框內、
+// Esc／點遮罩＝取消，關閉後焦點還原到觸發的「兌換」鍵）。確認與取消的行為不變。
+function RedeemDialog({
+  title,
+  children,
+  confirm,
+  closeDisabled,
+  onClose,
+  returnFocus,
+}: {
+  title: string;
+  children: ReactNode;
+  confirm: ReactNode;
+  closeDisabled: boolean;
+  onClose: () => void;
+  returnFocus: { current: HTMLElement | null };
+}) {
+  const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
+  const guard = useRef({ closeDisabled, onClose });
+  guard.current = { closeDisabled, onClose };
+  useEffect(() => {
+    const back = returnFocus.current;
+    cancel.current?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!guard.current.closeDisabled) guard.current.onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !box.current) return;
+      const items = [
+        ...box.current.querySelectorAll<HTMLElement>(
+          "button:not(:disabled), a[href]",
+        ),
+      ];
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!box.current.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("keydown", key);
+      if (back?.isConnected) back.focus();
+    };
+  }, [returnFocus]);
+  return createPortal(
+    <>
+      <div
+        className="claim-dialog-scrim reward-dialog-scrim"
+        onClick={() => {
+          if (!closeDisabled) onClose();
+        }}
+        aria-hidden="true"
+      />
+      <div
+        ref={box}
+        className="claim-dialog reward-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${id}-title`}
+      >
+        <h2 id={`${id}-title`}>{title}</h2>
+        {children}
+        <div className="claim-dialog-actions">
+          {confirm}
+          <button
+            ref={cancel}
+            className="button secondary"
+            disabled={closeDisabled}
+            onClick={onClose}
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    </>,
+    document.body,
   );
 }

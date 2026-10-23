@@ -20,7 +20,7 @@ import {
 import { wasteHref, wasteName, type WasteType } from "../../data/waste";
 import { Mascot } from "../Mascot";
 import { Icon } from "../Icon";
-import { NameTag, PixelHeart, Points } from "../Pixel";
+import { Coin, NameTag, PixelHeart, Points } from "../Pixel";
 import { StationCard } from "../StationCard";
 import { removedBinSvg } from "../../map/binBot";
 import { compartmentCards } from "./Waste";
@@ -75,7 +75,10 @@ export function CitizenHome() {
       {member.data && (
         <section className="member-hero" aria-label="我的點數">
           <span>可用點數</span>
-          <strong className="numeral-xl">{member.data.available_points}</strong>
+          <strong className="numeral-xl">
+            {member.data.available_points}
+            <Coin />
+          </strong>
           <p>另有 {member.data.pending_points} 點審核中</p>
           <a className="button primary" href="#rewards">
             兌換獎勵 <Icon name="arrow" />

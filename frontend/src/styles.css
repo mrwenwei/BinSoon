@@ -11243,6 +11243,49 @@ body {
 .leaflet-control-attribution a {
   color: var(--px-ink);
 }
+/* 署名：預設收合成「i」圓鈕，點開顯示完整署名（OSM／OpenMapTiles／OpenFreeMap 為授權要求，不可移除） */
+.leaflet-control-attribution.leaflet-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(78vw, 320px);
+  margin: 0 8px 6px 0;
+  padding: 2px;
+  border-radius: var(--px-radius-pill);
+  background: color-mix(in srgb, var(--px-card) 78%, transparent);
+  color: var(--px-ink-soft);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.leaflet-control-attribution .px-attr-toggle {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--px-ink-soft);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--px-ink-soft);
+  font: italic 700 13px/1 serif;
+  cursor: pointer;
+}
+.leaflet-control-attribution .px-attr-toggle:focus-visible {
+  outline: 2px solid var(--px-purple);
+  outline-offset: 1px;
+}
+.leaflet-control-attribution .px-attr-text {
+  padding-right: 8px;
+}
+.leaflet-control-attribution .px-attr-text[hidden] {
+  display: none;
+}
+/* 載入中提示（LoadState 的 role="status"）：白底上要清楚可見（--px-ink-soft ≥ 4.5:1） */
+.page > p[role="status"],
+.mx-panel p[role="status"] {
+  color: var(--px-ink-soft);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
 .leaflet-control-scale-line {
   border-color: var(--px-ink);
   background: var(--px-card-glass);

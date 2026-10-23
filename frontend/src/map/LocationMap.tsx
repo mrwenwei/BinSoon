@@ -426,6 +426,50 @@ export function LocationMap({
     L.control
       .scale({ imperial: false, position: "bottomleft" })
       .addTo(instance);
+    // 署名：移除 Leaflet 前綴；預設收合成「i」按鈕，點開顯示完整署名（文字與連結不刪減）。
+    const attribution = instance.attributionControl;
+    attribution.setPrefix(false);
+    let attributionOpen = false;
+    const renderAttribution = () => {
+      const box = attribution.getContainer();
+      if (!box) return;
+      const text = document.createElement("span");
+      text.className = "px-attr-text";
+      text.id = "map-attribution-text";
+      text.innerHTML = box.innerHTML;
+      text.hidden = !attributionOpen;
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "px-attr-toggle";
+      toggle.textContent = "i";
+      toggle.setAttribute("aria-label", "地圖資料來源與署名");
+      toggle.setAttribute("aria-controls", text.id);
+      toggle.setAttribute("aria-expanded", String(attributionOpen));
+      const setOpen = (open: boolean) => {
+        attributionOpen = open;
+        text.hidden = !open;
+        toggle.setAttribute("aria-expanded", String(open));
+        box.classList.toggle("is-open", open);
+      };
+      toggle.addEventListener("click", () => setOpen(!attributionOpen));
+      box.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && attributionOpen) {
+          setOpen(false);
+          toggle.focus();
+        }
+      });
+      box.classList.toggle("is-open", attributionOpen);
+      box.replaceChildren(toggle, text);
+      L.DomEvent.disableClickPropagation(box);
+    };
+    const updateAttribution = attribution as unknown as {
+      _update: () => void;
+    };
+    const originalUpdate = updateAttribution._update.bind(attribution);
+    updateAttribution._update = () => {
+      originalUpdate();
+      renderAttribution();
+    };
     instance.attributionControl.addAttribution(
       '<a href="https://openfreemap.org/" target="_blank" rel="noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a>',
     );

@@ -17,3 +17,48 @@
 .report-compose .segmented label:has(input:checked) {
   color: var(--px-purple-deep);
 }
+
+/* ── 第 3 輪（使用者明確授權的版面／DOM 調整）──────────────────────────── */
+
+/* 會員中心「集章與等級」：徽章文字平均換行（獨當／一面），圓內放得下、不截斷 */
+.member-badge {
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+/* 「我的」可用點數卡：白底＋深墨 2px 像素邊＋硬邊陰影，和米色頁面底分開 */
+.citizen-home > .member-hero {
+  background: var(--px-card);
+  border: 1px solid var(--px-ink);
+  box-shadow:
+    0 0 0 1px var(--px-ink),
+    0 3px 0 1px var(--px-ink);
+}
+/* 數字後的像素金幣（重用 Pixel.tsx 的 Coin，裝飾用 aria-hidden） */
+.citizen-home > .member-hero > strong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.citizen-home > .member-hero > strong .px-art svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* 兌換確認彈窗：像素風（深墨邊＋硬邊陰影），遮罩用米色半透明 */
+.reward-dialog-scrim {
+  background: color-mix(in srgb, var(--px-ink) 38%, transparent);
+}
+.reward-dialog {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  background: var(--px-card);
+  border: 1px solid var(--px-ink);
+  border-radius: var(--px-radius-card);
+  box-shadow:
+    0 0 0 1px var(--px-ink),
+    0 4px 0 1px var(--px-ink);
+}
