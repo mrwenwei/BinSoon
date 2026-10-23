@@ -11013,7 +11013,7 @@ input[type="file"]::file-selector-button {
   --bot-offline-D: var(--px-bot-offline-D);
   /* 字體：數字與英文 Nunito，中文退回 Noto Sans TC（token 層級，整站的 font: var(--font-*) 都吃到） */
   --font-sans: var(--px-font-round);
-  --font-display: var(--px-font-round);
+  /* 數字（numeral-*）沿用原本的 Chakra Petch（tokens.css），不換成 Nunito */
   --font-mono: var(--px-font-round);
   /* 圓角 token（tokens.css 的 --radius-*）提升到規則值：小元件 8／12、卡片 22、膠囊 999 */
   --radius-xs: var(--px-radius-xs);
@@ -11381,9 +11381,6 @@ body {
 .px-map .fill-bar:not(.thick):not(.state-offline) {
   border-radius: 4px;
   background: var(--px-dot-off);
-}
-.px-map .mx-usable .numeral-sm {
-  font-family: var(--px-font-round);
 }
 .px-map .mx-handle span {
   background: var(--px-dot-off);

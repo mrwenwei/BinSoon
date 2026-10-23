@@ -140,7 +140,7 @@
 | `--line`、`--line-control`、`--line-input`、`--divider`、`--hairline` | `--px-line`、`--px-line-control`、`--px-line-input`、`--px-divider`、`--px-hairline` | 線條 |
 | `--marker-shadow` | `--px-shadow-ink` | |
 | `--radius-xs`／`-sm`／`-md`／`-pill` | 8px／12px／22px／999px | token 層級，所有 `var(--radius-*)` 自動生效；按鈕、狀態膠囊等另有膠囊規則 |
-| `--font-sans`／`--font-display`／`--font-mono` | `--px-font-round` | Nunito → Noto Sans TC。`--font-pixel`（Silkscreen）保留 |
+| `--font-sans`／`--font-mono` | `--px-font-round` | Nunito → Noto Sans TC。`--font-display`（數字 numeral-*）維持原本的 Chakra Petch；`--font-pixel`（Silkscreen）保留 |
 
 ### 6.3 已經全域處理的語意規則（第 2 階段不用再做）
 
