@@ -1,1 +1,19 @@
 /* Pixel skin：市民頁（回報、完成、兌換、點數、會員、通知等）。只寫純視覺屬性，規則見 docs/PIXEL_SKIN.md。 */
+
+/* ── 對比修正：米色底（#F4E1CB）上的次要文字與紫字 ───────────────────────
+   --px-ink-soft 對米色只有 4.17:1、--px-purple 對米色只有 3.69:1，皆低於 4.5:1。
+   市民頁的次要字改 --px-ink-body、紫字改 --px-purple-deep；白底卡片內不受影響。 */
+.page-heading > .demo-tag,
+.compact-page-head > div > p,
+.binu-count .numeral-md {
+  color: var(--px-ink-body);
+}
+.citizen-bins > .text-button,
+.api-action-link,
+.report-success-status {
+  color: var(--px-purple-deep);
+}
+/* 選中底（淺紫）上的紫字 */
+.report-compose .segmented label:has(input:checked) {
+  color: var(--px-purple-deep);
+}

@@ -1,1 +1,36 @@
 /* Pixel skin：清潔隊／staff 頁（staff、crew、路線、小車 van、審核）。只寫純視覺屬性，規則見 docs/PIXEL_SKIN.md。 */
+
+/* 米色底上的次要小字：--px-ink-soft 只有 4.2:1，改用內文色（≥4.5:1）。 */
+.crew-demo-notice > span,
+.crew-route-heading .eyebrow,
+.crew-route-count,
+.crew-route-count > span,
+.staff-main .tiny,
+.api-route-refresh .tiny,
+.page-heading .eyebrow,
+.page-heading > div > p,
+.api-route-page .eyebrow,
+.crew-demo .eyebrow,
+.crew-route-itinerary > header .eyebrow,
+.van-page .eyebrow,
+.van-content > p,
+.crew-ranking .crew-list-header p,
+.api-route-page .tiny {
+  color: var(--px-ink-body);
+}
+
+/* 米色底上的連結：紫 3.7:1 不足，改用淺底紫字。 */
+.page-heading > a,
+.api-route-page .page-heading > a {
+  color: var(--px-purple-deep);
+}
+
+/* 淺紫底上的小字 */
+.crew-vehicle-switch .crew-vehicle-description {
+  color: var(--px-ink-body);
+}
+
+/* 選中的小車站點 icon：深墨字壓在深紫底只有 1.9:1，改白。 */
+.van-stop-icon.selected {
+  color: var(--px-on-purple);
+}

@@ -10916,9 +10916,9 @@ input[type="file"]::file-selector-button {
   /* 桶況：餓了＝淺草綠、吃飽了＝珊瑚紅、失聯＝灰紫 */
   --px-hungry: #a8e09a;
   --px-hungry-edge: #5faf55; /* 草地上的同色相描邊 */
-  --px-hungry-ink: #3a8a36; /* 淺底上的「餓了」文字與細框（#A8E09A 當字太淺） */
+  --px-hungry-ink: #34802f; /* 淺底上的「餓了」文字與細框（#A8E09A 當字太淺） */
   --px-full: #f07a6a;
-  --px-full-ink: #c94f40; /* 淺底上的「吃飽了」文字 */
+  --px-full-ink: #bf4637; /* 淺底上的「吃飽了」文字 */
   --px-offline: #a9a6c2;
   --px-offline-ink: #6b6890; /* 淺底上的「失聯」文字與細框（白底 ≥ 4.5:1） */
   /* Bin友各格（箱身 B 是主色，其餘為同色相明暗） */
@@ -11272,6 +11272,25 @@ body {
   border-radius: var(--px-radius-row);
   box-shadow: 0 4px 0 var(--px-shadow);
 }
+/* 頁尾：融入米色頁面，不再是一條白帶 */
+.api-footer {
+  background: transparent;
+  border-top-color: var(--px-divider);
+  color: var(--px-ink-body); /* ink-soft 在米色上只有 4.2:1 */
+}
+.api-footer a {
+  color: var(--px-purple-deep); /* 紫在米色上只有 3.7:1 */
+}
+
+/* 錯誤提示：珊瑚文字改用 ink（#F07A6A 當字對比不足）；提示列加圓角 */
+.api-form [role="alert"],
+.page [role="alert"] > p {
+  color: var(--px-full-ink);
+}
+.page > [role="alert"] {
+  border-radius: var(--px-radius-small);
+}
+
 /* ── 地圖頁專屬（<main class="mx-layout px-map">） ──────────────────────── */
 .px-map {
   color: var(--text);
