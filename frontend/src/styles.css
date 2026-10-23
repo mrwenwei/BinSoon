@@ -316,18 +316,21 @@ a.points-button:not([aria-label]) {
   color: var(--text-muted);
   font-size: 13px;
 }
-/* 文字連結（配色 v4）：白字＋2px --signal 底線。 */
+/* 文字連結：青綠字＋底線（還原 PR #30 之前的樣子，使用者指定）。 */
 .text-button {
   min-height: 44px;
   padding: 0 var(--space-2);
   border: 0;
   background: none;
-  color: var(--text);
+  color: var(--teal);
   font-weight: 700;
   text-decoration: underline;
-  text-decoration-color: var(--signal);
-  text-decoration-thickness: 2px;
   text-underline-offset: 3px;
+}
+/* 連結版的 text button：44px 觸控高度裡文字垂直置中，跟旁邊的按鈕對齊。 */
+a.text-button {
+  display: inline-flex;
+  align-items: center;
 }
 .prototype {
   padding: 4px var(--space-2);
@@ -1889,6 +1892,23 @@ input[type="file"]::file-selector-button {
 }
 .compartment-pct {
   font: var(--text-numeral-md);
+}
+/* 百分比對齊第一列（圖示＋種類名，28px 高）垂直置中：吃飽了那格名稱下面多一行「吃飽了」，
+   百分比不跟著往下掉，跟正常那格長得一樣。 */
+.compartment > .compartment-pct {
+  align-self: start;
+  margin-top: calc((28px - 1lh) / 2);
+}
+/* 兩格並排時高度一樣：第一列（圖示＋種類名＋百分比）都靠上，進度條都落在最下面，
+   旁邊那格多一行「吃飽了」也不會把這格的內容擠到中間。 */
+.compartment:not(.selectable) {
+  grid-template-rows: auto 1fr;
+}
+.compartment:not(.selectable) > .compartment-name {
+  align-self: start;
+}
+.compartment:not(.selectable) > .fill-bar {
+  align-self: end;
 }
 .compartment-pct small {
   font-size: 13px;
