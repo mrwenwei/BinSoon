@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   demoBinById,
   demoCitizenSnapshot,
@@ -13,17 +13,23 @@ import {
   workLabels,
   request,
   time,
+  apiStationState,
   type Adoption,
   type BinView,
 } from "../../data/api";
 import { wasteHref, wasteName, type WasteType } from "../../data/waste";
 import { Mascot } from "../Mascot";
 import { Icon } from "../Icon";
+import { NameTag, PixelHeart, Points } from "../Pixel";
 import { StationCard } from "../StationCard";
+import { removedBinSvg } from "../../map/binBot";
 import { compartmentCards } from "./Waste";
 import { useSession } from "./SessionContext";
 import { useApi } from "./useApi";
 import { LoadState } from "./LoadState";
+import { CLAIM_POINTS } from "./ClaimStep";
+import { EndClaimDialog } from "./EndClaimDialog";
+import { CLAIM_LIMIT, claimName } from "./useMyClaims";
 
 export function useDemoCitizenSnapshot() {
   const [value, setValue] = useState(demoCitizenSnapshot);
@@ -215,42 +221,100 @@ export function CitizenReports() {
     </main>
   );
 }
+// 我的 BinU（設計稿 adoption-flow-v3，活潑版）：頁標題前像素愛心、已認領幾隻＋5 格收集欄、
+// 每張卡標題是名牌、「第一個回報可拿」用點數元件；結束認領在卡片的「⋯」選單，跳置中確認框。
 export function CitizenBins({ wasteType }: { wasteType: WasteType }) {
   const value = useDemoCitizenSnapshot();
   const active = value.adoptions.filter((a) => a.status === "active");
+  const [ending, setEnding] = useState<Adoption | null>(null);
+  // 確認框關掉後焦點回到原本那張卡的「⋯」；卡片已經移除就回頁標題。
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const closeEnding = () => {
+    setEnding(null);
+    const target = returnFocus.current;
+    returnFocus.current = null;
+    window.requestAnimationFrame(() => {
+      if (target?.isConnected) target.focus();
+      else {
+        const title = document.querySelector<HTMLElement>(".citizen-bins h1");
+        title?.setAttribute("tabindex", "-1");
+        title?.focus();
+      }
+    });
+  };
   return (
-    <main className="page api-narrow citizen-bins">
-      <a className="back-link" href="#member" aria-label="返回我的">
-        ← 返回我的
-      </a>
-      <h1>我的 BinU</h1>
-      <p>認養 {active.length} 個／最多 5 個 · 屬實首報 ×2</p>
-      <p className="tiny">認養不需要代替清潔隊清運。</p>
+    <main className="page api-narrow citizen-bins" inert={!!ending}>
+      <header className="binu-page-head">
+        <a className="icon-button" href="#member" aria-label="返回我的">
+          <Icon name="back" />
+        </a>
+        <PixelHeart />
+        <h1>我的 BinU</h1>
+      </header>
+      <div className="binu-collect">
+        <p className="binu-count">
+          <span className="numeral-lg">{active.length}</span>
+          <span className="numeral-md">/{CLAIM_LIMIT}</span>
+        </p>
+        <span
+          className="binu-slots"
+          role="img"
+          aria-label={`已認領 ${active.length} 隻，最多 ${CLAIM_LIMIT} 隻`}
+        >
+          {Array.from({ length: CLAIM_LIMIT }, (_, i) =>
+            i < active.length ? (
+              <Mascot key={i} />
+            ) : (
+              <span
+                key={i}
+                className="binu-slot-empty"
+                dangerouslySetInnerHTML={{ __html: removedBinSvg() }}
+              />
+            ),
+          )}
+        </span>
+      </div>
+      <p className="binu-rule">
+        第一個回報、查證屬實就拿 <Points value={CLAIM_POINTS} small />
+      </p>
       <div className="citizen-bin-list">
         {active.map((item) => (
-          <CitizenBin key={item.id} item={item} wasteType={wasteType} />
+          <CitizenBin
+            key={item.id}
+            item={item}
+            wasteType={wasteType}
+            onEnd={(trigger) => {
+              returnFocus.current = trigger;
+              setEnding(item);
+            }}
+          />
         ))}
       </div>
       {!active.length && (
         <section className="card">
           <p>還沒有自己的 BinU。</p>
           <a className="button primary" href="#map">
-            去地圖認養
+            去地圖認領
           </a>
         </section>
       )}
-      <a className="back-link" href="#adopt?manage=1">
-        查看認養管理與歷史
+      <a className="text-button claim-link" href="#adopt?manage=1">
+        已結束的認領
       </a>
+      {ending && (
+        <EndClaimDialog key={ending.id} item={ending} onClose={closeEnding} />
+      )}
     </main>
   );
 }
 function CitizenBin({
   item,
   wasteType,
+  onEnd,
 }: {
   item: Adoption;
   wasteType: WasteType;
+  onEnd: (trigger: HTMLElement | null) => void;
 }) {
   const { session } = useSession();
   const value = useDemoCitizenSnapshot();
@@ -274,13 +338,74 @@ function CitizenBin({
   const completed = new Set(
     reports.filter((r) => r.work_status === "completed").map((r) => r.event_id),
   ).size;
+  const name = claimName(item);
+  const [menu, setMenu] = useState(false);
+  const more = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  // 「⋯」選單：打開時焦點到第一項；Esc 或點選單外面關閉，Esc 時焦點回「⋯」。
+  useEffect(() => {
+    if (!menu) return;
+    menuRef.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMenu(false);
+      more.current?.focus();
+    };
+    const pointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!menuRef.current?.contains(target) && !more.current?.contains(target))
+        setMenu(false);
+    };
+    document.addEventListener("keydown", key);
+    document.addEventListener("pointerdown", pointer);
+    return () => {
+      document.removeEventListener("keydown", key);
+      document.removeEventListener("pointerdown", pointer);
+    };
+  }, [menu]);
+  const state = bin.data
+    ? apiStationState(bin.data.status, bin.data.compartments)
+    : undefined;
   return (
     <article className="card citizen-bin-card">
-      <h2 className="citizen-bin-name">
-        <Mascot />
-        <span>{item.private_bin_name || "我的 BinU"}</span>
-      </h2>
-      <p>{demoBinById(item.bin_id)?.label || item.bin_id}</p>
+      <div className="binu-card-head">
+        <Mascot state={state} />
+        <div className="binu-card-title">
+          <h2>
+            <NameTag name={name} size="l" />
+          </h2>
+          <p>{demoBinById(item.bin_id)?.label || item.bin_id}</p>
+        </div>
+        <button
+          ref={more}
+          type="button"
+          className="icon-button"
+          aria-label={`${name} 的更多動作`}
+          aria-haspopup="menu"
+          aria-expanded={menu}
+          onClick={() => setMenu(!menu)}
+        >
+          <Icon name="more" />
+        </button>
+        {menu && (
+          <div className="binu-menu" role="menu" ref={menuRef}>
+            <a role="menuitem" href={`#adopt/${item.id}`}>
+              改名字
+            </a>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(false);
+                onEnd(more.current);
+              }}
+            >
+              結束認領
+            </button>
+          </div>
+        )}
+      </div>
       <LoadState {...bin} />
       {bin.data && (
         <StationCard
@@ -288,23 +413,43 @@ function CitizenBin({
           compartments={compartmentCards(bin.data.compartments)}
         />
       )}
-      <p>
-        本月回報 {reports.length} 次 · 完成處理 {completed} 次 · 桶旁堆放回報{" "}
-        {reports.filter((r) => r.type === "dumping").length} 次
-      </p>
-      {bin.data?.can_report ? (
+      <dl className="binu-tiles">
+        <div>
+          <dt>本月回報</dt>
+          <dd>
+            <span className="numeral-md">{reports.length}</span>次
+          </dd>
+        </div>
+        <div>
+          <dt>已處理</dt>
+          <dd>
+            <span className="numeral-md">{completed}</span>次
+          </dd>
+        </div>
+        <div className="binu-tile-points">
+          <dt>第一個回報可拿</dt>
+          <dd>
+            <Points value={CLAIM_POINTS} small />
+          </dd>
+        </div>
+      </dl>
+      <div className="binu-card-actions">
+        {bin.data?.can_report ? (
+          <a
+            className="button secondary"
+            href={wasteHref(`report/${item.bin_id}`, wasteType)}
+          >
+            回報問題
+          </a>
+        ) : (
+          <p className="tiny">此桶目前無法回報，請查看桶詳情。</p>
+        )}
         <a
-          className="button primary"
-          href={wasteHref(`report/${item.bin_id}`, wasteType)}
+          className="text-button claim-link"
+          href={wasteHref(`bin/${item.bin_id}`, wasteType)}
         >
-          通報清潔隊
+          在地圖上看
         </a>
-      ) : (
-        <p>此桶目前無法回報，請查看桶詳情。</p>
-      )}
-      <div className="api-pagination">
-        <a href={`#adopt/${item.id}`}>管理／修改私人桶名</a>
-        <a href={wasteHref(`bin/${item.bin_id}`, wasteType)}>查看桶詳情</a>
       </div>
     </article>
   );

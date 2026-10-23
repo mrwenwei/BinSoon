@@ -194,8 +194,8 @@ test("logged out support → login carries the vote → back on the panel it is 
   await expect.poll(() => sides(page)).toEqual(["96%", "4%", "還差37人"]);
   await expect(page).not.toHaveURL(/vote=support/);
   expect(state.votes).toEqual(["support"]);
-  const toast = page.locator(".mx-vote-toast");
-  await expect(toast).toContainText("已幫你投下「支持」");
+  const toast = page.locator(".toast");
+  await expect(toast).toContainText("投好了！你支持在這裡放桶");
   const ballot = panel(page);
   await expect(
     ballot.getByRole("button", { name: "✓ 你支持", exact: true }),
@@ -240,9 +240,9 @@ test("an auto vote that fills 60 holds the result, then settles without undo", a
     ballot.getByText("投票結束，已送環保局評估", { exact: true }),
   ).toBeVisible({ timeout: 4000 });
   await expect.poll(() => sides(page)).toEqual(["60%", "40%", "已滿60人"]);
-  await expect(page.locator(".mx-vote-toast")).toContainText("投票已結算");
+  await expect(page.locator(".toast")).toContainText("你這一票讓投票結算了！");
   await expect(
-    page.locator(".mx-vote-toast").getByRole("button", { name: "復原" }),
+    page.locator(".toast").getByRole("button", { name: "復原" }),
   ).toHaveCount(0);
   await expect(
     ballot.getByText("你這一票剛好湊滿 60 人，已送環保局評估。"),
@@ -270,7 +270,7 @@ test("an auto vote never silently switches sides and is not cast after the vote 
   await page.unrouteAll({ behavior: "ignoreErrors" });
   const closed = await setup(page, [40, 20], null, true);
   await page.goto(`/#${route}&vote=support`);
-  await expect(page.locator(".mx-vote-toast")).toContainText("沒有投出");
+  await expect(page.locator(".toast")).toContainText("這票沒投出");
   expect(closed.votes).toEqual([]);
 });
 

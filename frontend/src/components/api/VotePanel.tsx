@@ -1,11 +1,11 @@
 import { Icon } from "../Icon";
+import { dismissToast, showToast } from "../Toast";
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { request, type Proposal } from "../../data/api";
@@ -32,12 +32,11 @@ import { voteOptions } from "./ProposalPages";
 const ANIM_MS = 600;
 const HOLD_BEFORE_MS = 500; // 登入回來自動投票前，先讓舊比例停留一下
 const HOLD_CLOSE_MS = 700; // 這一票湊滿 60 人：動畫播完再停這麼久才切到結局
-const TOAST_MS = 6000;
 const RULE = `滿 ${VOTE_MIN_VOTERS} 人、支持 ${VOTE_PASS_PERCENT}% 以上，就會送環保局評估。`;
 const sideName = (side: VoteSide) => (side === "support" ? "支持" : "不支持");
 const reducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-// 提示條與分享選單掛在 .m-app（拿得到 --m-tabs-h，才能停在底部分頁列上方），沒有就掛 body。
+// 分享選單掛在 .m-app（拿得到 --m-tabs-h，才能停在底部分頁列上方），沒有就掛 body。
 const overlayRoot = () =>
   document.querySelector<HTMLElement>(".m-app") ?? document.body;
 const isOpen = (item: Proposal) =>
@@ -46,7 +45,8 @@ const isOpen = (item: Proposal) =>
 // ── 分享：先試系統分享（navigator.share），不支援才開小選單（LINE／複製連結／取消）。
 export function useProposalShare(binId: string, name: string) {
   const [open, setOpen] = useState(false);
-  const [note, setNote] = useState("");
+  // 沒辦法自動複製時，選單留著並把網址放進可選取的欄位（網址不塞進 toast）。
+  const [manual, setManual] = useState(false);
   const trigger = useRef<HTMLElement | null>(null);
   const url = new URL(window.location.href);
   url.hash = `bin/${binId}?tab=vote`;
@@ -67,40 +67,48 @@ export function useProposalShare(binId: string, name: string) {
   };
   const close = useCallback(() => {
     setOpen(false);
+    setManual(false);
     trigger.current?.focus?.();
   }, []);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url.href);
-      setNote("已複製連結");
+      showToast({ kind: "ok", text: "連結複製好了，貼給朋友吧" });
+      close();
     } catch {
-      setNote(`無法自動複製，請手動複製：${url.href}`);
+      showToast({ kind: "warn", text: "沒辦法自動複製，請長按連結複製" });
+      setManual(true);
     }
-    close();
   };
-  useEffect(() => {
-    if (!note) return;
-    const timer = window.setTimeout(() => setNote(""), 2500);
-    return () => window.clearTimeout(timer);
-  }, [note]);
-  const sheet = (
-    <>
-      {open && <ShareSheet lineHref={lineHref} onCopy={copy} onClose={close} />}
-      {note && <Toast>{note}</Toast>}
-    </>
+  const sheet = open && (
+    <ShareSheet
+      lineHref={lineHref}
+      url={manual ? url.href : null}
+      onCopy={copy}
+      onClose={close}
+    />
   );
   return { share, sheet };
 }
 function ShareSheet({
   lineHref,
+  url,
   onCopy,
   onClose,
 }: {
   lineHref: string;
+  /** 自動複製失敗時才給：放進可選取的欄位讓使用者長按複製。 */
+  url: string | null;
   onCopy: () => void;
   onClose: () => void;
 }) {
   const first = useRef<HTMLAnchorElement>(null);
+  const field = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!url) return;
+    field.current?.focus();
+    field.current?.select();
+  }, [url]);
   useEffect(() => {
     first.current?.focus();
     // 掛在 document：比地圖頁掛在 window 的 Esc（關閉詳情）先收到，先關選單。
@@ -132,26 +140,22 @@ function ShareSheet({
             複製連結
           </button>
         </div>
+        {url && (
+          <label className="mx-share-url">
+            <span className="visually-hidden">分享連結</span>
+            <input
+              ref={field}
+              readOnly
+              value={url}
+              onFocus={(e) => e.currentTarget.select()}
+            />
+          </label>
+        )}
         <button type="button" className="button secondary" onClick={onClose}>
           取消
         </button>
       </div>
     </>,
-    overlayRoot(),
-  );
-}
-function Toast({
-  children,
-  action,
-}: {
-  children: ReactNode;
-  action?: ReactNode;
-}) {
-  return createPortal(
-    <div className="mx-vote-toast" role="status">
-      <span>{children}</span>
-      {action}
-    </div>,
     overlayRoot(),
   );
 }
@@ -402,13 +406,19 @@ export function VoteBallot({
   const [event, setEvent] = useState<VoteEvent | null>(null);
   const [hold, setHold] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [toast, setToast] = useState<VoteEvent | null>(null);
-  const [note, setNote] = useState("");
+  // 自動投票的 toast（全站 toast，components/Toast.tsx）：記下 id，按「復原」或離開面板時收掉。
+  const toastId = useRef<number | undefined>(undefined);
   const [ask, setAsk] = useState<VoteSide | null>(null);
   const timers = useRef<number[]>([]);
   const later = (fn: () => void, ms: number) =>
     timers.current.push(window.setTimeout(fn, ms));
-  useEffect(() => () => timers.current.forEach(window.clearTimeout), []);
+  useEffect(
+    () => () => {
+      timers.current.forEach(window.clearTimeout);
+      if (toastId.current !== undefined) dismissToast(toastId.current);
+    },
+    [],
+  );
   useEffect(() => {
     if (item)
       onTally?.({
@@ -439,8 +449,18 @@ export function VoteBallot({
     };
     setEvent(next);
     setAsk(null);
-    setToast(auto ? next : null);
-    if (auto) later(() => setToast((t) => (t === next ? null : t)), TOAST_MS);
+    if (toastId.current !== undefined) dismissToast(toastId.current);
+    toastId.current = auto
+      ? showToast({
+          kind: "ok",
+          text: next.closedByMe
+            ? "你這一票讓投票結算了！"
+            : `投好了！你${side === "support" ? "支持" : "反對"}在這裡放桶`,
+          action: next.closedByMe
+            ? undefined
+            : { label: "復原", onClick: () => void undoRef.current() },
+        })
+      : undefined;
     // 這一票湊滿 60 人：動畫播完再停 0.7 秒才切到結局，切換時儀表閃一下。
     if (next.closedByMe && !reducedMotion()) {
       setHold(true);
@@ -452,7 +472,8 @@ export function VoteBallot({
     }
   };
   const undo = async () => {
-    setToast(null);
+    if (toastId.current !== undefined) dismissToast(toastId.current);
+    toastId.current = undefined;
     const result = await action.run({
       path: `${path}/vote`,
       body: { vote: null },
@@ -460,6 +481,8 @@ export function VoteBallot({
     });
     if (result) setEvent(null);
   };
+  const undoRef = useRef(undo);
+  undoRef.current = undo;
 
   // 登入回來（網址帶 ?vote=）：自動投下剛剛選的那一票；已投過另一邊就先問，
   // 投票已經結束就告知沒投出。只處理一次，處理完把 ?vote= 從網址拿掉。
@@ -470,8 +493,7 @@ export function VoteBallot({
     pending.current = null;
     dropVoteParam();
     if (!isOpen(item)) {
-      setNote(`投票已經結束，你的「${sideName(side)}」沒有投出。`);
-      later(() => setNote(""), TOAST_MS);
+      showToast({ kind: "warn", text: "投票已經結束，這票沒投出" });
       return;
     }
     if (item.my_vote === side) return;
@@ -654,22 +676,6 @@ export function VoteBallot({
           </div>
         )}
       </div>
-      {toast ? (
-        <Toast
-          action={
-            toast.closedByMe ? undefined : (
-              <button type="button" onClick={() => void undo()}>
-                復原
-              </button>
-            )
-          }
-        >
-          已幫你投下「{sideName(toast.side)}」
-          {toast.closedByMe ? "，投票已結算" : ""}
-        </Toast>
-      ) : (
-        note && <Toast>{note}</Toast>
-      )}
     </div>
   );
 }

@@ -47,6 +47,9 @@ import { useApi } from "./useApi";
 import { ORIGIN, Status } from "./mapShared";
 import { BinPanel } from "./BinPage";
 import { PlacePanel } from "./PlacePanel";
+import type { ClaimControls } from "./ClaimStep";
+import { useMyClaims } from "./useMyClaims";
+import { NameTag } from "../Pixel";
 import {
   MOBILE_QUERY,
   SheetHandle,
@@ -119,6 +122,35 @@ export function MapPage({
   }, [q]);
   const [binLocation, setBinLocation] = useState<ApiLocation | null>(null);
   const mobile = useMediaQuery(MOBILE_QUERY);
+  // 自己認領的 BinU：地圖標記腳下、清單列都掛名牌（愛心＋名字）。
+  const mine = useMyClaims().names;
+  // 認領步驟（ClaimStep）：在桶詳情抽屜裡原地打開；名字草稿跟著這個桶，
+  // 取消、Esc、點地圖空白都只退回桶詳情，草稿保留，換桶才清掉。
+  const [claimDraft, setClaimDraft] = useState<{
+    binId: string;
+    open: boolean;
+    draft: string;
+  } | null>(null);
+  const claimOpen = !!binId && claimDraft?.binId === binId && claimDraft.open;
+  const closeClaim = useCallback(
+    () => setClaimDraft((old) => old && { ...old, open: false }),
+    [],
+  );
+  const claim: ClaimControls | undefined = binId
+    ? {
+        open: claimOpen,
+        draft: claimDraft?.binId === binId ? claimDraft.draft : "",
+        setDraft: (draft) => setClaimDraft({ binId, open: true, draft }),
+        start: () =>
+          setClaimDraft((old) => ({
+            binId,
+            open: true,
+            draft: old?.binId === binId ? old.draft : "",
+          })),
+        cancel: closeClaim,
+        done: () => setClaimDraft(null),
+      }
+    : undefined;
   // 全台北市一次讀完（district=all，後端可接受），建議點也一起讀，前端再依篩選分：
   // 「還能丟」看所選種類那一槽；「新設」跟原本一樣交給後端 filter=new。
   const path = query("/map/locations", {
@@ -323,8 +355,16 @@ export function MapPage({
         wasteType,
         (location as LocationRecord & { proposalTally?: ProposalTally })
           .proposalTally,
+        mine.get(location.id),
       ),
-    [wasteType],
+    [wasteType, mine],
+  );
+  const markerLabel = useCallback(
+    (location: LocationRecord) =>
+      mine.has(location.id)
+        ? `${browseMarkerLabel(location)}（你的 BinU）`
+        : browseMarkerLabel(location),
+    [mine],
   );
 
   // ── 抽屜（只在手機） ──
@@ -457,6 +497,11 @@ export function MapPage({
     if (view === "list") return;
     const keydown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
+      // 取名步驟開著：Esc 只退回桶詳情（草稿保留）。
+      if (claimOpen) {
+        closeClaim();
+        return;
+      }
       const active = document.activeElement;
       restoreRow.current =
         binId &&
@@ -467,7 +512,20 @@ export function MapPage({
     };
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
-  }, [view, binId, closeDetail]);
+  }, [view, binId, closeDetail, claimOpen, closeClaim]);
+  // 取名步驟開／關：抽屜捲回頂端；退回桶詳情時焦點回到標題（打開時焦點由名字欄自己拿）。
+  const wasClaiming = useRef(false);
+  useLayoutEffect(() => {
+    if (wasClaiming.current === claimOpen) return;
+    wasClaiming.current = claimOpen;
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+    if (claimOpen) return;
+    const title = layoutRef.current?.querySelector<HTMLElement>(
+      ".mx-panel-body h1",
+    );
+    title?.setAttribute("tabindex", "-1");
+    title?.focus({ preventScroll: true });
+  }, [claimOpen]);
   // 詳情最上面的「回到清單」按鈕（讀屏與鍵盤用）：按了回清單，焦點放回原本那一列。
   const closeFromPanel = () => {
     restoreRow.current = binId ?? null;
@@ -624,6 +682,7 @@ export function MapPage({
                 label={listed?.label}
                 onLocation={binLoaded}
                 onTally={onTally}
+                claim={claim}
               />
             ) : view === "place" ? (
               <PlacePanel location={place!} />
@@ -643,6 +702,7 @@ export function MapPage({
                           wasteType={wasteType}
                           onSelect={select}
                           active={item.id === lastViewed}
+                          mine={mine.get(item.id)}
                         />
                       </li>
                     ))}
@@ -691,13 +751,15 @@ export function MapPage({
           initialCenter={initialCenter}
           fitKey={search.trim() || undefined}
           markerIcon={iconFor}
-          markerLabel={browseMarkerLabel}
+          markerLabel={markerLabel}
           markerDescription={browseMarkerDescription}
           origin={originMarker}
           focusOffsetY={focusOffsetY}
           viewOffsetY={viewOffsetY}
           focusKey={focusKey}
-          onBackgroundTap={view === "list" ? undefined : closeDetail}
+          onBackgroundTap={
+            view === "list" ? undefined : claimOpen ? closeClaim : closeDetail
+          }
         />
       </div>
     </main>
@@ -711,12 +773,15 @@ function NearbyRow({
   wasteType,
   onSelect,
   active = false,
+  mine,
 }: {
   item: ApiLocation;
   wasteType: WasteType;
   onSelect: (item: LocationRecord) => void;
   /** 從詳情回清單時，剛看過的那一列（左側橘線、aria-current）。 */
   active?: boolean;
+  /** 自己認領的 BinU：桶名換成名牌（愛心＋名字）。 */
+  mine?: string;
 }) {
   const proposed = isProposed(item);
   const removed = item.bin_status?.operational_status === "removed";
@@ -748,7 +813,7 @@ function NearbyRow({
       )}
       <span className="row-copy">
         <span className="mx-row-title">
-          <strong>{item.label}</strong>
+          <strong>{mine ? <NameTag name={mine} /> : item.label}</strong>
           {!proposed && item.bin_status?.is_new && (
             <span className="status-pill">新設</span>
           )}

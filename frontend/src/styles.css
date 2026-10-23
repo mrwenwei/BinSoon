@@ -284,15 +284,12 @@ h3 {
   padding: 0 var(--space-3);
   border: 1px solid var(--line-control);
   border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  font: 500 10px/1 var(--font-mono);
-  letter-spacing: 1px;
+  color: var(--text);
   text-decoration: none;
   white-space: nowrap;
 }
+/* 點數按鈕（認領流程 v3）：代幣＋數字（numeral-sm），不再有英文縮寫 PTS。 */
 .points-button strong {
-  font: 700 15px/1 var(--font-display);
-  letter-spacing: 0;
   color: var(--text);
 }
 a.points-button:not([aria-label]) {
@@ -635,8 +632,7 @@ input[type="file"]::file-selector-button {
   color: var(--status-offline);
 }
 /* 警示（配色 v4）：左框中性色、底 --field，前面加 ⚠（橘色只留給吃飽了與「你選的」）。 */
-.storage-warning,
-.toast {
+.storage-warning {
   margin: 0;
   padding: var(--space-3) var(--space-4);
   background: var(--field);
@@ -648,8 +644,7 @@ input[type="file"]::file-selector-button {
 .map-warning::before {
   content: "⚠ ";
 }
-.storage-warning button,
-.toast button {
+.storage-warning button {
   min-height: 44px;
   margin-left: var(--space-2);
   border: 1px solid var(--line-control);
@@ -657,17 +652,100 @@ input[type="file"]::file-selector-button {
   background: transparent;
   color: var(--text);
 }
-.toast {
+/* toast 全站一套（認領流程 v3，components/Toast.tsx）：--panel 底＋1px --text-muted 框
+   （深色抽屜上靠框分開，淺色地圖上靠底色）、左側類型圖示（成功圓圈勾 --teal、資訊圓圈 i
+   --text-muted、警示 ⚠ --text；認領相關不放圖示，句中放名牌）、heading 字級、--teal 底線文字鍵。
+   位置：頂欄下方 12px、左右 12px、最寬 416px（手機就是地圖上緣，不蓋抽屜底部主按鈕）；
+   桌面地圖頁在地圖區（扣掉左側面板）上緣置中。 */
+.toast-host {
   position: fixed;
   top: calc(var(--topbar-h) + 12px);
-  left: 50%;
+  left: 12px;
+  right: 12px;
   z-index: 1400;
-  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+@media (min-width: 761px) {
+  .app-shell:has(.mx-layout) .toast-host {
+    left: calc(clamp(360px, 32vw, 440px) + 12px);
+  }
+}
+.toast {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  width: max-content;
-  max-width: calc(100vw - 32px);
+  gap: 10px;
+  width: 100%;
+  max-width: 416px;
+  min-height: 52px;
+  margin: 0;
+  padding: 4px 4px 4px 14px;
+  border: 1px solid var(--text-muted);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  color: var(--text);
+  pointer-events: auto;
+}
+.toast.no-action {
+  padding-right: 14px;
+}
+.toast-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: 20px;
+  line-height: 0;
+}
+.toast-icon .icon {
+  width: 20px;
+  height: 20px;
+}
+.toast-icon.ok {
+  color: var(--teal);
+}
+.toast-icon.info {
+  color: var(--text-muted);
+}
+.toast-icon.warn {
+  font: var(--text-heading);
+  color: var(--text);
+}
+.toast-text {
+  flex: 1;
+  min-width: 0;
+  font: var(--text-heading);
+}
+.toast-text .name-tag {
+  margin: 2px 6px;
+}
+.toast-action {
+  flex: none;
+  min-width: 56px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--teal);
+  font: 700 14px/22px var(--font-sans);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.toast-action:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .toast-host .toast {
+    animation: toast-in 220ms ease-out;
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 .empty {
   padding: var(--space-6) var(--space-4);
@@ -2280,9 +2358,6 @@ input[type="file"]::file-selector-button {
   }
   .thanks-card > .button {
     grid-column: 1 / -1;
-  }
-  .toast {
-    top: calc(var(--topbar-h) + 8px);
   }
   .source-card .details dl {
     display: block;
@@ -9537,39 +9612,7 @@ input[type="file"]::file-selector-button {
   color: var(--text);
   font-weight: 700;
 }
-/* 提示條（自動投票、復原、複製連結）與分享選單：掛在 body（portal）。 */
-.mx-vote-toast {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: calc(var(--m-tabs-h, 0px) + 12px);
-  z-index: 1200;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  max-width: 416px;
-  min-height: 52px;
-  margin-inline: auto;
-  padding: 4px 4px 4px 14px;
-  border-radius: var(--radius-md);
-  background: var(--mint);
-  color: var(--text-on-light);
-}
-.mx-vote-toast span {
-  font: var(--text-heading);
-}
-.mx-vote-toast button {
-  min-width: 56px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 0;
-  background: transparent;
-  color: var(--teal-on-mint);
-  font: var(--vote-text-14, 700 14px/1 var(--font-sans));
-  text-decoration: underline;
-  cursor: pointer;
-}
+/* 分享選單：掛在 .m-app（portal）。提示條改用全站 toast（.toast-host）。 */
 .mx-share-scrim {
   position: fixed;
   inset: 0;
@@ -9606,6 +9649,17 @@ input[type="file"]::file-selector-button {
   min-height: 48px;
   justify-content: center;
 }
+/* 自動複製失敗：網址放在可選取的欄位，讓使用者長按複製。 */
+.mx-share-url input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  color: var(--text);
+  font: 400 16px/24px var(--font-sans);
+}
 /* 動態：只在沒有減少動態效果時播（儀表弧 600ms、數字由 JS 跑動、+1、門檻線與結算閃一下）。 */
 @media (prefers-reduced-motion: no-preference) {
   .mx-gauge .g-s,
@@ -9624,7 +9678,6 @@ input[type="file"]::file-selector-button {
   .mx-gauge.mx-vote-closing {
     animation: mx-vote-close 520ms ease-out;
   }
-  .mx-vote-toast,
   .mx-share-sheet {
     animation: mx-vote-rise 250ms ease-out;
   }
@@ -10280,4 +10333,521 @@ input[type="file"]::file-selector-button {
   min-width: 0;
   max-width: 100%;
   min-height: 44px;
+}
+
+/* ── 認領 BinU（設計稿 adoption-flow-v3）────────────────────────────────
+   像素愛心＝認領的統一符號、代幣＝點數、名牌＝愛心＋名字（components/Pixel.tsx、pixelArt.ts）。
+   代幣只用 --coin（只准用在代幣與點數相關圖示）。 */
+.px-art,
+.name-tag-heart {
+  display: inline-block;
+  flex: none;
+  line-height: 0;
+}
+.px-art svg,
+.name-tag-heart svg {
+  display: block;
+}
+/* 點數元件：深色像素徽章（2px 階梯角）裡「數字＋代幣」，全站同一顆。 */
+.points-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 2px;
+  padding: 4px 6px 4px 10px;
+  background: var(--text-on-light);
+  color: var(--mascot-eye);
+  vertical-align: middle;
+  box-shadow:
+    2px 0 0 0 var(--text-on-light),
+    -2px 0 0 0 var(--text-on-light),
+    0 2px 0 0 var(--text-on-light),
+    0 -2px 0 0 var(--text-on-light);
+}
+.points-chip.small {
+  padding: 2px 4px 2px 8px;
+}
+.points-chip-wrap {
+  display: inline-flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.points-chip-label {
+  font: var(--text-caption);
+  color: var(--text-on-light-muted);
+}
+/* 名牌（愛心＋名字）。深色面板上（桶詳情標題、清單、卡片、toast、確認框）：--field 底、
+   1px --line-control 框、--text 字，跟深色介面同一套；地圖上的名牌另見 .map-tag（淺色像素牌）。
+   m＝膠囊、toast、清單 14px；l＝卡片標題 16px；xl＝桶詳情與確認框標題 20px；地圖 12px。 */
+.name-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 2px 0;
+  padding: 1px 8px 1px 5px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  color: var(--text);
+  font: 700 14px/22px var(--font-sans);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.name-tag-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.name-tag.l {
+  font: var(--text-heading);
+}
+.name-tag.xl {
+  gap: 6px;
+  padding: 2px 10px 2px 6px;
+  font: var(--text-card-title);
+}
+/* 地圖：名牌掛在機器人腳下 6px、置中（錨點＝腳底，框高 52、腳底 50）。選中時不移位，
+   標記在底座圖層（shadowPane）之上，所以直接蓋在底座、白圈和十字線上面。 */
+/* 地圖上維持淺色像素牌：--mascot-eye 底、--text-on-light 2px 像素框（四向 box-shadow，四角各缺一格成階梯角）。 */
+.pixel-marker .name-tag.map-tag {
+  position: absolute;
+  z-index: 400;
+  top: 56px;
+  left: 50%;
+  max-width: none;
+  margin: 0;
+  padding: 2px 6px 2px 4px;
+  border: 0;
+  border-radius: 0;
+  background: var(--mascot-eye);
+  color: var(--text-on-light);
+  box-shadow:
+    2px 0 0 0 var(--text-on-light),
+    -2px 0 0 0 var(--text-on-light),
+    0 2px 0 0 var(--text-on-light),
+    0 -2px 0 0 var(--text-on-light);
+  font: 700 12px/18px var(--font-sans);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+/* 只有愛心（縮放 15 以下沒選中、聚合的代表桶）：沒有牌框也沒有底色，只留 1px 白外圈。 */
+.pixel-marker .name-tag.heart-only,
+.bot-small .pixel-marker.mine:not(.selected) .name-tag.map-tag {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.bot-small .pixel-marker.mine:not(.selected) .name-tag-text {
+  display: none;
+}
+.pixel-marker .name-tag.heart-only .name-tag-heart,
+.bot-small .pixel-marker.mine:not(.selected) .name-tag-heart {
+  filter: drop-shadow(1px 0 0 var(--text)) drop-shadow(-1px 0 0 var(--text))
+    drop-shadow(0 1px 0 var(--text)) drop-shadow(0 -1px 0 var(--text));
+}
+.mx-row-title strong .name-tag {
+  margin: 2px;
+}
+/* 桶詳情：自己認領的桶，標題就是名牌，下一行原地址。 */
+.bin-title-text {
+  display: grid;
+  min-width: 0;
+}
+.bin-title-sub,
+.claim-sub {
+  margin: var(--space-1) 0 0;
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+/* 認領列：薄荷底、像素愛心 ×3、點數元件（下面小字「點數」）。 */
+.claim-cta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  min-height: 72px;
+  margin-top: var(--space-3);
+  padding: 10px 12px 8px 14px;
+  border: 1px solid var(--mint);
+  border-radius: var(--radius-sm);
+  background: var(--mint);
+  color: var(--text-on-light);
+  font-family: var(--font-sans);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.claim-cta:focus-visible,
+.claim-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.claim-cta-copy strong {
+  display: block;
+  font: var(--text-heading);
+}
+.claim-cta-copy small {
+  display: block;
+  font: var(--text-caption);
+  color: var(--text-on-light-muted);
+}
+/* 說明列（認領到上限、審核中）：不像 CTA，沒有薄荷底、沒有大按鈕。 */
+.claim-limit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-1) var(--space-2) 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+.claim-limit p {
+  display: grid;
+  margin: 0;
+}
+.claim-limit strong {
+  font: 700 14px/22px var(--font-sans);
+}
+.claim-limit small {
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.claim-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: 44px;
+}
+/* 取名步驟：哪一隻 → 拿多少 → 什麼時候拿 → 取名 → 底部確認。群組間 16px，群內 4–8px。 */
+.claim-step > * + * {
+  margin-top: var(--space-4);
+}
+.claim-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.claim-head h1 {
+  margin: 0;
+  font: var(--text-card-title);
+}
+.claim-art {
+  position: relative;
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+.claim-art .mascot,
+.claim-art svg.bin-bot {
+  display: block;
+  width: 48px;
+  height: 48px;
+}
+.claim-art .px-art {
+  position: absolute;
+  top: -6px;
+  left: -8px;
+}
+.claim-gain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px 12px 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--mint);
+  color: var(--text-on-light);
+}
+.claim-gain strong {
+  font: var(--text-heading);
+}
+.claim-when h2 {
+  margin: 0;
+  font: 700 14px/22px var(--font-sans);
+  color: var(--text);
+}
+/* 狀況清單：圖示＋文字，不是按鈕——沒有框、沒有底色、沒有陰影、游標不是手指。 */
+.claim-situations {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.claim-situations li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 400 14px/22px var(--font-sans);
+  color: var(--text);
+}
+.claim-situations .icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--mint);
+}
+.claim-note {
+  margin: var(--space-2) 0 0;
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.claim-field label {
+  display: block;
+  margin: 0 0 6px;
+  font: 700 14px/22px var(--font-sans);
+  color: var(--text);
+}
+.claim-field input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-input);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  color: var(--text);
+  font: 400 16px/24px var(--font-sans);
+}
+.claim-field input::placeholder {
+  color: var(--text-muted);
+}
+.claim-field input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
+}
+.claim-help {
+  margin: 6px 0 0;
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.claim-help.error {
+  color: var(--signal);
+}
+.claim-step .bin-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.claim-step .bin-actions .button {
+  min-height: 48px;
+  justify-content: center;
+}
+/* 我的 BinU：標題前像素愛心、已認領幾隻＋5 格收集欄、卡片標題是名牌、「⋯」選單。 */
+.binu-page-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.binu-page-head .icon-button {
+  border-color: transparent;
+}
+.binu-page-head h1 {
+  margin: 0;
+  font: var(--text-card-title);
+}
+.binu-collect {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.binu-count {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin: 0;
+}
+.binu-count .numeral-md {
+  color: var(--text-muted);
+}
+.binu-slots {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.binu-slots .mascot,
+.binu-slots svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+}
+.binu-slot-empty {
+  line-height: 0;
+  color: var(--text-muted);
+}
+.binu-rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 var(--space-6);
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.citizen-bin-card {
+  position: relative;
+}
+.binu-card-head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: center;
+}
+.binu-card-head .mascot,
+.binu-card-head svg.bin-bot {
+  display: block;
+  width: 36px;
+  height: 36px;
+}
+.binu-card-head .icon-button {
+  border-color: transparent;
+}
+.binu-card-title h2 {
+  margin: 0;
+  overflow: hidden;
+  font: var(--text-heading);
+  white-space: nowrap;
+}
+.binu-card-title p {
+  margin: 0;
+  overflow: hidden;
+  font: var(--text-caption);
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.binu-menu {
+  position: absolute;
+  z-index: 8;
+  top: 64px;
+  right: 8px;
+  min-width: 168px;
+  padding: var(--space-1);
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.binu-menu > * {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text);
+  font: 400 14px/22px var(--font-sans);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.binu-menu > :is(:hover, :focus-visible) {
+  background: var(--field);
+}
+.binu-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.3fr;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+.binu-tiles > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-2) 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.binu-tiles dt {
+  font: var(--text-caption);
+  color: var(--text-muted);
+}
+.binu-tiles dd {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin: 0;
+  font: 700 14px/22px var(--font-sans);
+}
+.binu-tiles > .binu-tile-points {
+  border-color: var(--mint);
+  background: var(--mint);
+  color: var(--text-on-light);
+}
+.binu-tile-points dt {
+  color: var(--text-on-light-muted);
+}
+.binu-tile-points dd {
+  align-items: center;
+}
+.binu-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.binu-card-actions .button {
+  flex: 1;
+  justify-content: center;
+}
+.citizen-bins > .claim-link {
+  margin-top: var(--space-3);
+}
+/* 結束認領確認框（卡片照 .redeem-dialog、遮罩照 .mx-share-scrim）。 */
+.claim-dialog-scrim {
+  position: fixed;
+  z-index: 1500;
+  inset: 0;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+}
+.claim-dialog {
+  position: fixed;
+  z-index: 1501;
+  top: 50%;
+  right: 16px;
+  left: 16px;
+  max-width: 440px;
+  margin-inline: auto;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--chrome);
+  color: var(--text);
+  transform: translateY(-50%);
+}
+.claim-dialog h2 {
+  margin: 0;
+  font: var(--text-card-title);
+}
+.claim-dialog h2 .name-tag {
+  margin: 2px 6px;
+}
+.claim-dialog p {
+  margin: var(--space-2) 0 0;
+  font: 400 14px/22px var(--font-sans);
+  color: var(--text-body);
+}
+.claim-dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: 24px;
+}
+.claim-dialog-actions .button {
+  min-height: 48px;
+  justify-content: center;
 }

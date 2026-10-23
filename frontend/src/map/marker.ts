@@ -8,6 +8,7 @@ import { mascotSvg } from "../components/mascotSvg";
 import { stateVisual } from "../components/binVisual";
 import { binBotSvg, removedBinSvg } from "./binBot";
 import { botBarsHtml, type BotBar } from "./botBars";
+import { nameTagHtml } from "../components/pixelArt";
 
 // 選中底盤（配色 v4，底盤 ③ 像素風實心底座）：角色腳下的扁橢圓，每格約 2px（格數＝底盤寬÷2，
 // 由 LocationMap 依縮放級距傳入：2 倍 36、縮放 16–17 28、1 倍 21、地標 21）；外圈一格
@@ -72,6 +73,8 @@ export function markerIcon(
   state: BinState = "hungry",
   lifecycle?: "new" | "removed",
   bars?: BotBar[],
+  /** 自己認領的 BinU 的名字：腳下掛名牌（愛心＋名字），縮放 15 以下沒選中時只剩愛心（CSS）。 */
+  mine?: string,
 ) {
   // 選中：腳下底盤與十字定位線由 LocationMap 另外畫在所有標記下面（selectedBaseLayerHtml）。
   if (kind !== "bin")
@@ -86,8 +89,8 @@ export function markerIcon(
     ? `${removedBinSvg()}<span class="marker-removed-label">撤</span>`
     : `${binBotSvg(state)}${bars ? botBarsHtml(bars) : ""}`;
   return L.divIcon({
-    className: `pixel-marker bin bot-marker ${removed ? "removed" : stateVisual[state].className} ${selected ? "selected" : ""}`,
-    html: `<span class="marker-body">${body}</span>${lifecycle === "new" ? '<span class="marker-lifecycle new">新</span>' : ""}`,
+    className: `pixel-marker bin bot-marker ${removed ? "removed" : stateVisual[state].className} ${selected ? "selected" : ""}${mine ? " mine" : ""}`,
+    html: `<span class="marker-body">${body}</span>${lifecycle === "new" ? '<span class="marker-lifecycle new">新</span>' : ""}${mine ? nameTagHtml(mine) : ""}`,
     iconSize: [52, 52],
     iconAnchor: [26, 50],
   });

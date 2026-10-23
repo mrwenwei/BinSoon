@@ -180,6 +180,8 @@ const COMMON: Record<string, string> = {
   c: "#7a4a1e",
   sh: "var(--marker-shadow)",
 };
+// 認領的像素愛心沿用機器人既有的愛心色（components/pixelArt.ts）。
+export const BOT_HEART_COLOR = COMMON.H;
 
 type Frame = {
   face: Face;

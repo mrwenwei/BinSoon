@@ -76,6 +76,8 @@ export function browseMarkerIcon(
   selected: boolean,
   wasteType: WasteType,
   tally?: ProposalTally,
+  /** 自己認領的 BinU 的名字（腳下掛名牌）。 */
+  mine?: string,
 ) {
   if (location.kind === "place") return landmarkIcon(selected);
   if (isProposed(location)) return proposedIcon(selected, tally);
@@ -90,6 +92,7 @@ export function browseMarkerIcon(
         ? "new"
         : undefined,
     botBars(location),
+    mine,
   );
 }
 
