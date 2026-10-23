@@ -1,51 +1,7 @@
 /* Night 主題（<html data-theme="night">）＝原版設計系統（深炭灰＋teal＋橘色選取）。
-   原版元素不需要任何覆蓋（像素皮膚只在 data-theme="day" 生效）；這裡只做兩件事：
-   1. 把 --px-* 語意 token 對映到原版 token，讓「新結構」（小車流程、兌換彈窗、地圖署名鈕、
-      主題切換鈕…）的不帶前綴規則在 night 下也有合理配色；
-   2. 少數新結構在 night 的專屬樣式。
+   原版元素不需要任何覆蓋（像素皮膚只在 data-theme="day" 生效）；這裡只放少數新結構
+   在 night 的專屬規則與日夜共用的切換鈕。night 的 --px-* token 對映在 tokens.css。
    規則見 docs/PIXEL_SKIN.md「主題切換」。 */
-:root[data-theme="night"] {
-  --px-ground: var(--map);
-  --px-ink: var(--text);
-  --px-ink-soft: var(--text-muted);
-  --px-ink-muted: var(--text-muted);
-  --px-ink-body: var(--text-body);
-  --px-card: var(--chrome);
-  --px-card-alt: var(--field);
-  --px-line: var(--line);
-  --px-line-control: var(--line-control);
-  --px-line-input: var(--line-input);
-  --px-shadow: transparent;
-  --px-shadow-ink: rgba(0, 0, 0, 0.45);
-  --px-dot-off: var(--line);
-  --px-card-glass: color-mix(in srgb, var(--chrome) 82%, transparent);
-  --px-divider: var(--divider);
-  --px-hairline: var(--hairline);
-  /* 互動＝teal；選取／你在哪＝橘（原版規則）；teal 底上的字＝深色 text-on-light */
-  --px-purple: var(--teal);
-  --px-purple-hover: color-mix(in srgb, var(--teal) 82%, #fff);
-  --px-purple-deep: var(--teal);
-  --px-purple-soft: color-mix(in srgb, var(--teal) 16%, var(--chrome));
-  --px-on-purple: var(--text-on-light);
-  --px-select: var(--signal);
-  --px-hungry: var(--status-hungry);
-  --px-hungry-edge: var(--status-hungry);
-  --px-hungry-ink: var(--teal);
-  --px-full: var(--status-full);
-  --px-full-ink: var(--signal);
-  --px-offline: var(--status-offline);
-  --px-offline-ink: var(--text-muted);
-  --px-radius-card: var(--radius-md);
-  --px-radius-row: var(--radius-md);
-  --px-radius-small: var(--radius-sm);
-  --px-radius-pill: var(--radius-pill);
-  --px-radius-xs: var(--radius-xs);
-  --px-font-round: var(--font-sans);
-  /* 像素小車 icon：teal 系（和原版「可以丟」同色相）；day 的淺紫在 skin-van.css */
-  --px-van: var(--teal);
-  --px-van-light: color-mix(in srgb, var(--teal) 55%, #fff);
-  --px-van-shade: color-mix(in srgb, var(--teal) 62%, #000);
-}
 
 /* BinU 卡右上「更多動作」：原版是透明框＋細點，深色底上幾乎看不到，給淺 teal 底與 teal 圖示 */
 :root[data-theme="night"] .binu-card-head .icon-button {
@@ -68,7 +24,7 @@
   border: 1px solid var(--line-control);
 }
 :root[data-theme="night"] .reward-dialog-scrim {
-  background: rgba(8, 11, 10, 0.64);
+  background: var(--px-scrim);
 }
 
 /* ── Header 日夜切換鈕（兩個主題共用；顏色走 --px-*） ─────────────────────── */

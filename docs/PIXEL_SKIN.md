@@ -41,7 +41,7 @@
 
 ## 5. 實作規則
 
-- 所有色碼集中在 `--px-*` 變數（定義在 styles.css 的 `:root` 像素皮膚區段；完整清單見第 6 節），規則一律引用變數，不寫死色碼。
+- 所有色碼集中在 `--px-*` 變數（定義在 `frontend/src/styles/tokens.css` 的 `:root[data-theme="day"]` 區塊；完整清單見第 6 節），規則一律引用變數，不寫死色碼。
 - CSS 只允許純視覺屬性：color、background*、border-color、box-shadow、font-family、
   font-weight（限已載入字重）、border-radius、opacity、filter、outline-color、fill、stroke、
   accent-color。禁止 padding、margin、gap、width、height、min/max、font-size、line-height、
@@ -52,8 +52,8 @@
 
 ## 6. Token 表（第 1 階段完成後的最終版；之後以此為準）
 
-全部定義在 `frontend/src/styles.css` 的「像素皮膚」`:root` 區塊（整站生效，沒有 `.px-map` 限定）。
-各頁專屬樣式只寫在 `frontend/src/styles/skin-citizen.css`／`skin-civic.css`／`skin-crew.css`（`main.tsx` 在 `styles.css` 之後依序載入，因此同權重時它們贏）。寫規則時只引用下表變數，不寫死色碼。
+全部定義在 `frontend/src/styles/tokens.css` 的 `:root[data-theme="day"]` 區塊（night 對映在同檔 `:root[data-theme="night"]`；整站生效，沒有 `.px-map` 限定）。
+各頁專屬樣式只寫在 `frontend/src/styles/skin-citizen.css`／`skin-civic.css`／`skin-crew.css`（`main.tsx` 在 `styles.css` 之後依序載入，因此同權重時它們贏）。這些檔案只放規則，色碼 token 一律在 tokens.css。寫規則時只引用下表變數，不寫死色碼。
 
 ### 6.1 `--px-*` 全部 token
 
@@ -100,7 +100,7 @@
 | `--px-purple-soft` | `#ece9fb` | 淺紫底（選中底、--mint、--tint-teal） |
 | `--px-on-purple` | `#ffffff` | 紫底上的白字 |
 | `--px-select` | `var(--px-purple)` | 選取／你在哪（= --px-purple；要與互動分色時改這個） |
-| `--px-van` | `#b8aef2` | 小車停靠點 icon 車身（淺紫；定義在 skin-van.css） |
+| `--px-van` | `#b8aef2` | 小車停靠點 icon 車身（淺紫；定義在 tokens.css） |
 | `--px-van-light` | `#dcd6fa` | 小車 icon 亮面 |
 | `--px-van-shade` | `#9387e3` | 小車 icon 陰影面 |
 | `--px-hungry` | `#a8e09a` | 餓了填色（桶身、條、色帶） |
@@ -115,7 +115,7 @@
 | `--px-radius-small` | `12px` | icon 框、輸入框、badge（--radius-sm） |
 | `--px-radius-pill` | `999px` | 按鈕、chips、搜尋框、狀態膠囊（--radius-pill） |
 | `--px-radius-xs` | `8px` | 最小元件（--radius-xs） |
-| `--px-bot-<hungry\|full\|offline>-<T,W,S,F,R,U,B,D>` | 共 24 個 | Bin友各格顏色（B 是主色）；透過 `--bot-<state>-<格>` 餵給 binBot.ts。值見 styles.css |
+| `--px-bot-<hungry\|full\|offline>-<T,W,S,F,R,U,B,D>` | 共 24 個 | Bin友各格顏色（B 是主色）；透過 `--bot-<state>-<格>` 餵給 binBot.ts。值見 tokens.css |
 
 ### 6.2 舊 token 在新皮膚下的對應
 
@@ -163,8 +163,8 @@
 
 ### 寫新樣式的規則
 
-1. **像素皮膚的覆蓋（改原版元素的顏色、圓角、陰影、字體）一律加 day 前綴**：`:where(:root[data-theme="day"]) .xxx { … }`。用 `:where()` 是讓前綴不增加權重，層疊順序跟沒有前綴時完全一樣；要定義 token 的 `:root` 區塊則直接寫 `:root[data-theme="day"] { … }`。skin-citizen／civic／crew 與 styles.css 的像素段都已加好。
+1. **像素皮膚的覆蓋（改原版元素的顏色、圓角、陰影、字體）一律加 day 前綴**：`:where(:root[data-theme="day"]) .xxx { … }`。用 `:where()` 是讓前綴不增加權重，層疊順序跟沒有前綴時完全一樣；token 定義則放 tokens.css 的 `:root[data-theme="day"] { … }`。skin-citizen／civic／crew 與 styles.css 的像素段都已加好。
 2. **原版（night）不需要任何覆蓋**，不要在不帶前綴的規則裡寫死像素色或 `--px-*` 以外的像素值。
-3. **新結構**（main 沒有的元素：小車流程、兌換彈窗、點數卡金幣、地圖署名 i 鈕、主題切換鈕…）寫不帶前綴的基礎規則，顏色只用 `--px-*` token。night 下 `--px-*` 由 `src/styles/skin-night.css` 對映到原版 token（`--px-purple`→`--teal`、`--px-select`→`--signal`、`--px-card`→`--chrome`、圓角→原版 `--radius-*`、`--px-font-round`→`--font-sans` 等），兩個主題共用同一份規則。需要 night 專屬樣式時寫在 skin-night.css（`:root[data-theme="night"] …`）。
-4. 新增 `--px-*` token 時，同步在 skin-night.css 補 night 對映，否則 night 下該變數是空的。
-5. 小車 icon 色：day 淺紫（`--px-van*`，skin-van.css）、night teal 系（skin-night.css）。
+3. **新結構**（main 沒有的元素：小車流程、兌換彈窗、點數卡金幣、地圖署名 i 鈕、主題切換鈕…）寫不帶前綴的基礎規則，顏色只用 `--px-*` token。night 下 `--px-*` 由 `src/styles/tokens.css` 的 `:root[data-theme="night"]` 對映到原版 token（`--px-purple`→`--teal`、`--px-select`→`--signal`、`--px-card`→`--chrome`、圓角→原版 `--radius-*`、`--px-font-round`→`--font-sans` 等），兩個主題共用同一份規則。需要 night 專屬樣式時寫在 skin-night.css（`:root[data-theme="night"] …`）。
+4. 新增 `--px-*` token 時，在 tokens.css 同時補 day 值與 night 對映，否則 night 下該變數是空的。
+5. 小車 icon 色：day 淺紫、night teal 系（`--px-van*`，皆在 tokens.css）。

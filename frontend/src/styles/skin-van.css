@@ -1,11 +1,5 @@
 /* 市民端預約小車（#van 瀏覽、停靠點詳情、我的預約）。新結構：不帶主題前綴，只用 --px-* token；
-   night 下 --px-* 由 skin-night.css 對映到原版 token，所以兩個主題共用同一份規則。 */
-
-:root[data-theme="day"] {
-  --px-van: #b8aef2;
-  --px-van-shade: #9387e3;
-  --px-van-light: #dcd6fa;
-}
+   night 下 --px-* 由 tokens.css 對映到原版 token，所以兩個主題共用同一份規則。 */
 
 /* 像素小車停靠點 icon：框內固定 32×24（16×12 格 ×2），蓋過 .row-buddy／地標旗子的尺寸規則。 */
 .row-buddy.vanstop {
