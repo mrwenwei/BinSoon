@@ -119,9 +119,9 @@ const VAN_STOP = [
   "LBSSSSSSSSBBSBBBBB",
   "BBBBBBBBBBBBSBBBBB",
   "BBBTTTBBBBBBSTTTBB",
-  ".STTCTTSSSSSTTCTTS",
+  ".STCCCTSSSSSTCCCTS",
   "..TCCCT.....TCCCT.",
-  "..TTCTT.....TTCTT.",
+  "..TCCCT.....TCCCT.",
   "...TTT.......TTT..",
 ];
 const vanStopCache = new Map<number, string>();
