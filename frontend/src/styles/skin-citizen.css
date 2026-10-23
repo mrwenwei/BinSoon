@@ -62,3 +62,19 @@
     0 0 0 1px var(--px-ink),
     0 4px 0 1px var(--px-ink);
 }
+
+/* BinU 卡右上「更多動作」：原本透明框＋細點幾乎看不到，給淺底與紫色圖示 */
+.binu-card-head .icon-button {
+  background: var(--px-purple-soft);
+  border-color: transparent;
+  border-radius: var(--px-radius-pill);
+  color: var(--px-purple-deep);
+}
+.binu-card-head .icon-button:hover,
+.binu-card-head .icon-button[aria-expanded="true"] {
+  background: var(--px-purple);
+  color: var(--px-on-purple);
+}
+.binu-card-head .icon-button svg {
+  stroke-width: 3;
+}

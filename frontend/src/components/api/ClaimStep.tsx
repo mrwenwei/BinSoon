@@ -205,7 +205,7 @@ export function ClaimStep({
       </div>
       <div className="claim-gain">
         <strong>你回報這桶，可以拿</strong>
-        <Points value={CLAIM_POINTS} label />
+        <Points value={CLAIM_POINTS} />
       </div>
       <section className="claim-when" aria-labelledby={`${id}-when`}>
         <h2 id={`${id}-when`}>遇到這些狀況就回報</h2>

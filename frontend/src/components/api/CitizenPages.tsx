@@ -20,7 +20,7 @@ import {
 import { wasteHref, wasteName, type WasteType } from "../../data/waste";
 import { Mascot } from "../Mascot";
 import { Icon } from "../Icon";
-import { Coin, NameTag, PixelHeart, Points } from "../Pixel";
+import { Coin, NameTag, PixelHeart } from "../Pixel";
 import { StationCard } from "../StationCard";
 import { removedBinSvg } from "../../map/binBot";
 import { compartmentCards } from "./Waste";
@@ -278,7 +278,7 @@ export function CitizenBins({ wasteType }: { wasteType: WasteType }) {
         </span>
       </div>
       <p className="binu-rule">
-        第一個回報、查證屬實就拿 <Points value={CLAIM_POINTS} small />
+        搶先回報你的 BinU，清潔隊確認屬實，{CLAIM_POINTS} 點就入袋！
       </p>
       <div className="citizen-bin-list">
         {active.map((item) => (
