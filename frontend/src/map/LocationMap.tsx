@@ -9,6 +9,7 @@ import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { kindLabel, type LocationRecord } from "../data/locations";
 import { locationMarkerIcon, selectedBaseLayerHtml } from "./marker";
+import { pixelHeartSvg } from "../components/pixelArt";
 import { BOT_BARS_MIN_ZOOM } from "./botBars";
 import {
   BOT_MID_MAX_ZOOM,
@@ -102,6 +103,15 @@ interface Props {
   /** 瀏覽模式：目前看得到的地圖區（扣掉頂部工具列與目前停點的抽屜）中心相對於地圖中心的位移；
    *  點聚合桶放大時以這裡為中心。沒給時用 focusOffsetY。 */
   viewOffsetY?: number;
+  /** 瀏覽模式：剛認領成功的桶。標記換成帶名牌的版本後，在標記上播一次名牌彈出＋愛心飄起
+   *  （標記不在視窗內、被聚合或被抽屜蓋住就跳過）。key 每次認領不同；at 是成功當下的時間。 */
+  celebrate?: {
+    id: string;
+    key: number;
+    at: number;
+    /** 抽屜（回到定位後）蓋住的區域；沒蓋住地圖時回傳 null。 */
+    obstruction?: () => DOMRect | null;
+  };
 }
 // 減少動態效果：地圖改成直接跳到定位，不做平移／飛行動畫。
 const reducedMotion = () =>
@@ -157,6 +167,7 @@ export function LocationMap({
   fitKey,
   onBackgroundTap,
   viewOffsetY,
+  celebrate,
 }: Props) {
   const fittedKey = useRef<string | undefined>(undefined);
   const browse = focusOffsetY !== undefined;
@@ -738,6 +749,83 @@ export function LocationMap({
     autoFit,
     fitKey,
   ]);
+  // 認領成功的慶祝：等這個桶的標記重繪成帶名牌（class 有 mine）之後才播，播在重繪後的新節點上
+  // （之後同樣的圖示不會再重建，動畫不會被打斷）。過了 5 秒還沒等到就放棄；每個 key 只處理一次。
+  const celebratedKey = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!celebrate || celebratedKey.current === celebrate.key) return;
+    const record = markerRecords.current.find(
+      (item) => item.location.id === celebrate.id,
+    );
+    const className = record?.marker.options.icon?.options.className ?? "";
+    if (!record || !/ mine\b/.test(className)) {
+      if (Date.now() - celebrate.at > 5000)
+        celebratedKey.current = celebrate.key;
+      return;
+    }
+    celebratedKey.current = celebrate.key;
+    const element = record.marker.getElement();
+    const frame = container.current?.getBoundingClientRect();
+    if (
+      reducedMotion() ||
+      !element ||
+      !frame ||
+      !markers.current?.hasLayer(record.marker)
+    )
+      return;
+    // 名牌＋愛心飄起的範圍（標記往上 32px、名牌往下）要整個在地圖視窗內，也不能被抽屜蓋住。
+    const body = element.getBoundingClientRect();
+    const tag = element.querySelector(".name-tag")?.getBoundingClientRect();
+    const box = {
+      left: Math.min(body.left, tag?.left ?? body.left),
+      right: Math.max(body.right, tag?.right ?? body.right),
+      top: body.top,
+      bottom: Math.max(body.bottom, tag?.bottom ?? body.bottom),
+    };
+    const cover = celebrate.obstruction?.();
+    if (
+      box.left < Math.max(frame.left, 0) ||
+      box.right > Math.min(frame.right, window.innerWidth) ||
+      box.top < Math.max(frame.top, 0) ||
+      box.bottom > Math.min(frame.bottom, window.innerHeight) ||
+      (cover &&
+        box.right > cover.left &&
+        box.left < cover.right &&
+        box.bottom > cover.top &&
+        box.top < cover.bottom)
+    )
+      return;
+    element.classList.add("mx-celebrate");
+    // 愛心從機器人頭頂上方 8px 起飄（愛心高 20px，層頂在 -28px），不壓在機器人上；
+    // 往上浮的距離受頂部 toast 與地圖上緣限制（留 2px），放不下 6px 就不放愛心，只播名牌。
+    const ceiling = Math.max(
+      Math.max(frame.top, 0),
+      ...[...document.querySelectorAll(".toast-host .toast")].map(
+        (toast) => toast.getBoundingClientRect().bottom,
+      ),
+    );
+    const rise = Math.min(24, body.top - 28 - ceiling - 2);
+    if (rise < 6) return;
+    const layer = document.createElement("span");
+    layer.className = "celebrate-map-hearts";
+    layer.style.setProperty("--rise", `${Math.floor(rise)}px`);
+    layer.setAttribute("aria-hidden", "true");
+    [-16, 0, 16].forEach((x, i) => {
+      const heart = document.createElement("span");
+      heart.className = "celebrate-map-heart";
+      heart.style.setProperty("--cx", `${x}px`);
+      heart.style.setProperty("--cd", `${i * 60}ms`);
+      heart.innerHTML = pixelHeartSvg(2);
+      layer.append(heart);
+    });
+    let pending = 3;
+    layer.addEventListener("animationend", (event) => {
+      if (event.animationName !== "cele-map-heart" || --pending) return;
+      layer.remove();
+      element.classList.remove("mx-celebrate");
+    });
+    element.append(layer);
+  }, [celebrate, locations, selected?.id, markerIcon]);
   // 瀏覽模式：標記可用鍵盤 Enter／空白鍵選取（Leaflet 預設不會觸發 click）。
   useEffect(() => {
     if (!browse || !container.current) return;

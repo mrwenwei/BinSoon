@@ -251,3 +251,44 @@
   white-space: nowrap;
 }
 .van-stop-icon small { pointer-events:none; }
+/* 預約詳情卡右上角固定停一台小車（絕對定位、不佔版面）；剛預約成功那次另外開進來
+   （.arrive，keyframes 見 styles.css 的 celebrate 區），停好後不消失。reduce 時直接停在停點。
+   「+1」同樣絕對定位、預設不顯示，只在沒有減少動態效果時出現，播完 visibility:hidden。 */
+.van-detail {
+  position: relative;
+}
+.van-detail .van-between > span {
+  position: relative;
+}
+.van-parked {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  line-height: 0;
+  pointer-events: none;
+}
+.celebrate-plus {
+  display: none;
+  position: absolute;
+  top: -0.9em;
+  margin-left: 2px;
+  font-size: 1.25em;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .van-parked.arrive {
+    animation: cele-slide 600ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .celebrate-plus {
+    display: inline-block;
+    opacity: 0;
+    visibility: hidden;
+    animation: cele-plus 500ms ease-out 360ms both;
+  }
+  .van-detail .celebrate-num {
+    animation-delay: 400ms;
+  }
+}

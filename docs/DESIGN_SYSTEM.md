@@ -59,7 +59,7 @@
 
 **允許的非 token 色碼（例外清單）**
 
-- `frontend/index.html` 的 `<meta name="theme-color" content="#232826">`：瀏覽器頂欄色無法讀 CSS 變數，數值等於 `chrome`。
+- `<meta name="theme-color">`：瀏覽器頂欄色無法讀 CSS 變數，值寫死在 `frontend/index.html` 的 inline script 與 `src/theme.ts` 的 `THEME_COLORS`（day #ffffff＝`--px-card`、night #232826＝`chrome`），須與頁首底色一致。
 - MapLibre 底圖與 Leaflet 路線、QR Code 需要實際色值：`src/map/basemapStyle.ts` 的 `token()` 在執行時讀 `:root` 的 token；水域色由 `map-park` 混 `teal-on-mint` 算出。程式內沒有寫死色碼。
 
 ## 主題（日間像素／夜間原版）
@@ -78,12 +78,20 @@
 | 互動與選取 | `--px-purple`（`--px-select` 指向它） | #6F63D9 |
 
   night 沿用原版：餓了 teal、吃飽了橘、失聯灰，互動 teal、選取橘。night 下文字輸入框（input／textarea／select）的 focus 外框用 teal（token `--input-focus`），按鈕、連結、地圖選取等其他焦點仍為橘。
+- **theme-color 同步**：`<meta name="theme-color">` 隨主題切換（載入時由 inline script 設定，切換時由 `setTheme` 更新）。day #ffffff、night #232826 這兩個值同時寫在 `frontend/index.html` 與 `src/theme.ts` 的 `THEME_COLORS`，改頁首底色（`--px-card`、`chrome`）時兩處一起改。
 - **day 的色彩規則**：綠／紅／灰只代表桶況，紫只代表互動與選取（按鈕、連結、選中列、十字線、焦點環）。不要用綠、紅、灰做按鈕或選取，也不要用紫表示桶況。（「橘色＝選取」「teal＝可以去」只適用 night。）
 - **新樣式撰寫規則**：
   1. 像素皮膚對原版元素的覆蓋（顏色、圓角、陰影、字體）寫 `:where(:root[data-theme="day"]) .xxx { … }`（`:where()` 不增加權重）。
   2. 新結構（main 沒有的元素）寫不帶前綴的規則，顏色只引用 `--px-*` token，兩個主題共用同一份。
   3. 新增色碼或 `--px-*` token 一律加在 tokens.css，day、night 各補一份值；規則檔不寫死色碼。
   4. night 專屬規則寫在 `skin-night.css`（`:root[data-theme="night"] …`）。
+
+## 成功時刻動效
+
+- **何時播**：只在「剛成功的那一次」播放——認領成功（地圖桶名牌彈出、像素愛心飄起，bottom sheet 本身不動）、小車預約或修改成功（詳情卡右上角小車開進來停住、人數彈一下並飄出 +1）。重新進入頁面、重新整理或切換回來不重播；小車平常進頁面是靜態停在原位。
+- **限制**：總長小於 1 秒；像素圖只做 translate 與 opacity，不做縮放（像素圖只能整數倍放大）；裝飾節點加 `aria-hidden` 與 `pointer-events:none`；播完後版面要與沒播時一致，不能留下位移或多出的節點。
+- **reduced-motion**：`prefers-reduced-motion: reduce` 時一律不播，只顯示最終靜態狀態。
+- **不改既有像素元件**：動效以疊加的裝飾節點與 class 實現，不改 binBot、像素愛心、小車 icon 的圖形與尺寸。
 
 ## 3. 字體與字級
 
@@ -166,6 +174,7 @@
 
 - **底圖**：`src/map/basemapStyle.ts` 的 `binsoonBasemapStyle()`，來源仍是 OpenFreeMap 的 openmaptiles 向量圖磚與字型；只畫街區、公園、水域、建築、道路、少量路名與地名，配色全取自 map 系列 token。保留 Leaflet 署名（OpenFreeMap · OpenMapTiles · © OpenStreetMap）與載入失敗提示（圖磚來源錯誤或 15 秒未讀到 TileJSON 時顯示 `.map-warning`）。
 - **桶標記：垃圾桶機器人**（MapMarker，2026-10-21 起取代桶的電子雞）：`src/map/binBot.ts`，24×23 像素圖、3/4 視角露出右側面，放大 2 倍（框 52×52，手機同尺寸；像素圖只能整數倍放大），底部中心對準位置，自帶像素影子。外型與配色取自使用者提供的設計稿，螢幕放大成 14×7 讓表情更清楚；外框 `text-on-light`、眼白 `mascot-eye`、腮紅 `mascot-blush`。一個點只放一隻，不加 ♻ 徽章。
+- **favicon**：`frontend/public/` 的 `favicon.svg`、`favicon-32.png`、`apple-touch-icon.png`，圖案是 binBot 的 hungry 狀態加 happy 臉再加白色描邊，由腳本從 `binBot.ts` 產生（腳本不在 repo）。改機器人外型或配色時，這三個檔需重新產生。
   - 整隻（蓋子＋箱身）依點位整體狀態換色並換表情：餓了＝青綠＋開心臉；吃飽了＝橘＋想睡臉與小 z；失聯＝灰＋傷心臉（含淚）、燈號熄燈，並保留 1.5px 虛線圓框。
   - 動態只在 hover／鍵盤焦點（循環）與選中（餓了播一輪、其他播兩輪後停回靜態）時播放：餓了＝跳一下後拿零食吃（只有吃東西時出現嘴巴）、吃飽了＝點頭打瞌睡、失聯＝發抖甩眼淚。`prefers-reduced-motion` 一律只顯示靜態表情。換幀規則在 `styles.css` 的 `.bin-bot`。
   - 撤除：現場已沒有桶，不畫角色，只畫同形狀的虛線外框，「撤」字放在框中間；外框用 `currentColor`（CSS 給 `text-on-light-muted`，外觀不變）。

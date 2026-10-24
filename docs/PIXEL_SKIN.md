@@ -100,9 +100,10 @@
 | `--px-purple-soft` | `#ece9fb` | 淺紫底（選中底、--mint、--tint-teal） |
 | `--px-on-purple` | `#ffffff` | 紫底上的白字 |
 | `--px-select` | `var(--px-purple)` | 選取／你在哪（= --px-purple；要與互動分色時改這個） |
-| `--px-van` | `#b8aef2` | 小車停靠點 icon 車身（淺紫；定義在 tokens.css） |
-| `--px-van-light` | `#dcd6fa` | 小車 icon 亮面 |
-| `--px-van-shade` | `#9387e3` | 小車 icon 陰影面 |
+| `--px-van` | `#f0b020` | 小車停靠點 icon 車身（垃圾車黃；定義在 tokens.css，night 另有值） |
+| `--px-van-light` | `#ffe49a` | 小車 icon 亮面 |
+| `--px-van-shade` | `#c47f0e` | 小車 icon 陰影面 |
+| `--px-van-tire` | `var(--text-on-light)` | 小車 icon 輪胎（日間同外框深色） |
 | `--px-hungry` | `#a8e09a` | 餓了填色（桶身、條、色帶） |
 | `--px-hungry-edge` | `#5faf55` | 草地上的綠桶描邊 |
 | `--px-hungry-ink` | `#34802f` | 餓了的文字、數字、百分比、細框 |
@@ -167,4 +168,4 @@
 2. **原版（night）不需要任何覆蓋**，不要在不帶前綴的規則裡寫死像素色或 `--px-*` 以外的像素值。
 3. **新結構**（main 沒有的元素：小車流程、兌換彈窗、點數卡金幣、地圖署名 i 鈕、主題切換鈕…）寫不帶前綴的基礎規則，顏色只用 `--px-*` token。night 下 `--px-*` 由 `src/styles/tokens.css` 的 `:root[data-theme="night"]` 對映到原版 token（`--px-purple`→`--teal`、`--px-select`→`--signal`、`--px-card`→`--chrome`、圓角→原版 `--radius-*`、`--px-font-round`→`--font-sans` 等），兩個主題共用同一份規則。需要 night 專屬樣式時寫在 skin-night.css（`:root[data-theme="night"] …`）。
 4. 新增 `--px-*` token 時，在 tokens.css 同時補 day 值與 night 對映，否則 night 下該變數是空的。
-5. 小車 icon 色：day 淺紫、night teal 系（`--px-van*`，皆在 tokens.css）。
+5. 小車 icon 色：day、night 都是垃圾車黃（`--px-van*`，皆在 tokens.css）；night 的黃略壓暗，輪胎 `--px-van-tire` 用較亮的灰 `#6b7571`。不要改回紫或 teal，以免和互動色、代幣（`--coin`）混淆。

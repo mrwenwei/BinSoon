@@ -23,6 +23,18 @@ import { CLAIM_LIMIT, claimName, notifyClaimsChanged } from "./useMyClaims";
 // 「第一個回報、查證屬實」的點數：有效認領者 2 點（後端 workflows.py，展示模式同規則）。
 export const CLAIM_POINTS = 2;
 
+// 「剛認領成功」旗標：成功且 active 時寫入，桶詳情標題換成名牌時在 layout effect 讀取並清掉
+// （StrictMode 會重跑 effect，讀到的結果由呼叫端存進 state）。5 秒內沒被讀到就視為過期。
+let justClaimed: { binId: string; at: number } | null = null;
+export function consumeJustClaimed(binId: string) {
+  const hit =
+    !!justClaimed &&
+    justClaimed.binId === binId &&
+    Date.now() - justClaimed.at < 5000;
+  if (hit) justClaimed = null;
+  return hit;
+}
+
 export type ClaimControls = {
   open: boolean;
   draft: string;
@@ -152,6 +164,7 @@ export function ClaimStep({
       );
       const adoption = result.data;
       notifyClaimsChanged();
+      if (adoption.status === "active") justClaimed = { binId, at: Date.now() };
       showToast(
         adoption.status === "active"
           ? {
