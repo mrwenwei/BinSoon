@@ -322,3 +322,9 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 預約與清潔隊小車地圖共用既有 `LocationMap` 底圖、縮放及署名；外部圖磚沿用原來源，站點／路線仍為本機展示，不呼叫後端或道路規劃 API。
 
 清潔隊小車「開始導航」已依使用者要求改呼叫既有 Valhalla 汽車（auto）道路路線；下一站以前站為起點。失敗顯示重試，不以本機直線替代。預約與班表仍不呼叫 BinSoon 後端，沒有即時 GPS 或路況。本段取代前述小車不呼叫道路規劃 API 的敘述。
+
+## 獨立互動 Demo
+
+`public/demo/index.html` 為「桶桶大冒險」單檔互動頁，部署後由 `/demo/` 開啟（https://binsoon.app/demo/）。圖片、字型與配樂內嵌，約 8 MB，不需 API；音樂須使用者點擊後播放。Vite 原樣複製至 `dist/demo/index.html`，不經 React 編譯。更新此檔並合併 main 後，沿用 Pages 前端部署流程。
+
+本機 dev／preview 支援 `/demo` 及 `/demo/`，Vite middleware 會內部轉至 Demo HTML，不顯示檔名也不落入 React 首頁。
