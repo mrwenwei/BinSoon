@@ -1,4 +1,4 @@
-# BinSoon 產品說明 1024
+# BinSoon
 
 BinSoon（台北丟垃圾變順）讓行人在 LINE 找到最近可用的垃圾桶，桶滿了自動派工給清潔員，趕不上垃圾車的人可以預約清運小車交家用垃圾。市政 debug 松・團隊「怎麼 Young 都 Soon」作品，Demo：[binsoon.app](https://binsoon.app/)。
 
