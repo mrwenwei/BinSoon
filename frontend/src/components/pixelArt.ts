@@ -105,10 +105,10 @@ export function coinSvg() {
   return coinCache;
 }
 
-// 小車停靠點：淺紫圓潤的垃圾車（右側車頭、左側圓弧壓縮車斗），沒有表情。
+// 小車停靠點：黃色圓潤的垃圾車（右側車頭、左側圓弧壓縮車斗），沒有表情。
 // 內部 18×13 格＋外框＝20×15 格，×2＝40×30（整數倍）。階梯狀像素圓角做出圓潤輪廓；
 // 車身 --px-van、亮面 --px-van-light、陰影 --px-van-shade、車窗 --px-card、
-// 輪胎與外框 --text-on-light（同愛心、代幣的描邊色）、輪心 --px-dot-off。
+// 外框 --text-on-light（同愛心、代幣的描邊色）、輪胎 --px-van-tire（夜間為稍亮灰）、輪心 --px-dot-off。
 const VAN_STOP = [
   "...LLLLLLLL.......",
   "..LLBBBBBBBB......",
@@ -136,7 +136,7 @@ export function vanStopSvg(scale: 2 | 3 = 2) {
         L: "var(--px-van-light)",
         S: "var(--px-van-shade)",
         W: "var(--px-card)",
-        T: "var(--text-on-light)",
+        T: "var(--px-van-tire)",
         C: "var(--px-dot-off)",
       },
       scale,

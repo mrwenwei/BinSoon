@@ -3,12 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <meta name="theme-color" content="#232826" />
+    <meta name="theme-color" content="#ffffff" />
     <meta
       name="description"
       content="BinSoon 台北垃圾桶地圖原型，瀏覽公布桶位置與場所代表點。"
     />
     <title>BinSoon｜台北丟垃圾變順</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script>
       // 日夜主題：render 前先設 data-theme，避免閃爍。?theme=night|day 覆寫並記住。
       (function () {
@@ -24,6 +27,11 @@
           }
         } catch (e) {}
         document.documentElement.setAttribute("data-theme", theme);
+        // theme-color 要與頁首底色一致：day ＝ tokens.css:210 --px-card，night ＝ tokens.css:4 --chrome。
+        // 改色時須與 src/theme.ts 的 THEME_COLORS 同步（此時 CSS 未載入，無法讀變數）。
+        var colors = { day: "#ffffff", night: "#232826" };
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", colors[theme]);
       })();
     </script>
   </head>

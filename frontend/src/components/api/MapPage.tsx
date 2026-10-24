@@ -47,7 +47,7 @@ import { useApi } from "./useApi";
 import { ORIGIN, Status } from "./mapShared";
 import { BinPanel } from "./BinPage";
 import { PlacePanel } from "./PlacePanel";
-import type { ClaimControls } from "./ClaimStep";
+import { consumeJustClaimed, type ClaimControls } from "./ClaimStep";
 import { useMyClaims } from "./useMyClaims";
 import { NameTag } from "../Pixel";
 import {
@@ -515,14 +515,32 @@ export function MapPage({
   }, [view, binId, closeDetail, claimOpen, closeClaim]);
   // 取名步驟開／關：抽屜捲回頂端；退回桶詳情時焦點回到標題（打開時焦點由名字欄自己拿）。
   const wasClaiming = useRef(false);
+  // 剛認領成功（只有 active 才有旗標）：內容區換成桶詳情時播一次進場轉場（swapKey）
+  // ＋地圖標記慶祝（celebration）。旗標在這個 layout effect 讀取、存進 state，
+  // StrictMode 重跑 effect 不會吃掉；不延遲 claim.done()，內容照常在 t0 換成桶詳情，抽屜本身不動。
+  const [swapKey, setSwapKey] = useState<string | null>(null);
+  const [celebration, setCelebration] = useState<{
+    id: string;
+    key: number;
+    at: number;
+  } | null>(null);
   useLayoutEffect(() => {
     if (wasClaiming.current === claimOpen) return;
     wasClaiming.current = claimOpen;
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
-    if (claimOpen) return;
-    const title = layoutRef.current?.querySelector<HTMLElement>(
-      ".mx-panel-body h1",
-    );
+    if (claimOpen) {
+      setSwapKey(null);
+      return;
+    }
+    if (binId && consumeJustClaimed(binId)) {
+      const at = Date.now();
+      // 沒有減少動態效果時才標記（reduce 時不播，也不留 class 等之後切換設定才重播）。
+      if (window.matchMedia("(prefers-reduced-motion: no-preference)").matches)
+        setSwapKey(`bin/${binId}`);
+      setCelebration({ id: binId, key: at, at });
+    }
+    const title =
+      layoutRef.current?.querySelector<HTMLElement>(".mx-panel-body h1");
     title?.setAttribute("tabindex", "-1");
     title?.focus({ preventScroll: true });
   }, [claimOpen]);
@@ -662,7 +680,17 @@ export function MapPage({
             if (view === "list") listScroll.current = e.currentTarget.scrollTop;
           }}
         >
-          <div className="mx-panel-content" key={contentKey}>
+          <div
+            className={`mx-panel-content${swapKey === contentKey ? " swapped" : ""}`}
+            key={contentKey}
+            onAnimationEnd={(e) => {
+              if (
+                e.target === e.currentTarget &&
+                e.animationName === "mx-sheet-swap"
+              )
+                setSwapKey(null);
+            }}
+          >
             {/* 桶詳情（含投票面板）與場所詳情都沒有看得到的關閉鈕：放一顆平常隱藏、
                 鍵盤聚焦才出現的「回到清單」，讀屏使用者不必靠瀏覽器返回鍵。 */}
             {view !== "list" && (
@@ -757,6 +785,31 @@ export function MapPage({
           focusOffsetY={focusOffsetY}
           viewOffsetY={viewOffsetY}
           focusKey={focusKey}
+          celebrate={
+            celebration
+              ? {
+                  ...celebration,
+                  // 抽屜實際蓋住的區域：抽屜本身不動；手機的高度有過場，
+                  // 所以取「目前的位置」與「停點高度的位置」中較高的上緣。
+                  obstruction: () => {
+                    const layout = layoutRef.current?.getBoundingClientRect();
+                    const panel = layoutRef.current
+                      ?.querySelector(".mx-panel")
+                      ?.getBoundingClientRect();
+                    if (!layout || !panel) return null;
+                    const top = mobile
+                      ? Math.min(panel.top, layout.bottom - drawerPx)
+                      : panel.top;
+                    return new DOMRect(
+                      panel.left,
+                      top,
+                      panel.width,
+                      panel.bottom - top,
+                    );
+                  },
+                }
+              : undefined
+          }
           onBackgroundTap={
             view === "list" ? undefined : claimOpen ? closeClaim : closeDetail
           }

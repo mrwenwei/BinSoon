@@ -138,6 +138,9 @@ function VanMap({
 // 市民端預約小車：#van 瀏覽（地圖＋清單）、#van/stop/<id> 選日期時段、
 // #van/mine 我的預約列表、#van/booking/<id> 預約詳情。資料只在本機 localStorage（VAN_KEY）。
 let lastVanStop: string | undefined;
+// 「剛預約（含修改）成功」旗標：送出時寫入，預約詳情掛載時在 layout effect 讀取並清掉
+// （StrictMode 會重跑 effect，讀到的結果由元件存進 state）。5 秒內沒被讀到就視為過期。
+let justBooked: { id: string; at: number } | null = null;
 const go = (hash: string) => {
   window.location.hash = hash;
 };
@@ -600,6 +603,7 @@ function StopDetail({
     try {
       writeBookings([...bookings.filter((b) => b.id !== next.id), next]);
       setError("");
+      justBooked = { id: next.id, at: Date.now() };
       window.location.replace(`#van/booking/${next.id}`);
     } catch {
       setError("無法儲存預約，請允許瀏覽器儲存空間。");
@@ -778,6 +782,13 @@ function VanBookingDetail({ bookingId }: { bookingId?: string }) {
   const bookings = useBookings();
   const [error, setError] = useState("");
   const booking = bookings.find((b) => b.id === bookingId);
+  const [celebrate, setCelebrate] = useState(false);
+  useLayoutEffect(() => {
+    if (!bookingId || justBooked?.id !== bookingId) return;
+    const fresh = Date.now() - justBooked.at < 5000;
+    justBooked = null;
+    if (fresh) setCelebrate(true);
+  }, [bookingId]);
   if (!booking)
     return (
       <main className="van-page">
@@ -816,6 +827,13 @@ function VanBookingDetail({ bookingId }: { bookingId?: string }) {
       {error && <p role="alert">{error}</p>}
       <div className="van-content">
         <section className="card van-detail">
+          {/* 停在右上角的小車：每次都在（不佔版面）；只有剛預約／修改成功那一次加 arrive 開進來。 */}
+          <span
+            className={`van-parked${celebrate ? " arrive" : ""}`}
+            aria-hidden="true"
+          >
+            <VanStop />
+          </span>
           <p>
             {dateLabel(date)} {shifts[shift].name}
           </p>
@@ -826,7 +844,14 @@ function VanBookingDetail({ bookingId }: { bookingId?: string }) {
           <hr />
           <div className="van-between">
             <span>
-              目前 <b>{count}</b> 人預約（含你）
+              目前{" "}
+              <b className={celebrate ? "celebrate-num" : undefined}>{count}</b>
+              {celebrate && (
+                <span className="celebrate-plus" aria-hidden="true">
+                  +1
+                </span>
+              )}{" "}
+              人預約（含你）
             </span>
             <strong>
               {count < 10 ? `還差 ${10 - count} 人` : "已達開站人數"}

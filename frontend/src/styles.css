@@ -757,6 +757,122 @@ input[type="file"]::file-selector-button {
     transform: translateY(-8px);
   }
 }
+/* 成功時刻的小慶祝：
+   - 小車預約：小車進站＋人數彈一下＋「+1」（VanPages／van.css）。
+   - 認領：抽屜內容換成桶詳情時播一次進場（.mx-panel-content.swapped），同時地圖上那隻 BinU 的
+     名牌往上彈出、三顆愛心飄起（LocationMap 在標記上加 .mx-celebrate 與 .celebrate-map-hearts）。
+   只在剛成功那一次掛上 class，總長都 <1 秒。像素圖（愛心、小車、名牌）只動 translate／opacity、
+   位移取整數 px、不縮放（用獨立的 translate 屬性，不蓋掉 transform 定位）；只有數字文字用縮放
+   （重用 mx-vote-pop）。裝飾節點都是 aria-hidden＋pointer-events:none，預設不顯示，
+   只在沒有減少動態效果時才出現，所以 reduce 時最終畫面一致。 */
+/* 數字彈一下要 transform 所以用 inline-block；line-height:normal 讓盒高等於原本 inline 的內容區高度。 */
+.celebrate-num {
+  display: inline-block;
+  line-height: normal;
+}
+.celebrate-map-hearts {
+  display: none;
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  width: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .celebrate-num {
+    animation: mx-vote-pop 450ms ease-out 120ms both;
+  }
+  /* 認領成功、內容從表單換成桶詳情：同一個內容節點再播一次進場（跟 mx-sheet-in 同樣的
+     200ms、8px 上移＋淡入；換名字才能重播）。抽屜本身不動。 */
+  .mx-panel-content.swapped {
+    animation: mx-sheet-swap 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  /* 地圖標記：名牌 120ms 後從下方 8px 彈出（過衝到 -4px），愛心 160ms 後起飄（錯開 60ms、各 520ms）。 */
+  .pixel-marker.mx-celebrate .name-tag.map-tag {
+    animation: cele-map-name 320ms ease-out 120ms both;
+  }
+  .pixel-marker.mx-celebrate .celebrate-map-hearts {
+    display: grid;
+    justify-items: center;
+  }
+  .celebrate-map-heart {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    animation: cele-map-heart 520ms cubic-bezier(0.33, 1, 0.68, 1)
+      calc(160ms + var(--cd, 0ms)) both;
+  }
+}
+@keyframes mx-sheet-swap {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes cele-map-name {
+  0% {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  60% {
+    opacity: 1;
+    translate: 0 -4px;
+  }
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes cele-map-heart {
+  0% {
+    opacity: 0;
+    visibility: visible;
+    translate: var(--cx, 0) 0;
+  }
+  25%,
+  60% {
+    opacity: 1;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    translate: var(--cx, 0) calc(var(--rise, 16px) * -1);
+  }
+}
+/* 小車進站：從左邊 64px 外開進來停在停點（不透明度前 30% 才到 1），停住後不消失。 */
+@keyframes cele-slide {
+  0% {
+    opacity: 0;
+    transform: translateX(-64px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+/* 「+1」：和人數彈起的高點同步（50%≈高點），結束後 visibility:hidden。 */
+@keyframes cele-plus {
+  0% {
+    opacity: 0;
+    visibility: visible;
+    transform: translateY(4px);
+  }
+  30%,
+  65% {
+    opacity: 1;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+  }
+}
 .empty {
   padding: var(--space-6) var(--space-4);
   text-align: center;

@@ -267,10 +267,11 @@
     "Nunito", "Noto Sans TC", system-ui, -apple-system, "PingFang TC",
     sans-serif;
   --px-radius-xs: 8px;
-  /* 像素小車 icon（淺紫系） */
-  --px-van: #b8aef2;
-  --px-van-shade: #9387e3;
-  --px-van-light: #dcd6fa;
+  /* 像素小車 icon（台灣垃圾車黃；比 --coin 更橘更深，不與代幣混淆） */
+  --px-van: #f0b020;
+  --px-van-shade: #c47f0e;
+  --px-van-light: #ffe49a;
+  --px-van-tire: var(--text-on-light); /* 輪胎：日間同外框深色 */
 
   /* ════ 2. 掛到設計系統 token（全站生效） ════ */
   --map: var(--px-ground);
@@ -379,8 +380,9 @@
   --px-radius-pill: var(--radius-pill);
   --px-radius-xs: var(--radius-xs);
   --px-font-round: var(--font-sans);
-  /* 像素小車 icon：teal 系（和原版「可以丟」同色相）；day 的淺紫在上方 day 區塊 */
-  --px-van: var(--teal);
-  --px-van-light: color-mix(in srgb, var(--teal) 55%, #fff);
-  --px-van-shade: color-mix(in srgb, var(--teal) 62%, #000);
+  /* 像素小車 icon：垃圾車黃，略壓暗避免夜間刺眼；仍比 --coin 更橘更深 */
+  --px-van: #e0a41a;
+  --px-van-light: #f6d878;
+  --px-van-shade: #a86f0e;
+  --px-van-tire: #6b7571; /* 夜間輪胎：稍亮的灰，深底與卡片底對比 ≥3:1；比失聯灰暗 */
 }
