@@ -328,3 +328,5 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 `public/demo/index.html` 為「桶桶大冒險」單檔互動頁，部署後由 `/demo/` 開啟（https://binsoon.app/demo/）。圖片、字型與配樂內嵌，約 8 MB，不需 API；音樂須使用者點擊後播放。Vite 原樣複製至 `dist/demo/index.html`，不經 React 編譯。更新此檔並合併 main 後，沿用 Pages 前端部署流程。
 
 本機 dev／preview 支援 `/demo` 及 `/demo/`，Vite middleware 會內部轉至 Demo HTML，不顯示檔名也不落入 React 首頁。
+
+Demo 背景音樂獨立循環播放，不隨動畫暫停、結束、切幕或重播而停止或跳轉；只有音樂開關控制播放，重新開啟沿用音樂原位置。播放請求未完成時不重複呼叫。實體手機音訊及背景／鎖屏行為仍需驗收。
