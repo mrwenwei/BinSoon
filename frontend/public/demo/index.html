@@ -11,10 +11,10 @@
 :root{--bg:#F8EBDC;--ink:#2F2A3D;--card:#FFFFFF;--line:#E6D6C3;--teal:#6F63D9;--mut:#6F6784;--f:"NS","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color-scheme:light}
 html,body{margin:0;background:var(--bg);color:var(--ink)}
 body{font-family:var(--f);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;box-sizing:border-box;min-height:100%}
-.stage{position:relative;width:min(100%, calc((100dvh - 150px) * 9 / 16), 540px);aspect-ratio:9/16;max-width:100%;border-radius:20px;overflow:hidden;box-shadow:0 14px 40px rgba(82,77,156,.22);background:var(--card);touch-action:none}
+.stage{position:relative;width:min(100%, calc((100dvh - 210px) * 9 / 16), 540px);aspect-ratio:9/16;max-width:100%;border-radius:20px;overflow:hidden;box-shadow:0 14px 40px rgba(82,77,156,.22);background:var(--card);touch-action:none}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #cv{image-rendering:pixelated;image-rendering:crisp-edges}
-.controls{width:min(100%, calc((100dvh - 150px) * 9 / 16), 540px);max-width:100%;display:flex;flex-direction:column;gap:10px}
+.controls{width:min(100%, calc((100dvh - 210px) * 9 / 16), 540px);max-width:100%;display:flex;flex-direction:column;gap:10px}
 .bars{display:flex;gap:4px}
 .bars button{flex:1;height:20px;border:0;padding:0;background:none;cursor:pointer;display:flex;align-items:center}
 .bars button span{display:block;width:100%;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
@@ -24,6 +24,10 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .btn:active{transform:translateY(1px)}
 .btn.primary{background:var(--teal);border-color:var(--teal);color:#FFFFFF}
 .btn:focus-visible,.bars button:focus-visible{outline:3px solid #F07A6A;outline-offset:2px}
+.demo-link{display:flex;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;width:100%;min-height:48px;text-decoration:none;color:var(--teal);border-color:var(--teal);transition:background .15s ease,transform .15s ease}
+.demo-link:hover{background:var(--teal);color:var(--card)}
+.demo-link svg{width:18px;height:18px;flex:none}
+@media(prefers-reduced-motion:reduce){.demo-link{transition:none}}
 .label{font-size:14px;color:var(--mut);margin-left:auto}
 html.rec body{padding:0;gap:0}
 html.rec .controls{display:none}
@@ -39,6 +43,7 @@ html.rec .stage{width:100vw;height:100vh;border-radius:0;box-shadow:none}
     <button class="btn" id="mus" type="button" aria-pressed="false">開啟音樂</button>
     <span class="label" id="lab">1 / 20</span>
   </div>
+  <a class="btn demo-link" href="https://binsoon.app/">前往 BinSoon<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
 </div>
 <script>
 (function(){
