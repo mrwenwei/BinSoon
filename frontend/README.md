@@ -330,3 +330,5 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 本機 dev／preview 支援 `/demo` 及 `/demo/`，Vite middleware 會內部轉至 Demo HTML，不顯示檔名也不落入 React 首頁。
 
 Demo 背景音樂獨立循環播放，不隨動畫暫停、結束、切幕或重播而停止或跳轉；只有音樂開關控制播放，重新開啟沿用音樂原位置。播放請求未完成時不重複呼叫。實體手機音訊及背景／鎖屏行為仍需驗收。
+
+互動 Demo 每幕播放至結尾後自動停留，按「下一幕」或進度列才切幕；播放／暫停鍵固定保留，播完改為「重播」並重播當前幕，避免版面跳動；「上一幕」回前一幕。停留時保留完整內容，不使用收場遮罩蓋住畫面，背景音樂繼續獨立循環。

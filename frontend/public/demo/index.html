@@ -604,15 +604,17 @@ const starts=[];let acc=0;SC.forEach(s=>{starts.push(acc);acc+=s.dur;});const TO
 let t=0,amb=0,playing=!REC,lastNow=null,cur=-1;
 function idxAt(tt){for(let i=SC.length-1;i>=0;i--)if(tt>=starts[i])return i;return 0;}
 function render(tt,a){const i=idxAt(Math.min(tt,TOTAL-1e-6));if(i!==cur){if(cur===HOWI)SC[HOWI].user=null;cur=i;updUI();}SCN=i;evt('scene',starts[i]);
-  const s=SC[i],lt=tt-starts[i];a_now=a;uReset();const ui=s.draw(lt,a);if(ui)ui();if(i<SC.length-1)iris((lt-(s.dur-.35))/.35);iris(1-lt/.35);
+  const s=SC[i],lt=tt-starts[i];a_now=a;uReset();const ui=s.draw(lt,a);if(ui)ui();if(REC&&i<SC.length-1)iris((lt-(s.dur-.35))/.35);iris(1-lt/.35);
   if(!REC)document.querySelectorAll('#bars i').forEach((el,k)=>{el.style.width=(k<i?100:k>i?0:cl(lt/s.dur)*100)+'%';});}
 window.__seek=tt=>{t=tt;render(tt,tt);};window.__total=TOTAL;window.__starts=starts;
 const barsEl=document.getElementById('bars'),playB=document.getElementById('play'),lab_=document.getElementById('lab');
 SC.forEach((s,k)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','第 '+(k+1)+' 幕：'+s.name);b.innerHTML='<span><i></i></span>';b.addEventListener('click',()=>jump(k));barsEl.appendChild(b);});
-function updUI(){if(REC||cur<0)return;lab_.textContent=(cur+1)+' / '+SC.length+'　'+SC[cur].name;playB.textContent=t>=TOTAL-.01?'重播':playing?'暫停':'播放';}
+function sceneEnd(i){return starts[i]+SC[i].dur-1e-4;}
+function sceneFinished(){return cur>=0&&t>=sceneEnd(cur);}
+function updUI(){if(REC||cur<0)return;lab_.textContent=(cur+1)+' / '+SC.length+'　'+SC[cur].name;playB.textContent=sceneFinished()?'重播':playing?'暫停':'播放';}
 function jump(k){SC[HOWI].user=null;t=starts[k]+.001;playing=true;cur=-1;render(t,amb);updUI();}
-playB.addEventListener('click',()=>{if(t>=TOTAL-.01){jump(0);return;}playing=!playing;if(playing&&cur===HOWI)SC[HOWI].user=null;updUI();});
-document.getElementById('prev').addEventListener('click',()=>jump(Math.max(0,cur-(t-starts[cur]<1?1:0))));
+playB.addEventListener('click',()=>{if(sceneFinished()){jump(cur);return;}playing=!playing;if(playing&&cur===HOWI)SC[HOWI].user=null;updUI();});
+document.getElementById('prev').addEventListener('click',()=>jump(Math.max(0,cur-1)));
 document.getElementById('next').addEventListener('click',()=>{if(cur<SC.length-1)jump(cur+1);});
 // drag the trash level in the sensor scene
 let drag=false;const stg=cv.parentNode;
@@ -628,7 +630,7 @@ if(!AU&&musB)musB.hidden=true;
 let audioPlayPending=false;
 function syncAudio(){if(!AU||!musicOn)return;if(AU.paused&&!audioPlayPending){audioPlayPending=true;AU.play().catch(()=>{}).finally(()=>{audioPlayPending=false;if(!musicOn)AU.pause();});}}
 if(musB)musB.addEventListener('click',()=>{musicOn=!musicOn;musB.textContent=musicOn?'關閉音樂':'開啟音樂';musB.setAttribute('aria-pressed',String(musicOn));if(musicOn)syncAudio();else AU.pause();});
-function loop(now){if(lastNow!=null){const dt=Math.min(.1,(now-lastNow)/1000);amb+=dt;if(playing){t+=dt;if(t>=TOTAL){t=TOTAL;playing=false;updUI();}}}lastNow=now;render(Math.min(t,TOTAL-1e-4),amb);requestAnimationFrame(loop);}
+function loop(now){if(lastNow!=null){const dt=Math.min(.1,(now-lastNow)/1000);amb+=dt;if(playing){const end=sceneEnd(idxAt(t));t=Math.min(t+dt,end);if(t>=end){playing=false;updUI();}}}lastNow=now;render(Math.min(t,TOTAL-1e-4),amb);requestAnimationFrame(loop);}
 function start(){makeLine();cache=new Map();for(let i=0;i<SHOPS.length;i++)shopCache[i]=null;if(REC){window.__ready=true;render(0,0);}else{if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)playing=false;render(0,0);updUI();requestAnimationFrame(loop);}}
 Promise.all([loadImgs(),document.fonts.load('12px "FP"','垃圾桶'),document.fonts.load('500 12px "NS"','垃圾桶'),document.fonts.load('700 12px "NS"','垃圾桶'),document.fonts.load('900 12px "NS"','垃圾桶'),document.fonts.load('700 12px "CP"','A'),document.fonts.load('600 12px "CP"','A'),document.fonts.load('12px "SK"','A')]).then(start,start);
 })();
